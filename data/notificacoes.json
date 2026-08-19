@@ -1,0 +1,272 @@
+[
+  {
+    "id": "ntf-001",
+    "clienteId": "cli-001",
+    "titulo": "Falta só 1 Tampa!",
+    "texto": "Heineken no Bar do Farol. Sua Saidera está a uma Tampa de distância.",
+    "tipo": "progresso",
+    "lida": false,
+    "criadoEm": "2026-08-19T15:21:00.000Z"
+  },
+  {
+    "id": "ntf-002",
+    "clienteId": "cli-001",
+    "titulo": "Saidera disponível",
+    "texto": "Você conquistou uma Saidera de Stella Artois no Chopp Jardins.",
+    "tipo": "saidera",
+    "lida": false,
+    "criadoEm": "2026-08-19T21:36:00.000Z"
+  },
+  {
+    "id": "ntf-003",
+    "clienteId": "cli-001",
+    "titulo": "Oferta Heineken",
+    "texto": "Essa semana sua Saidera chega mais rápido em 3 bares da orla.",
+    "tipo": "oferta",
+    "lida": true,
+    "criadoEm": "2026-08-18T12:08:00.000Z"
+  },
+  {
+    "id": "ntf-004",
+    "clienteId": "cli-001",
+    "titulo": "Bem-vindo ao Saidera",
+    "texto": "Sua conta está pronta. Mostre o QR Code no bar e comece a juntar Tampas.",
+    "tipo": "sistema",
+    "lida": false,
+    "criadoEm": "2026-08-17T14:36:00.000Z"
+  },
+  {
+    "id": "ntf-005",
+    "clienteId": "cli-001",
+    "titulo": "Point Orla te espera",
+    "texto": "Budweiser com meta especial de 6 Tampas.",
+    "tipo": "oferta",
+    "lida": false,
+    "criadoEm": "2026-08-16T14:53:00.000Z"
+  },
+  {
+    "id": "ntf-006",
+    "clienteId": "cli-001",
+    "titulo": "Você visitou 9 estabelecimentos",
+    "texto": "Continue explorando Aracaju e desbloqueie novas Saideras.",
+    "tipo": "sistema",
+    "lida": false,
+    "criadoEm": "2026-08-15T14:07:00.000Z"
+  },
+  {
+    "id": "ntf-007",
+    "clienteId": "cli-001",
+    "titulo": "Aniversariantes no Farol",
+    "texto": "O Bar do Farol preparou uma surpresa para aniversariantes do mês.",
+    "tipo": "oferta",
+    "lida": false,
+    "criadoEm": "2026-08-14T14:00:00.000Z"
+  },
+  {
+    "id": "ntf-008",
+    "clienteId": "cli-001",
+    "titulo": "Tampas registradas",
+    "texto": "João Silva registrou 2 Heineken para você ontem à noite.",
+    "tipo": "progresso",
+    "lida": true,
+    "criadoEm": "2026-08-13T14:06:00.000Z"
+  },
+  {
+    "id": "ntf-009",
+    "clienteId": "cli-001",
+    "titulo": "Nova casa no app",
+    "texto": "Atalaia Deck acabou de entrar no Saidera.",
+    "tipo": "sistema",
+    "lida": true,
+    "criadoEm": "2026-08-12T14:17:00.000Z"
+  },
+  {
+    "id": "ntf-010",
+    "clienteId": "cli-001",
+    "titulo": "Quase lá no Beer House",
+    "texto": "Você está a 3 Tampas da Saidera de Heineken.",
+    "tipo": "progresso",
+    "lida": true,
+    "criadoEm": "2026-08-11T14:38:00.000Z"
+  },
+  {
+    "id": "ntf-011",
+    "clienteId": "cli-001",
+    "titulo": "Campanha da orla",
+    "texto": "Sunset Atalaia com meta reduzida até domingo.",
+    "tipo": "oferta",
+    "lida": true,
+    "criadoEm": "2026-08-10T14:46:00.000Z"
+  },
+  {
+    "id": "ntf-012",
+    "clienteId": "cli-044",
+    "titulo": "Você está quase lá",
+    "texto": "Passe no estabelecimento e mostre seu QR Code.",
+    "tipo": "saidera",
+    "lida": true,
+    "criadoEm": "2026-08-06T19:37:00.000Z"
+  },
+  {
+    "id": "ntf-013",
+    "clienteId": "cli-067",
+    "titulo": "Você está quase lá",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "saidera",
+    "lida": true,
+    "criadoEm": "2026-07-31T18:32:00.000Z"
+  },
+  {
+    "id": "ntf-014",
+    "clienteId": "cli-040",
+    "titulo": "Bar novo perto de você",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "saidera",
+    "lida": false,
+    "criadoEm": "2026-08-08T15:33:00.000Z"
+  },
+  {
+    "id": "ntf-015",
+    "clienteId": "cli-045",
+    "titulo": "Saidera disponível",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "saidera",
+    "lida": true,
+    "criadoEm": "2026-08-09T19:53:00.000Z"
+  },
+  {
+    "id": "ntf-016",
+    "clienteId": "cli-014",
+    "titulo": "Bar novo perto de você",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "oferta",
+    "lida": true,
+    "criadoEm": "2026-08-01T12:25:00.000Z"
+  },
+  {
+    "id": "ntf-017",
+    "clienteId": "cli-044",
+    "titulo": "Nova oferta na sua região",
+    "texto": "Passe no estabelecimento e mostre seu QR Code.",
+    "tipo": "progresso",
+    "lida": false,
+    "criadoEm": "2026-08-07T16:43:00.000Z"
+  },
+  {
+    "id": "ntf-018",
+    "clienteId": "cli-028",
+    "titulo": "Bar novo perto de você",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "sistema",
+    "lida": true,
+    "criadoEm": "2026-08-18T19:46:00.000Z"
+  },
+  {
+    "id": "ntf-019",
+    "clienteId": "cli-130",
+    "titulo": "Você está quase lá",
+    "texto": "Faltam poucas Tampas para a próxima Saidera.",
+    "tipo": "sistema",
+    "lida": false,
+    "criadoEm": "2026-08-01T18:59:00.000Z"
+  },
+  {
+    "id": "ntf-020",
+    "clienteId": "cli-042",
+    "titulo": "Bar novo perto de você",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "progresso",
+    "lida": true,
+    "criadoEm": "2026-08-03T13:57:00.000Z"
+  },
+  {
+    "id": "ntf-021",
+    "clienteId": "cli-017",
+    "titulo": "Bar novo perto de você",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "oferta",
+    "lida": false,
+    "criadoEm": "2026-08-19T20:31:00.000Z"
+  },
+  {
+    "id": "ntf-022",
+    "clienteId": "cli-122",
+    "titulo": "Bar novo perto de você",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "saidera",
+    "lida": true,
+    "criadoEm": "2026-08-07T20:47:00.000Z"
+  },
+  {
+    "id": "ntf-023",
+    "clienteId": "cli-091",
+    "titulo": "Você está quase lá",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "sistema",
+    "lida": true,
+    "criadoEm": "2026-08-03T14:44:00.000Z"
+  },
+  {
+    "id": "ntf-024",
+    "clienteId": "cli-067",
+    "titulo": "Você está quase lá",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "sistema",
+    "lida": true,
+    "criadoEm": "2026-08-19T19:25:00.000Z"
+  },
+  {
+    "id": "ntf-025",
+    "clienteId": "cli-092",
+    "titulo": "Nova oferta na sua região",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "oferta",
+    "lida": true,
+    "criadoEm": "2026-08-16T22:25:00.000Z"
+  },
+  {
+    "id": "ntf-026",
+    "clienteId": "cli-048",
+    "titulo": "Você está quase lá",
+    "texto": "Passe no estabelecimento e mostre seu QR Code.",
+    "tipo": "oferta",
+    "lida": true,
+    "criadoEm": "2026-08-18T00:14:00.000Z"
+  },
+  {
+    "id": "ntf-027",
+    "clienteId": "cli-126",
+    "titulo": "Nova oferta na sua região",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "progresso",
+    "lida": true,
+    "criadoEm": "2026-08-12T15:22:00.000Z"
+  },
+  {
+    "id": "ntf-028",
+    "clienteId": "cli-060",
+    "titulo": "Bar novo perto de você",
+    "texto": "Explore os bares da orla e junte Tampas.",
+    "tipo": "sistema",
+    "lida": false,
+    "criadoEm": "2026-08-03T01:04:00.000Z"
+  },
+  {
+    "id": "ntf-029",
+    "clienteId": "cli-128",
+    "titulo": "Você está quase lá",
+    "texto": "Uma marca demonstrativa acelerou a meta nesta semana.",
+    "tipo": "saidera",
+    "lida": true,
+    "criadoEm": "2026-08-17T15:18:00.000Z"
+  },
+  {
+    "id": "ntf-030",
+    "clienteId": "cli-134",
+    "titulo": "Saidera disponível",
+    "texto": "Passe no estabelecimento e mostre seu QR Code.",
+    "tipo": "sistema",
+    "lida": true,
+    "criadoEm": "2026-08-11T13:32:00.000Z"
+  }
+]

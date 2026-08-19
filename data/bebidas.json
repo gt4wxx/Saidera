@@ -1,0 +1,177 @@
+[
+  {
+    "id": "beb-001",
+    "nome": "Heineken",
+    "tipo": "cerveja",
+    "marca": "Heineken",
+    "cor": "#1B7A3D"
+  },
+  {
+    "id": "beb-002",
+    "nome": "Budweiser",
+    "tipo": "cerveja",
+    "marca": "Budweiser",
+    "cor": "#C41E3A"
+  },
+  {
+    "id": "beb-003",
+    "nome": "Stella Artois",
+    "tipo": "cerveja",
+    "marca": "Stella Artois",
+    "cor": "#C9A227"
+  },
+  {
+    "id": "beb-004",
+    "nome": "Brahma",
+    "tipo": "cerveja",
+    "marca": "Brahma",
+    "cor": "#E21B22"
+  },
+  {
+    "id": "beb-005",
+    "nome": "Corona",
+    "tipo": "cerveja",
+    "marca": "Corona",
+    "cor": "#F5D76E"
+  },
+  {
+    "id": "beb-006",
+    "nome": "Coca-Cola",
+    "tipo": "nao-alcoolico",
+    "marca": "Coca-Cola",
+    "cor": "#F40009"
+  },
+  {
+    "id": "beb-007",
+    "nome": "Skol",
+    "tipo": "cerveja",
+    "marca": "Skol",
+    "cor": "#F5B800"
+  },
+  {
+    "id": "beb-008",
+    "nome": "Original",
+    "tipo": "cerveja",
+    "marca": "Original",
+    "cor": "#8B1A1A"
+  },
+  {
+    "id": "beb-009",
+    "nome": "Antarctica",
+    "tipo": "cerveja",
+    "marca": "Antarctica",
+    "cor": "#1E4B9C"
+  },
+  {
+    "id": "beb-010",
+    "nome": "Eisenbahn",
+    "tipo": "cerveja",
+    "marca": "Eisenbahn",
+    "cor": "#2C1810"
+  },
+  {
+    "id": "beb-011",
+    "nome": "Heineken 0.0",
+    "tipo": "cerveja",
+    "marca": "Heineken",
+    "cor": "#1B7A3D"
+  },
+  {
+    "id": "beb-012",
+    "nome": "Guaraná Antarctica",
+    "tipo": "nao-alcoolico",
+    "marca": "Guaraná Antarctica",
+    "cor": "#007A3D"
+  },
+  {
+    "id": "beb-013",
+    "nome": "Água Tônica",
+    "tipo": "nao-alcoolico",
+    "marca": "Tônica",
+    "cor": "#89CFF0"
+  },
+  {
+    "id": "beb-014",
+    "nome": "Energético",
+    "tipo": "nao-alcoolico",
+    "marca": "Energy",
+    "cor": "#0033A0"
+  },
+  {
+    "id": "beb-015",
+    "nome": "Gin Tônica",
+    "tipo": "destilado",
+    "marca": "Gin House",
+    "cor": "#8FD4C1"
+  },
+  {
+    "id": "beb-016",
+    "nome": "Caipirinha",
+    "tipo": "coquetel",
+    "marca": "Casa",
+    "cor": "#8BC34A"
+  },
+  {
+    "id": "beb-017",
+    "nome": "Mojito",
+    "tipo": "coquetel",
+    "marca": "Casa",
+    "cor": "#2E8B57"
+  },
+  {
+    "id": "beb-018",
+    "nome": "Aperol Spritz",
+    "tipo": "coquetel",
+    "marca": "Aperol",
+    "cor": "#FF6B35"
+  },
+  {
+    "id": "beb-019",
+    "nome": "Chopp Pilsen",
+    "tipo": "chopp",
+    "marca": "Casa",
+    "cor": "#F5B800"
+  },
+  {
+    "id": "beb-020",
+    "nome": "Chopp IPA",
+    "tipo": "chopp",
+    "marca": "Casa",
+    "cor": "#C45C26"
+  },
+  {
+    "id": "beb-021",
+    "nome": "Bohemia",
+    "tipo": "cerveja",
+    "marca": "Bohemia",
+    "cor": "#1A1A2E"
+  },
+  {
+    "id": "beb-022",
+    "nome": "Devassa",
+    "tipo": "cerveja",
+    "marca": "Devassa",
+    "cor": "#E8A317"
+  },
+  {
+    "id": "beb-023",
+    "nome": "Spaten",
+    "tipo": "cerveja",
+    "marca": "Spaten",
+    "cor": "#1C3A1C"
+  },
+  {
+    "id": "beb-024",
+    "nome": "Therezópolis",
+    "tipo": "cerveja",
+    "marca": "Therezópolis",
+    "cor": "#3D2B1F"
+  },
+  {
+    "id": "beb-025",
+    "nome": "Suco Natural",
+    "tipo": "nao-alcoolico",
+    "marca": "Casa",
+    "cor": "#FF8C00"
+  }
+]

@@ -1,0 +1,1302 @@
+[
+  {
+    "id": "sai-0001",
+    "codigo": "SDR-8842",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-007",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-20T01:06:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0002",
+    "codigo": "SDR-7710",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-08T01:25:00.000Z",
+    "utilizadaEm": "2026-08-10T02:25:00.000Z"
+  },
+  {
+    "id": "sai-0003",
+    "codigo": "SDR-6601",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-23T01:54:00.000Z",
+    "utilizadaEm": "2026-07-24T02:06:00.000Z"
+  },
+  {
+    "id": "sai-0004",
+    "codigo": "SDR-5512",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-06T01:18:00.000Z",
+    "utilizadaEm": "2026-07-07T02:17:00.000Z"
+  },
+  {
+    "id": "sai-0005",
+    "codigo": "SDR-4490",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-002",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-31T01:35:00.000Z",
+    "utilizadaEm": "2026-08-02T02:11:00.000Z"
+  },
+  {
+    "id": "sai-0006",
+    "codigo": "SDR-3388",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-004",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-18T01:28:00.000Z",
+    "utilizadaEm": "2026-07-21T02:08:00.000Z"
+  },
+  {
+    "id": "sai-0007",
+    "codigo": "SDR-2201",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-005",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-01T01:45:00.000Z",
+    "utilizadaEm": "2026-07-01T02:00:00.000Z"
+  },
+  {
+    "id": "sai-0008",
+    "codigo": "SDR-1994",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-009",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-02T01:40:00.000Z",
+    "utilizadaEm": "2026-08-02T02:26:00.000Z"
+  },
+  {
+    "id": "sai-0009",
+    "codigo": "SDR-1022",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-015",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-21T01:24:00.000Z",
+    "utilizadaEm": "2026-06-25T02:42:00.000Z"
+  },
+  {
+    "id": "sai-0010",
+    "codigo": "SDR-0981",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-11T01:47:00.000Z",
+    "utilizadaEm": "2026-07-13T02:57:00.000Z"
+  },
+  {
+    "id": "sai-0011",
+    "codigo": "SDR-0877",
+    "clienteId": "cli-001",
+    "estabelecimentoId": "est-011",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-29T01:41:00.000Z",
+    "utilizadaEm": "2026-07-30T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0012",
+    "codigo": "SDR-9102",
+    "clienteId": "cli-002",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-20T01:58:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0013",
+    "codigo": "SDR-8014",
+    "clienteId": "cli-004",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-006",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-27T01:14:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0014",
+    "codigo": "SDR-8015",
+    "clienteId": "cli-005",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-25T01:29:00.000Z",
+    "utilizadaEm": "2026-07-28T02:21:00.000Z"
+  },
+  {
+    "id": "sai-0015",
+    "codigo": "SDR-8016",
+    "clienteId": "cli-008",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-14T01:38:00.000Z",
+    "utilizadaEm": "2026-07-17T02:35:00.000Z"
+  },
+  {
+    "id": "sai-0016",
+    "codigo": "SDR-8017",
+    "clienteId": "cli-011",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-19T01:55:00.000Z",
+    "utilizadaEm": "2026-08-20T02:19:00.000Z"
+  },
+  {
+    "id": "sai-0017",
+    "codigo": "SDR-8018",
+    "clienteId": "cli-014",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-15T01:35:00.000Z",
+    "utilizadaEm": "2026-08-15T02:25:00.000Z"
+  },
+  {
+    "id": "sai-0018",
+    "codigo": "SDR-8019",
+    "clienteId": "cli-020",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-11T01:48:00.000Z",
+    "utilizadaEm": "2026-08-14T02:03:00.000Z"
+  },
+  {
+    "id": "sai-0019",
+    "codigo": "SDR-8020",
+    "clienteId": "cli-021",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-004",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-16T01:33:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0020",
+    "codigo": "SDR-8021",
+    "clienteId": "cli-022",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-005",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-29T01:39:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0021",
+    "codigo": "SDR-8022",
+    "clienteId": "cli-023",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-15T01:22:00.000Z",
+    "utilizadaEm": "2026-07-15T02:34:00.000Z"
+  },
+  {
+    "id": "sai-0022",
+    "codigo": "SDR-8023",
+    "clienteId": "cli-024",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-16T01:10:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0023",
+    "codigo": "SDR-8024",
+    "clienteId": "cli-025",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-17T01:26:00.000Z",
+    "utilizadaEm": "2026-07-17T02:46:00.000Z"
+  },
+  {
+    "id": "sai-0024",
+    "codigo": "SDR-8025",
+    "clienteId": "cli-027",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-004",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-08T01:20:00.000Z",
+    "utilizadaEm": "2026-08-08T02:49:00.000Z"
+  },
+  {
+    "id": "sai-0025",
+    "codigo": "SDR-8026",
+    "clienteId": "cli-035",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-004",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-12T01:13:00.000Z",
+    "utilizadaEm": "2026-07-16T02:39:00.000Z"
+  },
+  {
+    "id": "sai-0026",
+    "codigo": "SDR-8027",
+    "clienteId": "cli-038",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-08T01:09:00.000Z",
+    "utilizadaEm": "2026-08-08T02:10:00.000Z"
+  },
+  {
+    "id": "sai-0027",
+    "codigo": "SDR-8028",
+    "clienteId": "cli-042",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-14T01:04:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0028",
+    "codigo": "SDR-8029",
+    "clienteId": "cli-044",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-004",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-08T01:07:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0029",
+    "codigo": "SDR-8030",
+    "clienteId": "cli-047",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-22T01:27:00.000Z",
+    "utilizadaEm": "2026-07-22T02:33:00.000Z"
+  },
+  {
+    "id": "sai-0030",
+    "codigo": "SDR-8031",
+    "clienteId": "cli-048",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-001",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-26T01:47:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0031",
+    "codigo": "SDR-8032",
+    "clienteId": "cli-004",
+    "estabelecimentoId": "est-011",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-02T01:21:00.000Z",
+    "utilizadaEm": "2026-07-03T02:14:00.000Z"
+  },
+  {
+    "id": "sai-0032",
+    "codigo": "SDR-8033",
+    "clienteId": "cli-004",
+    "estabelecimentoId": "est-028",
+    "bebidaId": "beb-009",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-24T01:03:00.000Z",
+    "utilizadaEm": "2026-07-26T02:02:00.000Z"
+  },
+  {
+    "id": "sai-0033",
+    "codigo": "SDR-8034",
+    "clienteId": "cli-005",
+    "estabelecimentoId": "est-010",
+    "bebidaId": "beb-004",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-16T01:34:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0034",
+    "codigo": "SDR-8035",
+    "clienteId": "cli-008",
+    "estabelecimentoId": "est-001",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-08T01:17:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0035",
+    "codigo": "SDR-8036",
+    "clienteId": "cli-008",
+    "estabelecimentoId": "est-030",
+    "bebidaId": "beb-004",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-20T01:58:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0036",
+    "codigo": "SDR-8037",
+    "clienteId": "cli-009",
+    "estabelecimentoId": "est-022",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-17T01:45:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0037",
+    "codigo": "SDR-8038",
+    "clienteId": "cli-010",
+    "estabelecimentoId": "est-004",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-06-27T01:01:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0038",
+    "codigo": "SDR-8039",
+    "clienteId": "cli-010",
+    "estabelecimentoId": "est-007",
+    "bebidaId": "beb-020",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-14T01:39:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0039",
+    "codigo": "SDR-8040",
+    "clienteId": "cli-011",
+    "estabelecimentoId": "est-039",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-06-30T01:04:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0040",
+    "codigo": "SDR-8041",
+    "clienteId": "cli-012",
+    "estabelecimentoId": "est-005",
+    "bebidaId": "beb-023",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-11T01:40:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0041",
+    "codigo": "SDR-8042",
+    "clienteId": "cli-013",
+    "estabelecimentoId": "est-041",
+    "bebidaId": "beb-019",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-14T01:25:00.000Z",
+    "utilizadaEm": "2026-08-17T02:56:00.000Z"
+  },
+  {
+    "id": "sai-0042",
+    "codigo": "SDR-8043",
+    "clienteId": "cli-014",
+    "estabelecimentoId": "est-003",
+    "bebidaId": "beb-008",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-25T01:40:00.000Z",
+    "utilizadaEm": "2026-07-28T02:38:00.000Z"
+  },
+  {
+    "id": "sai-0043",
+    "codigo": "SDR-8044",
+    "clienteId": "cli-015",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-012",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-15T01:25:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0044",
+    "codigo": "SDR-8045",
+    "clienteId": "cli-017",
+    "estabelecimentoId": "est-020",
+    "bebidaId": "beb-010",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-20T01:27:00.000Z",
+    "utilizadaEm": "2026-07-21T02:30:00.000Z"
+  },
+  {
+    "id": "sai-0045",
+    "codigo": "SDR-8046",
+    "clienteId": "cli-017",
+    "estabelecimentoId": "est-026",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-06T01:40:00.000Z",
+    "utilizadaEm": "2026-07-07T02:01:00.000Z"
+  },
+  {
+    "id": "sai-0046",
+    "codigo": "SDR-8047",
+    "clienteId": "cli-018",
+    "estabelecimentoId": "est-027",
+    "bebidaId": "beb-007",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-01T01:08:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0047",
+    "codigo": "SDR-8048",
+    "clienteId": "cli-022",
+    "estabelecimentoId": "est-031",
+    "bebidaId": "beb-012",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-17T01:37:00.000Z",
+    "utilizadaEm": "2026-07-17T02:05:00.000Z"
+  },
+  {
+    "id": "sai-0048",
+    "codigo": "SDR-8049",
+    "clienteId": "cli-023",
+    "estabelecimentoId": "est-036",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-06T01:04:00.000Z",
+    "utilizadaEm": "2026-08-10T02:30:00.000Z"
+  },
+  {
+    "id": "sai-0049",
+    "codigo": "SDR-8050",
+    "clienteId": "cli-024",
+    "estabelecimentoId": "est-036",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-13T01:39:00.000Z",
+    "utilizadaEm": "2026-07-15T02:38:00.000Z"
+  },
+  {
+    "id": "sai-0050",
+    "codigo": "SDR-8051",
+    "clienteId": "cli-030",
+    "estabelecimentoId": "est-003",
+    "bebidaId": "beb-008",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-29T01:13:00.000Z",
+    "utilizadaEm": "2026-07-02T02:11:00.000Z"
+  },
+  {
+    "id": "sai-0051",
+    "codigo": "SDR-8052",
+    "clienteId": "cli-031",
+    "estabelecimentoId": "est-040",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-31T01:01:00.000Z",
+    "utilizadaEm": "2026-08-03T02:59:00.000Z"
+  },
+  {
+    "id": "sai-0052",
+    "codigo": "SDR-8053",
+    "clienteId": "cli-032",
+    "estabelecimentoId": "est-012",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-13T01:45:00.000Z",
+    "utilizadaEm": "2026-07-16T02:29:00.000Z"
+  },
+  {
+    "id": "sai-0053",
+    "codigo": "SDR-8054",
+    "clienteId": "cli-033",
+    "estabelecimentoId": "est-011",
+    "bebidaId": "beb-015",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-23T01:48:00.000Z",
+    "utilizadaEm": "2026-07-25T02:03:00.000Z"
+  },
+  {
+    "id": "sai-0054",
+    "codigo": "SDR-8055",
+    "clienteId": "cli-034",
+    "estabelecimentoId": "est-036",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-07T01:38:00.000Z",
+    "utilizadaEm": "2026-08-10T02:01:00.000Z"
+  },
+  {
+    "id": "sai-0055",
+    "codigo": "SDR-8056",
+    "clienteId": "cli-035",
+    "estabelecimentoId": "est-035",
+    "bebidaId": "beb-006",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-03T01:42:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0056",
+    "codigo": "SDR-8057",
+    "clienteId": "cli-035",
+    "estabelecimentoId": "est-022",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-04T01:53:00.000Z",
+    "utilizadaEm": "2026-08-08T02:20:00.000Z"
+  },
+  {
+    "id": "sai-0057",
+    "codigo": "SDR-8058",
+    "clienteId": "cli-037",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-024",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-22T01:09:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0058",
+    "codigo": "SDR-8059",
+    "clienteId": "cli-038",
+    "estabelecimentoId": "est-024",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-30T01:41:00.000Z",
+    "utilizadaEm": "2026-07-31T02:51:00.000Z"
+  },
+  {
+    "id": "sai-0059",
+    "codigo": "SDR-8060",
+    "clienteId": "cli-039",
+    "estabelecimentoId": "est-025",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-06-30T01:00:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0060",
+    "codigo": "SDR-8061",
+    "clienteId": "cli-040",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-08T01:39:00.000Z",
+    "utilizadaEm": "2026-08-08T02:05:00.000Z"
+  },
+  {
+    "id": "sai-0061",
+    "codigo": "SDR-8062",
+    "clienteId": "cli-042",
+    "estabelecimentoId": "est-041",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-09T01:16:00.000Z",
+    "utilizadaEm": "2026-07-12T02:03:00.000Z"
+  },
+  {
+    "id": "sai-0062",
+    "codigo": "SDR-8063",
+    "clienteId": "cli-050",
+    "estabelecimentoId": "est-029",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-02T01:05:00.000Z",
+    "utilizadaEm": "2026-08-04T02:42:00.000Z"
+  },
+  {
+    "id": "sai-0063",
+    "codigo": "SDR-8064",
+    "clienteId": "cli-052",
+    "estabelecimentoId": "est-040",
+    "bebidaId": "beb-013",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-28T01:29:00.000Z",
+    "utilizadaEm": "2026-07-30T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0064",
+    "codigo": "SDR-8065",
+    "clienteId": "cli-055",
+    "estabelecimentoId": "est-002",
+    "bebidaId": "beb-019",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-28T01:31:00.000Z",
+    "utilizadaEm": "2026-07-01T02:25:00.000Z"
+  },
+  {
+    "id": "sai-0065",
+    "codigo": "SDR-8066",
+    "clienteId": "cli-055",
+    "estabelecimentoId": "est-029",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-03T01:58:00.000Z",
+    "utilizadaEm": "2026-08-05T02:49:00.000Z"
+  },
+  {
+    "id": "sai-0066",
+    "codigo": "SDR-8067",
+    "clienteId": "cli-055",
+    "estabelecimentoId": "est-033",
+    "bebidaId": "beb-001",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-11T01:52:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0067",
+    "codigo": "SDR-8068",
+    "clienteId": "cli-057",
+    "estabelecimentoId": "est-031",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-22T01:30:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0068",
+    "codigo": "SDR-8069",
+    "clienteId": "cli-061",
+    "estabelecimentoId": "est-016",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-06T01:27:00.000Z",
+    "utilizadaEm": "2026-08-10T02:47:00.000Z"
+  },
+  {
+    "id": "sai-0069",
+    "codigo": "SDR-8070",
+    "clienteId": "cli-061",
+    "estabelecimentoId": "est-013",
+    "bebidaId": "beb-020",
+    "status": "disponivel",
+    "conquistadaEm": "2026-06-27T01:48:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0070",
+    "codigo": "SDR-8071",
+    "clienteId": "cli-062",
+    "estabelecimentoId": "est-037",
+    "bebidaId": "beb-010",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-20T01:51:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0071",
+    "codigo": "SDR-8072",
+    "clienteId": "cli-063",
+    "estabelecimentoId": "est-033",
+    "bebidaId": "beb-013",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-03T01:19:00.000Z",
+    "utilizadaEm": "2026-08-05T02:22:00.000Z"
+  },
+  {
+    "id": "sai-0072",
+    "codigo": "SDR-8073",
+    "clienteId": "cli-065",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-10T01:50:00.000Z",
+    "utilizadaEm": "2026-07-12T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0073",
+    "codigo": "SDR-8074",
+    "clienteId": "cli-065",
+    "estabelecimentoId": "est-016",
+    "bebidaId": "beb-018",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-26T01:19:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0074",
+    "codigo": "SDR-8075",
+    "clienteId": "cli-066",
+    "estabelecimentoId": "est-033",
+    "bebidaId": "beb-016",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-04T01:58:00.000Z",
+    "utilizadaEm": "2026-07-04T02:08:00.000Z"
+  },
+  {
+    "id": "sai-0075",
+    "codigo": "SDR-8076",
+    "clienteId": "cli-068",
+    "estabelecimentoId": "est-041",
+    "bebidaId": "beb-003",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-08T01:38:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0076",
+    "codigo": "SDR-8077",
+    "clienteId": "cli-069",
+    "estabelecimentoId": "est-039",
+    "bebidaId": "beb-006",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-04T01:03:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0077",
+    "codigo": "SDR-8078",
+    "clienteId": "cli-070",
+    "estabelecimentoId": "est-032",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-16T01:41:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0078",
+    "codigo": "SDR-8079",
+    "clienteId": "cli-074",
+    "estabelecimentoId": "est-022",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-26T01:27:00.000Z",
+    "utilizadaEm": "2026-07-26T02:45:00.000Z"
+  },
+  {
+    "id": "sai-0079",
+    "codigo": "SDR-8080",
+    "clienteId": "cli-075",
+    "estabelecimentoId": "est-037",
+    "bebidaId": "beb-006",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-18T01:41:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0080",
+    "codigo": "SDR-8081",
+    "clienteId": "cli-076",
+    "estabelecimentoId": "est-004",
+    "bebidaId": "beb-006",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-06T01:01:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0081",
+    "codigo": "SDR-8082",
+    "clienteId": "cli-077",
+    "estabelecimentoId": "est-040",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-01T01:17:00.000Z",
+    "utilizadaEm": "2026-08-05T02:49:00.000Z"
+  },
+  {
+    "id": "sai-0082",
+    "codigo": "SDR-8083",
+    "clienteId": "cli-078",
+    "estabelecimentoId": "est-006",
+    "bebidaId": "beb-024",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-30T01:18:00.000Z",
+    "utilizadaEm": "2026-07-02T02:46:00.000Z"
+  },
+  {
+    "id": "sai-0083",
+    "codigo": "SDR-8084",
+    "clienteId": "cli-081",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-011",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-07T01:41:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0084",
+    "codigo": "SDR-8085",
+    "clienteId": "cli-081",
+    "estabelecimentoId": "est-024",
+    "bebidaId": "beb-009",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-02T01:29:00.000Z",
+    "utilizadaEm": "2026-07-04T02:51:00.000Z"
+  },
+  {
+    "id": "sai-0085",
+    "codigo": "SDR-8086",
+    "clienteId": "cli-082",
+    "estabelecimentoId": "est-040",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-08T01:54:00.000Z",
+    "utilizadaEm": "2026-07-08T02:41:00.000Z"
+  },
+  {
+    "id": "sai-0086",
+    "codigo": "SDR-8087",
+    "clienteId": "cli-085",
+    "estabelecimentoId": "est-017",
+    "bebidaId": "beb-024",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-12T01:29:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0087",
+    "codigo": "SDR-8088",
+    "clienteId": "cli-086",
+    "estabelecimentoId": "est-024",
+    "bebidaId": "beb-014",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-12T01:27:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0088",
+    "codigo": "SDR-8089",
+    "clienteId": "cli-088",
+    "estabelecimentoId": "est-002",
+    "bebidaId": "beb-020",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-19T01:17:00.000Z",
+    "utilizadaEm": "2026-08-20T02:28:00.000Z"
+  },
+  {
+    "id": "sai-0089",
+    "codigo": "SDR-8090",
+    "clienteId": "cli-088",
+    "estabelecimentoId": "est-029",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-06T01:25:00.000Z",
+    "utilizadaEm": "2026-07-06T02:36:00.000Z"
+  },
+  {
+    "id": "sai-0090",
+    "codigo": "SDR-8091",
+    "clienteId": "cli-089",
+    "estabelecimentoId": "est-002",
+    "bebidaId": "beb-001",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-10T01:20:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0091",
+    "codigo": "SDR-8092",
+    "clienteId": "cli-089",
+    "estabelecimentoId": "est-018",
+    "bebidaId": "beb-005",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-18T01:01:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0092",
+    "codigo": "SDR-8093",
+    "clienteId": "cli-090",
+    "estabelecimentoId": "est-028",
+    "bebidaId": "beb-009",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-05T01:59:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0093",
+    "codigo": "SDR-8094",
+    "clienteId": "cli-090",
+    "estabelecimentoId": "est-002",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-26T01:18:00.000Z",
+    "utilizadaEm": "2026-07-30T02:35:00.000Z"
+  },
+  {
+    "id": "sai-0094",
+    "codigo": "SDR-8095",
+    "clienteId": "cli-090",
+    "estabelecimentoId": "est-037",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-10T01:45:00.000Z",
+    "utilizadaEm": "2026-07-10T02:23:00.000Z"
+  },
+  {
+    "id": "sai-0095",
+    "codigo": "SDR-8096",
+    "clienteId": "cli-091",
+    "estabelecimentoId": "est-041",
+    "bebidaId": "beb-011",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-29T01:13:00.000Z",
+    "utilizadaEm": "2026-06-30T02:42:00.000Z"
+  },
+  {
+    "id": "sai-0096",
+    "codigo": "SDR-8097",
+    "clienteId": "cli-093",
+    "estabelecimentoId": "est-003",
+    "bebidaId": "beb-001",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-01T01:17:00.000Z",
+    "utilizadaEm": "2026-07-01T02:24:00.000Z"
+  },
+  {
+    "id": "sai-0097",
+    "codigo": "SDR-8098",
+    "clienteId": "cli-094",
+    "estabelecimentoId": "est-008",
+    "bebidaId": "beb-009",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-09T01:58:00.000Z",
+    "utilizadaEm": "2026-07-12T02:25:00.000Z"
+  },
+  {
+    "id": "sai-0098",
+    "codigo": "SDR-8099",
+    "clienteId": "cli-094",
+    "estabelecimentoId": "est-019",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-24T01:56:00.000Z",
+    "utilizadaEm": "2026-07-25T02:05:00.000Z"
+  },
+  {
+    "id": "sai-0099",
+    "codigo": "SDR-8100",
+    "clienteId": "cli-095",
+    "estabelecimentoId": "est-017",
+    "bebidaId": "beb-004",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-01T01:57:00.000Z",
+    "utilizadaEm": "2026-07-05T02:03:00.000Z"
+  },
+  {
+    "id": "sai-0100",
+    "codigo": "SDR-8101",
+    "clienteId": "cli-096",
+    "estabelecimentoId": "est-023",
+    "bebidaId": "beb-025",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-06T01:03:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0101",
+    "codigo": "SDR-8102",
+    "clienteId": "cli-097",
+    "estabelecimentoId": "est-037",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-13T01:35:00.000Z",
+    "utilizadaEm": "2026-07-17T02:33:00.000Z"
+  },
+  {
+    "id": "sai-0102",
+    "codigo": "SDR-8103",
+    "clienteId": "cli-098",
+    "estabelecimentoId": "est-017",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-31T01:48:00.000Z",
+    "utilizadaEm": "2026-08-02T02:02:00.000Z"
+  },
+  {
+    "id": "sai-0103",
+    "codigo": "SDR-8104",
+    "clienteId": "cli-098",
+    "estabelecimentoId": "est-020",
+    "bebidaId": "beb-013",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-15T01:28:00.000Z",
+    "utilizadaEm": "2026-07-19T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0104",
+    "codigo": "SDR-8105",
+    "clienteId": "cli-099",
+    "estabelecimentoId": "est-036",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-29T01:55:00.000Z",
+    "utilizadaEm": "2026-07-29T02:11:00.000Z"
+  },
+  {
+    "id": "sai-0105",
+    "codigo": "SDR-8106",
+    "clienteId": "cli-100",
+    "estabelecimentoId": "est-028",
+    "bebidaId": "beb-010",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-16T01:42:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0106",
+    "codigo": "SDR-8107",
+    "clienteId": "cli-108",
+    "estabelecimentoId": "est-029",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-09T01:06:00.000Z",
+    "utilizadaEm": "2026-07-10T02:24:00.000Z"
+  },
+  {
+    "id": "sai-0107",
+    "codigo": "SDR-8108",
+    "clienteId": "cli-108",
+    "estabelecimentoId": "est-025",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-02T01:22:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0108",
+    "codigo": "SDR-8109",
+    "clienteId": "cli-111",
+    "estabelecimentoId": "est-020",
+    "bebidaId": "beb-004",
+    "status": "utilizada",
+    "conquistadaEm": "2026-06-26T01:27:00.000Z",
+    "utilizadaEm": "2026-06-28T02:43:00.000Z"
+  },
+  {
+    "id": "sai-0109",
+    "codigo": "SDR-8110",
+    "clienteId": "cli-114",
+    "estabelecimentoId": "est-038",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-13T01:53:00.000Z",
+    "utilizadaEm": "2026-08-15T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0110",
+    "codigo": "SDR-8111",
+    "clienteId": "cli-121",
+    "estabelecimentoId": "est-011",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-26T01:07:00.000Z",
+    "utilizadaEm": "2026-07-30T02:29:00.000Z"
+  },
+  {
+    "id": "sai-0111",
+    "codigo": "SDR-8112",
+    "clienteId": "cli-124",
+    "estabelecimentoId": "est-031",
+    "bebidaId": "beb-012",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-14T01:48:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0112",
+    "codigo": "SDR-8113",
+    "clienteId": "cli-124",
+    "estabelecimentoId": "est-015",
+    "bebidaId": "beb-004",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-18T01:55:00.000Z",
+    "utilizadaEm": "2026-08-20T02:59:00.000Z"
+  },
+  {
+    "id": "sai-0113",
+    "codigo": "SDR-8114",
+    "clienteId": "cli-126",
+    "estabelecimentoId": "est-021",
+    "bebidaId": "beb-023",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-06T01:40:00.000Z",
+    "utilizadaEm": "2026-08-09T02:03:00.000Z"
+  },
+  {
+    "id": "sai-0114",
+    "codigo": "SDR-8115",
+    "clienteId": "cli-127",
+    "estabelecimentoId": "est-019",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-18T01:58:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0115",
+    "codigo": "SDR-8116",
+    "clienteId": "cli-129",
+    "estabelecimentoId": "est-035",
+    "bebidaId": "beb-014",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-10T01:45:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0116",
+    "codigo": "SDR-8117",
+    "clienteId": "cli-129",
+    "estabelecimentoId": "est-012",
+    "bebidaId": "beb-005",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-03T01:01:00.000Z",
+    "utilizadaEm": "2026-07-06T02:38:00.000Z"
+  },
+  {
+    "id": "sai-0117",
+    "codigo": "SDR-8118",
+    "clienteId": "cli-132",
+    "estabelecimentoId": "est-007",
+    "bebidaId": "beb-006",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-15T01:28:00.000Z",
+    "utilizadaEm": "2026-08-15T02:04:00.000Z"
+  },
+  {
+    "id": "sai-0118",
+    "codigo": "SDR-8119",
+    "clienteId": "cli-133",
+    "estabelecimentoId": "est-027",
+    "bebidaId": "beb-007",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-11T01:08:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0119",
+    "codigo": "SDR-8120",
+    "clienteId": "cli-138",
+    "estabelecimentoId": "est-034",
+    "bebidaId": "beb-001",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-11T01:25:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0120",
+    "codigo": "SDR-8121",
+    "clienteId": "cli-139",
+    "estabelecimentoId": "est-016",
+    "bebidaId": "beb-002",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-17T01:37:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0121",
+    "codigo": "SDR-8122",
+    "clienteId": "cli-141",
+    "estabelecimentoId": "est-010",
+    "bebidaId": "beb-001",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-08T01:03:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0122",
+    "codigo": "SDR-8123",
+    "clienteId": "cli-142",
+    "estabelecimentoId": "est-009",
+    "bebidaId": "beb-009",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-07T01:50:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0123",
+    "codigo": "SDR-8124",
+    "clienteId": "cli-144",
+    "estabelecimentoId": "est-030",
+    "bebidaId": "beb-008",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-17T01:04:00.000Z",
+    "utilizadaEm": "2026-08-18T02:17:00.000Z"
+  },
+  {
+    "id": "sai-0124",
+    "codigo": "SDR-8125",
+    "clienteId": "cli-145",
+    "estabelecimentoId": "est-019",
+    "bebidaId": "beb-002",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-19T01:39:00.000Z",
+    "utilizadaEm": "2026-08-20T02:44:00.000Z"
+  },
+  {
+    "id": "sai-0125",
+    "codigo": "SDR-8126",
+    "clienteId": "cli-145",
+    "estabelecimentoId": "est-037",
+    "bebidaId": "beb-022",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-16T01:11:00.000Z",
+    "utilizadaEm": "2026-08-18T02:32:00.000Z"
+  },
+  {
+    "id": "sai-0126",
+    "codigo": "SDR-8127",
+    "clienteId": "cli-146",
+    "estabelecimentoId": "est-014",
+    "bebidaId": "beb-012",
+    "status": "disponivel",
+    "conquistadaEm": "2026-08-19T01:25:00.000Z",
+    "utilizadaEm": null
+  },
+  {
+    "id": "sai-0127",
+    "codigo": "SDR-8128",
+    "clienteId": "cli-146",
+    "estabelecimentoId": "est-013",
+    "bebidaId": "beb-015",
+    "status": "utilizada",
+    "conquistadaEm": "2026-07-08T01:15:00.000Z",
+    "utilizadaEm": "2026-07-12T02:47:00.000Z"
+  },
+  {
+    "id": "sai-0128",
+    "codigo": "SDR-8129",
+    "clienteId": "cli-147",
+    "estabelecimentoId": "est-017",
+    "bebidaId": "beb-016",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-09T01:27:00.000Z",
+    "utilizadaEm": "2026-08-11T02:12:00.000Z"
+  },
+  {
+    "id": "sai-0129",
+    "codigo": "SDR-8130",
+    "clienteId": "cli-148",
+    "estabelecimentoId": "est-028",
+    "bebidaId": "beb-003",
+    "status": "utilizada",
+    "conquistadaEm": "2026-08-10T01:27:00.000Z",
+    "utilizadaEm": "2026-08-13T02:07:00.000Z"
+  },
+  {
+    "id": "sai-0130",
+    "codigo": "SDR-8131",
+    "clienteId": "cli-149",
+    "estabelecimentoId": "est-029",
+    "bebidaId": "beb-010",
+    "status": "disponivel",
+    "conquistadaEm": "2026-07-17T01:40:00.000Z",
+    "utilizadaEm": null
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "aud-001",
+    "nome": "Heineken · Orla · 90 dias",
+    "campanhaId": "cam-001",
+    "parceiroId": "par-001",
+    "cidade": "Aracaju",
+    "bairros": [
+      "Atalaia",
+      "Coroa do Meio",
+      "13 de Julho"
+    ],
+    "estabelecimentos": [
+      "est-001",
+      "est-002",
+      "est-004",
+      "est-005",
+      "est-009",
+      "est-011",
+      "est-015",
+      "est-024"
+    ],
+    "bebidaId": "beb-001",
+    "periodoDias": 90,
+    "estimado": 3842,
+    "canal": "push"
+  },
+  {
+    "id": "aud-002",
+    "nome": "Budweiser · Fim de semana",
+    "campanhaId": "cam-002",
+    "parceiroId": "par-002",
+    "cidade": "Aracaju",
+    "bairros": [
+      "Atalaia",
+      "Jardins"
+    ],
+    "estabelecimentos": [
+      "est-001",
+      "est-002",
+      "est-007",
+      "est-009",
+      "est-049"
+    ],
+    "bebidaId": "beb-002",
+    "periodoDias": 30,
+    "estimado": 2210,
+    "canal": "whatsapp"
+  },
+  {
+    "id": "aud-003",
+    "nome": "Stella · Jardins premium",
+    "campanhaId": "cam-003",
+    "parceiroId": "par-003",
+    "cidade": "Aracaju",
+    "bairros": [
+      "Jardins",
+      "Grageru",
+      "Luzia"
+    ],
+    "estabelecimentos": [
+      "est-007",
+      "est-014",
+      "est-018",
+      "est-022"
+    ],
+    "bebidaId": "beb-003",
+    "periodoDias": 60,
+    "estimado": 1560,
+    "canal": "email"
+  }
+]
