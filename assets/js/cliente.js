@@ -48,6 +48,8 @@ const ClienteApp = {
       qr: () => this.qr(),
       notificacoes: () => this.notificacoes(),
       historico: () => this.historico(),
+      preferencias: () => this.preferencias(),
+      privacidade: () => this.privacidade(),
     }[this.view] || (() => this.home());
     this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell">
       <div class="phone-body">${html()}</div>
@@ -479,11 +481,13 @@ const ClienteApp = {
   saideras() {
     const me = this.me();
     const tab = this.params.id || "disponiveis";
-    const list = Logic.saiderasDe(me.id, tab === "utilizadas" ? "utilizada" : "disponivel");
-    return `${this.top(`<h1>Minhas Saideras</h1>`)}
+    const filtro = tab === "utilizadas" ? "utilizada" : tab === "expiradas" ? "expirada" : "disponivel";
+    const list = Logic.saiderasDe(me.id, filtro);
+    return `${this.top(`<h1>Minhas Saideras</h1><p class="tiny muted">Cada Saidera vale ${Logic.validadeDias} dias depois de conquistada.</p>`)}
       <div class="pill-tabs" style="margin:12px 0">
         <button class="${tab === "disponiveis" ? "on" : ""}" data-go="#/saideras/disponiveis">Disponíveis</button>
         <button class="${tab === "utilizadas" ? "on" : ""}" data-go="#/saideras/utilizadas">Utilizadas</button>
+        <button class="${tab === "expiradas" ? "on" : ""}" data-go="#/saideras/expiradas">Expiradas</button>
       </div>
       ${
         list.length
@@ -491,11 +495,13 @@ const ClienteApp = {
               .map((s) => {
                 const e = Logic.est(s.estabelecimentoId);
                 const b = Logic.bebida(s.bebidaId);
+                const urgente = s.status === "disponivel" && Logic.diasRestantesSaidera(s) <= 3;
                 return `<article class="saidera-card ${s.status}">
-                  <span class="badge ${s.status === "disponivel" ? "badge-green" : "badge-ghost"}">${s.status === "disponivel" ? "SAIDERA DISPONÍVEL" : "UTILIZADA"}</span>
+                  <span class="badge ${s.status === "disponivel" ? (urgente ? "badge-gold" : "badge-green") : "badge-ghost"}">${s.status === "disponivel" ? "SAIDERA DISPONÍVEL" : s.status === "expirada" ? "EXPIRADA" : "UTILIZADA"}</span>
                   <h2 style="margin:8px 0 2px">${b.nome}</h2>
                   <p class="muted">${e.nome}</p>
                   <p class="small" style="margin:8px 0">Conquistada em: ${Logic.fmtDate(s.conquistadaEm)}</p>
+                  <p class="small ${urgente ? "gold" : "muted"}">${Logic.validadeLabel(s)}${s.expiraEm ? " · " + Logic.fmtDate(s.expiraEm) : ""}</p>
                   <p class="tiny">Código: <strong>${s.codigo}</strong></p>
                   ${s.status === "disponivel" ? `<button class="btn btn-gold btn-block" style="margin-top:12px" data-go="#/qr">Mostrar ao garçom</button>` : ""}
                 </article>`;
@@ -618,9 +624,22 @@ const ClienteApp = {
       ${["Histórico", "Preferências", "Privacidade", "Notificações"]
         .map(
           (l, i) =>
-            `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${i === 0 ? "#/historico" : "#/perfil"}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
+            `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${["#/historico", "#/preferencias", "#/privacidade", "#/notificacoes"][i]}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
         )
         .join("")}
+      <section class="card pad" style="margin:14px 0">
+        <p class="tiny muted">Quem está na demonstração</p>
+        <div class="row wrap" style="margin-top:10px;gap:8px">
+          ${Logic.clientesDemo()
+            .map(
+              (c) =>
+                `<button class="btn ${c.id === me.id ? "btn-gold" : "btn-dark"} btn-sm" data-demo-cli="${c.id}">${c.primeiroNome}</button>`
+            )
+            .join("")}
+        </div>
+        <p class="tiny muted" style="margin-top:8px">Troque para ver Tampas e Saideras de outra pessoa da demo.</p>
+      </section>
+      ${UI.pwaBox()}
       <a class="btn btn-ghost btn-block" href="../index.html" style="margin-top:8px">${Icons.logout()} Sair</a>`;
   },
 
@@ -641,26 +660,67 @@ const ClienteApp = {
     return `${this.back("Meu Saidera")}
       <div class="qr-stage">
         ${Brand.simbolo(72)}
-        ${UI.qrSvg()}
+        ${UI.qrSvg(me.codigo)}
         <h2 style="margin-top:8px">${me.primeiroNome}</h2>
         <p class="muted">ID: ${me.codigo}</p>
         <p style="margin-top:12px">Mostre este QR Code ao garçom para registrar suas Tampas. É o seu ID — ele pode escanear de novo sempre que precisar.</p>
+        <p class="tiny muted" style="margin-top:10px">O código contém ${me.codigo}. Use outro celular no app do garçom e aponte a câmera.</p>
       </div>`;
+  },
+
+  preferencias() {
+    const me = this.me();
+    const prefs = Logic.prefsCliente(me.id);
+    return `${this.back("Preferências")}
+      <p class="muted" style="margin-bottom:14px">Vale para esta demonstração neste aparelho.</p>
+      <div class="field"><span>Bebida favorita</span>
+        <select id="pref-bebida">
+          ${Store.all("bebidas")
+            .slice(0, 12)
+            .map((b) => `<option value="${b.id}" ${b.id === prefs.bebidaFavoritaId ? "selected" : ""}>${b.nome}</option>`)
+            .join("")}
+        </select>
+      </div>
+      <p class="tiny muted" style="margin-top:12px">Isso aparece no seu perfil e ajuda o bar a te reconhecer.</p>`;
+  },
+
+  privacidade() {
+    const me = this.me();
+    const prefs = Logic.prefsCliente(me.id);
+    return `${this.back("Privacidade")}
+      <label class="toggle-row">
+        <span>Casas da rede podem ver que eu frequento o app</span>
+        <input type="checkbox" data-pref="perfilPublico" ${prefs.perfilPublico ? "checked" : ""}/>
+      </label>
+      <p class="muted small" style="margin-top:12px">Na demo não há envio a servidores. O dado fica só neste navegador (localStorage).</p>`;
   },
 
   notificacoes() {
     const me = this.me();
+    const prefs = Logic.prefsCliente(me.id);
     const list = Store.all("notificacoes").filter((n) => n.clienteId === me.id);
+    list.filter((n) => !n.lida).forEach((n) => {
+      n.lida = true;
+    });
+    if (list.some((n) => n.lida)) Store.save(false);
     return `${this.back("Notificações")}
-      ${list
-        .map(
-          (n) => `<article class="card pad" style="margin-bottom:8px;opacity:${n.lida ? 0.7 : 1}" ${n.campanhaId ? `data-go="#/ofertas/${n.campanhaId}"` : ""}>
+      <label class="toggle-row"><span>Alertas no app</span><input type="checkbox" data-pref="push" ${prefs.push ? "checked" : ""}/></label>
+      <label class="toggle-row"><span>E-mail</span><input type="checkbox" data-pref="email" ${prefs.email ? "checked" : ""}/></label>
+      <label class="toggle-row"><span>WhatsApp</span><input type="checkbox" data-pref="whatsapp" ${prefs.whatsapp ? "checked" : ""}/></label>
+      <p class="tiny muted" style="margin:16px 0 10px">Caixa da demonstração</p>
+      ${
+        list.length
+          ? list
+              .map(
+                (n) => `<article class="card pad" style="margin-bottom:8px" ${n.campanhaId ? `data-go="#/ofertas/${n.campanhaId}"` : ""}>
             <strong>${n.titulo}</strong>
             <p class="small muted">${n.texto}</p>
             <p class="tiny muted">${Logic.fmtDate(n.criadoEm)}</p>
           </article>`
-        )
-        .join("")}`;
+              )
+              .join("")
+          : `<p class="muted">Nenhuma notificação ainda.</p>`
+      }`;
   },
 
   bind() {
@@ -722,6 +782,25 @@ const ClienteApp = {
         if (body && list) body.scrollTop = Math.max(0, list.offsetTop - 12);
       })
     );
+    this.root.querySelectorAll("[data-demo-cli]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const c = Logic.escolherClienteDemo(b.getAttribute("data-demo-cli"));
+        if (c) {
+          UI.toast(`Agora você é ${c.primeiroNome} nesta demo.`);
+          this.go("#/home");
+        }
+      })
+    );
+    this.root.querySelectorAll("[data-pref]").forEach((el) =>
+      el.addEventListener("change", () => {
+        Logic.salvarPrefsCliente(this.me().id, { [el.getAttribute("data-pref")]: el.checked });
+        UI.toast("Preferência salva.");
+      })
+    );
+    this.root.querySelector("#pref-bebida")?.addEventListener("change", (e) => {
+      Logic.salvarPrefsCliente(this.me().id, { bebidaFavoritaId: e.target.value });
+      UI.toast("Bebida favorita atualizada.");
+    });
   },
 };
 

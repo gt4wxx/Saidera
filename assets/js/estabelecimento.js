@@ -678,6 +678,15 @@ const EstApp = {
         ${custom ? `<button class="btn btn-ghost" type="button" id="reset-cartaz">Usar imagem padrão</button>` : ""}
       </div>
       <button class="btn btn-gold" style="margin-top:16px" id="save-cfg">Salvar</button>
+      <section style="margin-top:28px">
+        <h3>Cartaz de mesa</h3>
+        <p class="tiny muted" style="margin:8px 0 12px">O cliente abre o app e mostra o QR dele. Este cartaz lembra o fluxo no salão.</p>
+        <div class="qr-stage" style="max-width:280px;margin:0 auto;background:#1a1a1a;color:var(--cream)">
+          ${Brand.horizontal("brand-h")}
+          ${UI.qrSvg("SDR-28491")}
+          <p class="small" style="margin-top:10px">Peça o QR Saidera do cliente<br/><strong>SDR-28491</strong> na demo</p>
+        </div>
+      </section>
     </section>`;
   },
 
@@ -783,18 +792,49 @@ const EstApp = {
       this.afterRegister(res, c, b);
     });
     this.root.querySelector("#scan-qr")?.addEventListener("click", () => {
-      UI.modal({
+      const m = UI.modal({
         center: true,
-        html: `<h2>Escanear QR Code</h2><p class="muted" style="margin:10px 0">Simulação de leitura. Cliente encontrado:</p>
-          <div class="person"><img src="${Logic.cliente("cli-001").avatar}"/><div><strong>Ellisson Costa</strong><p class="small muted">SDR-28491</p></div></div>
-          <button class="btn btn-gold btn-block" style="margin-top:16px" id="use-ellisson">Usar este cliente</button>`,
+        onClose: () => QR.stopScan(),
+        html: `<h2>Escanear QR Code</h2>
+          <div class="scan-stage" style="margin:16px 0">
+            <div class="scan-frame live" style="margin:0 auto">
+              <video id="scan-video-est" playsinline muted autoplay></video>
+              <i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR do cliente</p>
+          <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
+          <div class="row wrap" style="margin-top:12px;gap:8px">
+            <button class="btn btn-dark btn-sm" data-use="cli-001">Ellisson</button>
+            <button class="btn btn-dark btn-sm" data-use="cli-002">Carlos</button>
+            <button class="btn btn-ghost btn-sm" data-close-modal>Cancelar</button>
+          </div>`,
       });
-      setTimeout(() => {
-        document.getElementById("use-ellisson")?.addEventListener("click", () => {
-          document.querySelector(".modal-bg")?.remove();
-          location.hash = "#/registrar/cli-001";
-        });
-      }, 50);
+      const abrir = (id) => {
+        QR.stopScan();
+        m.close();
+        location.hash = `#/registrar/${id}`;
+      };
+      m.el.querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => abrir(b.getAttribute("data-use"))));
+      m.el.querySelector("#busca-qr-modal")?.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        const c = Logic.clientePorCodigo(QR.parse(e.target.value));
+        if (c) abrir(c.id);
+        else UI.toast("Cliente não encontrado.");
+      });
+      const video = m.el.querySelector("#scan-video-est");
+      QR.startScan({
+        video,
+        onCode: (codigo) => {
+          const c = Logic.clientePorCodigo(codigo);
+          if (c) abrir(c.id);
+          else UI.toast("QR não reconhecido.");
+        },
+        onError: (msg) => {
+          const h = m.el.querySelector("#scan-hint-est");
+          if (h) h.textContent = msg;
+        },
+      });
     });
     this.root.querySelector("#scan-nota")?.addEventListener("click", () => {
       const m = UI.modal({

@@ -129,13 +129,17 @@ const UI = {
       .join("");
   },
 
-  qrSvg() {
+  qrSvg(codigo) {
+    const payload = window.QR ? QR.payload(codigo || "SDR-28491") : String(codigo || "SDR-28491");
+    if (window.QR?.svg) {
+      const svg = QR.svg(payload, 188);
+      if (svg) return svg;
+    }
     const cells = [];
     const seed = 28491;
     for (let y = 0; y < 21; y++) {
       for (let x = 0; x < 21; x++) {
-        const finder =
-          (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
+        const finder = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
         let on = false;
         if (finder) {
           const dx = x < 7 ? x : x > 13 ? x - 14 : x;
@@ -155,7 +159,7 @@ const UI = {
       <summary>MODO DEMO</summary>
       <div class="demo-panel">
         <strong>Roteiro da apresentação</strong>
-        <p>1. Cliente mostra o QR.<br/>2. Garçom escaneia → comanda do Ellisson.<br/>3. +1 Heineken → Saidera liberada.<br/>4. Entrega na mesma tela.<br/>5. +2 Heineken sem escanear de novo → 2/8.<br/>Excedente: Coca-Cola 8/10 + 5.</p>
+        <p>1. Cliente mostra o QR (código real do ID).<br/>2. Garçom aponta a câmera — ou digita SDR-28491.<br/>3. +1 Heineken → Saidera liberada (vale 15 dias).<br/>4. Entrega na mesma tela.<br/>5. +2 Heineken sem escanear de novo → 2/8.<br/>Excedente: Coca-Cola 8/10 + 5.</p>
         <button class="btn btn-gold btn-block btn-sm" data-action="reset-demo">Resetar demonstração</button>
       </div>
     </details>`;
@@ -181,11 +185,63 @@ const UI = {
         setTimeout(() => location.reload(), 400);
       }
       const close = e.target.closest("[data-close-modal]");
-      if (close) close.closest(".modal-bg")?.remove();
+      if (close) {
+        QR?.stopScan();
+        close.closest(".modal-bg")?.remove();
+      }
       if (e.target.closest("[data-close-menu]")) {
         document.querySelector("#sidebar")?.classList.remove("open");
       }
+      const install = e.target.closest("[data-pwa-install]");
+      if (install) this.pwaInstall();
     });
+    this.pwaInit();
+  },
+
+  pwaStandalone() {
+    return window.matchMedia("(display-mode: standalone)").matches || Boolean(window.navigator.standalone);
+  },
+
+  pwaIos() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  },
+
+  pwaBox() {
+    if (this.pwaStandalone()) return "";
+    if (this.pwaIos()) {
+      return `<div class="pwa-box" data-pwa-box>
+        <p class="notice">No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</p>
+      </div>`;
+    }
+    return `<div class="pwa-box" data-pwa-box>
+      <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar o Saidera</button>
+      <p class="tiny muted" style="margin-top:8px">Chrome ou Edge. Abra pelo servidor (http://localhost:5173), não pelo arquivo HTML.</p>
+    </div>`;
+  },
+
+  pwaInit() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register(`${location.origin}/sw.js`, { scope: "/" }).catch(() => {});
+    }
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      this._pwaPrompt = e;
+    });
+    window.addEventListener("appinstalled", () => {
+      this._pwaPrompt = null;
+      this.toast("Saidera instalado neste aparelho.");
+      document.querySelectorAll("[data-pwa-box]").forEach((el) => el.classList.add("hidden"));
+    });
+  },
+
+  async pwaInstall() {
+    if (this._pwaPrompt) {
+      this._pwaPrompt.prompt();
+      await this._pwaPrompt.userChoice.catch(() => {});
+      this._pwaPrompt = null;
+      return;
+    }
+    this.toast("No Chrome ou Edge: menu ⋮ → Instalar Saidera.");
   },
 };
 

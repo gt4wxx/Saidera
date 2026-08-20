@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "Saidera",
+  "short_name": "Saidera",
+  "description": "Fidelização para a noite de Aracaju. MVP demonstrativo.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0e0e",
+  "theme_color": "#171717",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    {
+      "src": "/assets/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

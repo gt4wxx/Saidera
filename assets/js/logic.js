@@ -3,6 +3,156 @@ const Logic = {
     return new Date(2026, 7, 19);
   },
 
+  validadeDias: 15,
+
+  hidratar() {
+    const demo = Store.data?.meta?.demo;
+    if (!demo) return;
+    const saved = sessionStorage.getItem("saidera_cliente");
+    if (saved && this.cliente(saved)) demo.clienteId = saved;
+    if (!Store.data.auditoria) Store.data.auditoria = [];
+    if (!Store.data.meta.cidade) Store.data.meta.cidade = "Aracaju/SE";
+    if (Store.data.meta.metaPadraoRede == null) Store.data.meta.metaPadraoRede = 10;
+    this.hidratarSaideras();
+  },
+
+  hidratarSaideras() {
+    const hoje = this.hoje();
+    let mudou = false;
+    Store.all("saideras").forEach((s) => {
+      if (!s.expiraEm && s.conquistadaEm) {
+        const d = new Date(s.conquistadaEm);
+        d.setDate(d.getDate() + this.validadeDias);
+        s.expiraEm = d.toISOString();
+        mudou = true;
+      }
+      if (s.status === "disponivel" && s.expiraEm && new Date(s.expiraEm) < hoje) {
+        s.status = "expirada";
+        mudou = true;
+      }
+    });
+    const demoSai = Store.all("saideras").find((s) => s.codigo === "SDR-8842" && s.status === "disponivel");
+    if (demoSai) {
+      const d = new Date(hoje);
+      d.setDate(d.getDate() + 3);
+      if (demoSai.expiraEm !== d.toISOString()) {
+        demoSai.expiraEm = d.toISOString();
+        mudou = true;
+      }
+    }
+    if (mudou) Store.save(false);
+  },
+
+  diasRestantesSaidera(s) {
+    if (!s?.expiraEm) return this.validadeDias;
+    return Math.ceil((new Date(s.expiraEm) - this.hoje()) / 86400000);
+  },
+
+  validadeLabel(s) {
+    if (s.status === "expirada") return "Expirada";
+    const n = this.diasRestantesSaidera(s);
+    if (n <= 0) return "Expira hoje";
+    if (n === 1) return "Expira amanhã";
+    return `Expira em ${n} dias`;
+  },
+
+  clientesDemo() {
+    return ["cli-001", "cli-002", "cli-003"].map((id) => this.cliente(id)).filter(Boolean);
+  },
+
+  escolherClienteDemo(id) {
+    const c = this.cliente(id);
+    if (!c || !Store.data.meta?.demo) return null;
+    Store.data.meta.demo.clienteId = id;
+    sessionStorage.setItem("saidera_cliente", id);
+    Store.save();
+    this.auditar("Troca de cliente demo", c.nome);
+    return c;
+  },
+
+  prefsCliente(clienteId) {
+    const c = this.cliente(clienteId);
+    if (!c) return {};
+    if (!c.prefs) {
+      c.prefs = {
+        push: true,
+        email: true,
+        whatsapp: false,
+        perfilPublico: true,
+        bebidaFavoritaId: c.bebidaFavoritaId || "beb-001",
+      };
+    }
+    return c.prefs;
+  },
+
+  salvarPrefsCliente(clienteId, patch) {
+    const prefs = this.prefsCliente(clienteId);
+    Object.assign(prefs, patch);
+    const c = this.cliente(clienteId);
+    if (patch.bebidaFavoritaId) c.bebidaFavoritaId = patch.bebidaFavoritaId;
+    Store.save();
+    return prefs;
+  },
+
+  auditar(acao, detalhe) {
+    Store.data.auditoria = Store.data.auditoria || [];
+    Store.data.auditoria.unshift({
+      em: new Date().toISOString(),
+      acao,
+      detalhe: detalhe || "",
+    });
+    Store.data.auditoria = Store.data.auditoria.slice(0, 80);
+  },
+
+  logsAuditoria() {
+    const vivos = Store.all("auditoria");
+    const seed = Store.all("consumos")
+      .filter((c) => String(c.id || "").startsWith("con-") && !String(c.id).includes("live"))
+      .slice(0, 10)
+      .map((c) => ({
+        em: c.criadoEm,
+        acao: "Registro de consumo",
+        detalhe: `${this.est(c.estabelecimentoId)?.nome || ""} · ${this.cliente(c.clienteId)?.primeiroNome || ""} · ${this.bebida(c.bebidaId)?.nome || ""}`,
+      }));
+    return [...vivos, ...seed].slice(0, 40);
+  },
+
+  resumoRede() {
+    const ests = Store.all("estabelecimentos");
+    const sais = Store.all("saideras");
+    const cons = Store.all("consumos");
+    const camps = Store.all("campanhas");
+    const tampasQtd = cons.reduce((a, c) => a + (c.quantidade || 0), 0);
+    const usadas = sais.filter((s) => s.status === "utilizada").length;
+    const disp = sais.filter((s) => s.status === "disponivel").length;
+    const conversao = sais.length ? Math.round((usadas / sais.length) * 100) : 0;
+    const porBairro = {};
+    sais.forEach((s) => {
+      const b = this.est(s.estabelecimentoId)?.bairro || "Outros";
+      porBairro[b] = (porBairro[b] || 0) + 1;
+    });
+    const maxB = Math.max(1, ...Object.values(porBairro));
+    const bairros = Object.entries(porBairro)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([nome, n]) => ({ nome, pct: Math.round((n / maxB) * 100) }));
+    const semana = this.semanaTampas();
+    return {
+      estabelecimentos: ests.length,
+      usuarios: Store.all("clientes").length,
+      tampas: tampasQtd,
+      saideras: sais.length,
+      usadas,
+      disponiveis: disp,
+      expiradas: sais.filter((s) => s.status === "expirada").length,
+      parceiros: Store.all("parceiros").length,
+      campanhas: camps.length,
+      conversao,
+      bairros,
+      semana,
+    };
+  },
+
   saudacao(nome) {
     const h = new Date().getHours();
     const s = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
@@ -301,6 +451,7 @@ const Logic = {
       solicitadaEm: new Date().toISOString(),
     };
     Store.data.campanhas.unshift(cam);
+    this.auditar("Solicitação de campanha", `${est?.nome || "Casa"} · ${cam.titulo}`);
     Store.save();
     return cam;
   },
@@ -459,7 +610,11 @@ const Logic = {
       utilizadaEm: null,
       campanhaId: campanhaId || null,
     };
+    const exp = this.hoje();
+    exp.setDate(exp.getDate() + this.validadeDias);
+    rec.expiraEm = exp.toISOString();
     Store.data.saideras.unshift(rec);
+    this.auditar("Saidera conquistada", `${this.cliente(clienteId)?.primeiroNome || ""} · ${this.bebida(bebidaId)?.nome || ""}`);
     return rec;
   },
 
@@ -504,6 +659,7 @@ const Logic = {
     campanha.disparada = true;
     if (canal) campanha.canal = canal;
     campanha.ativadaEm = new Date().toISOString();
+    this.auditar("Disparo de campanha", campanha.titulo);
     const alteraMeta = campanha.alteraMeta !== false && campanha.metaTampas;
     campanha.patrocinioBar = Boolean(alteraMeta);
     if (alteraMeta) {
@@ -614,6 +770,7 @@ const Logic = {
   },
 
   saiderasDisponiveis(clienteId, estId, bebidaId) {
+    this.hidratarSaideras();
     return Store.all("saideras").filter(
       (s) =>
         s.clienteId === clienteId &&
@@ -703,16 +860,24 @@ const Logic = {
       criadoEm: new Date().toISOString(),
     });
 
+    this.auditar("Registro de consumo", `${est.nome} · ${cli.primeiroNome} · ${this.bebida(bebidaId).nome} ×${quantidade}`);
     Store.save();
     return { antes, depois: p.atual, meta: p.meta, ganhas, novas, progresso: p, ofertaConcluida, metaBar };
   },
 
   entregarSaidera(saideraId, funcionarioId) {
+    this.hidratarSaideras();
     const s = Store.find("saideras", saideraId);
     if (!s || s.status !== "disponivel") return null;
+    if (s.expiraEm && new Date(s.expiraEm) < this.hoje()) {
+      s.status = "expirada";
+      Store.save();
+      return null;
+    }
     s.status = "utilizada";
     s.utilizadaEm = new Date().toISOString();
     this.marcarTurno(funcionarioId || Store.demo().funcionarioId, { saideras: 1 });
+    this.auditar("Entrega de Saidera", `${this.cliente(s.clienteId)?.primeiroNome || ""} · ${this.bebida(s.bebidaId)?.nome || ""} · ${s.codigo}`);
     Store.save();
     return s;
   },
@@ -789,12 +954,12 @@ const Logic = {
 
   semanaTampas(estId) {
     const labels = ["Qui", "Sex", "Sáb", "Dom", "Seg", "Ter", "Qua"];
-    if (!estId) return { labels, values: [18420, 20110, 26340, 24800, 19120, 17640, 21480] };
-    const cons = Store.all("consumos").filter((c) => c.estabelecimentoId === estId);
-    const values = [18, 26, 41, 38, 22, 19, 28].map((base, i) => {
-      const extra = cons.filter((c) => new Date(c.criadoEm).getDay() === (i + 4) % 7).reduce((a, c) => a + c.quantidade, 0);
-      return base + (extra % 17);
+    const cons = Store.all("consumos").filter((c) => !estId || c.estabelecimentoId === estId);
+    const values = labels.map((_, i) => {
+      const day = (i + 4) % 7;
+      return cons.filter((c) => new Date(c.criadoEm).getDay() === day).reduce((a, c) => a + (c.quantidade || 0), 0);
     });
+    if (estId && values.every((v) => v === 0)) return { labels, values: [18, 26, 41, 38, 22, 19, 28] };
     return { labels, values };
   },
 

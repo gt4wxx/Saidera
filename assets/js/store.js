@@ -30,6 +30,7 @@ const Store = {
         } catch {}
       }
     });
+    if (window.Logic?.hidratar) Logic.hidratar();
     return this;
   },
 
@@ -40,8 +41,11 @@ const Store = {
 
   reset() {
     localStorage.removeItem(STORE_KEY);
+    sessionStorage.removeItem("saidera_cliente");
     this.data = structuredClone(window.SAIDERA_SEED);
-    this.save();
+    this.save(false);
+    if (window.Logic?.hidratar) Logic.hidratar();
+    this.emit();
   },
 
   on(fn) {

@@ -33,6 +33,12 @@
   max-width: 1080px; margin: 36px auto 0;
   display: grid; place-items: center;
 }
+.pwa-box {
+  max-width: 420px; margin: 22px auto 0;
+}
+.landing-pwa {
+  max-width: 480px; margin: 28px auto 0;
+}
 @media (max-width: 640px) {
   .brand-principal { max-height: 56px; width: min(100%, 300px); }
   .landing-story-wrap .brand-story { width: min(100%, 220px); }
@@ -353,21 +359,37 @@ body.client-page .demo-fab {
 }
 
 .waiter-body { padding-bottom: 28px; }
-.scan-cta { min-height: 64px; font-size: 1.05rem; }
+.scan-frame.live { overflow: hidden; background: #000; }
+.scan-frame video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; border-radius: 24px;
+}
+.qr-real { margin: 12px auto; border-radius: 12px; background: #FFF9E8; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-weight: 600;
+}
+.toggle-row input[type="checkbox"] {
+  width: 44px; height: 24px; accent-color: var(--gold); flex: 0 0 auto;
+}
 .scan-stage { margin-top: 28px; display: grid; place-items: center; }
 .scan-frame {
   width: 220px; height: 220px; position: relative;
   border-radius: 24px; background: rgba(255,255,255,0.03);
 }
 .scan-frame i {
-  position: absolute; width: 28px; height: 28px; border: 3px solid var(--gold);
+  position: absolute; z-index: 2; width: 28px; height: 28px; border: 3px solid var(--gold);
 }
-.scan-frame i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
-.scan-frame i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
-.scan-frame i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
-.scan-frame i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+.scan-frame i:nth-of-type(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.scan-frame i:nth-of-type(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+.scan-frame i:nth-of-type(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+.scan-frame i:nth-of-type(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
 .scan-frame::after {
   content: ""; position: absolute; left: 18px; right: 18px; height: 2px; background: var(--gold);
+  z-index: 3;
   animation: scanLine 1.4s ease-in-out infinite; box-shadow: 0 0 12px var(--gold);
 }
 @keyframes scanLine {

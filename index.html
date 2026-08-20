@@ -8,8 +8,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/app.css"/>
   <link rel="stylesheet" href="assets/css/client.css"/>
-  <link rel="icon" type="image/png" href="assets/brand/05_favicon.png"/>
-  <link rel="apple-touch-icon" href="assets/brand/10_app_icon_amarelo.png"/>
+  <link rel="icon" type="image/png" href="/assets/brand/icon-192.png"/>
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch.png"/>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <meta name="theme-color" content="#171717"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Saidera"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 </head>
 <body>
   <main class="landing">
@@ -58,6 +64,7 @@
       </a>
     </section>
     <div class="landing-story-wrap" id="landing-story"></div>
+    <div class="landing-pwa" id="landing-pwa"></div>
   </main>
   <script src="assets/js/icons.js"></script>
   <script src="assets/js/data-seed.js"></script>
@@ -72,6 +79,7 @@
     document.getElementById("landing-story").innerHTML = Brand.banner("story", "brand-story");
     Store.init();
     UI.bindGlobal();
+    document.getElementById("landing-pwa").innerHTML = UI.pwaBox();
     document.querySelector("main").insertAdjacentHTML("beforeend", UI.demoWidget());
   </script>
 </body>

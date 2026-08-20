@@ -353,6 +353,7 @@ const ParceiroApp = {
       };
       Store.data.campanhas.unshift(cam);
       Logic.avisarEstabelecimentosParceiro(cam);
+      Logic.auditar("Solicitação de parceiro", `${this.par().nome} · ${Logic.bebida(s.bebidaId)?.nome}`);
       this.sol.selected = [];
       Store.save();
       UI.modal({

@@ -43,6 +43,7 @@ const GarcomApp = {
   },
 
   render() {
+    QR.stopScan();
     const html = this.scanning ? this.scanView() : this.clienteId ? this.comanda() : this.home();
     this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell waiter-shell">
       <div class="phone-body waiter-body">${html}</div>
@@ -83,17 +84,21 @@ const GarcomApp = {
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
         <div class="kpi"><span>Saideras entregues</span><b>${f.saiderasEntregues}</b></div>
       </div>
-      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele. Pode escanear quantas vezes precisar — não expira.</p>`;
+      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (ex.: SDR-28491). Aponte a câmera ou digite. Não expira.</p>`;
   },
 
   scanView() {
     return `${this.top()}
       <div class="scan-stage">
-        <div class="scan-frame"><i></i><i></i><i></i><i></i></div>
+        <div class="scan-frame live">
+          <video id="scan-video" playsinline muted autoplay></video>
+          <i></i><i></i><i></i><i></i>
+        </div>
         <p class="muted" style="margin-top:18px;text-align:center">Aponte para o QR Code do cliente</p>
-        <p class="tiny muted" style="text-align:center">Leitura simulada nesta demonstração</p>
+        <p class="tiny muted" style="text-align:center" id="scan-hint">Câmera do aparelho · o código é o ID Saidera</p>
       </div>
-      <button class="btn btn-ghost btn-block" id="cancel-scan" style="margin-top:18px">Cancelar</button>`;
+      <div class="search" style="margin-top:16px">${Icons.search()}<input id="busca-id-scan" placeholder="Ou digite o ID · SDR-28491"/></div>
+      <button class="btn btn-ghost btn-block" id="cancel-scan" style="margin-top:12px">Cancelar</button>`;
   },
 
   comanda() {
@@ -120,7 +125,7 @@ const GarcomApp = {
           ? `<article class="saidera-alert">
               <span class="badge badge-green">SAIDERA DISPONÍVEL</span>
               <p style="margin:8px 0 12px">${todasDisp
-                .map((s) => `${Logic.bebida(s.bebidaId).nome} · ${s.codigo}`)
+                .map((s) => `${Logic.bebida(s.bebidaId).nome} · ${s.codigo} · ${Logic.validadeLabel(s)}`)
                 .join("<br/>")}</p>
               ${todasDisp
                 .map(
@@ -194,31 +199,54 @@ const GarcomApp = {
     }
   },
 
+  abrirPorCodigo(raw) {
+    const codigo = window.QR ? QR.parse(raw) : raw;
+    const c = Logic.clientePorCodigo(codigo);
+    if (c) this.abrir(c.id);
+    else UI.toast("QR não reconhecido. Na demo, use SDR-28491.");
+  },
+
+  ligarBusca(sel) {
+    const busca = this.root.querySelector(sel);
+    busca?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      this.abrirPorCodigo(busca.value);
+    });
+  },
+
+  ligarCamera() {
+    const video = this.root.querySelector("#scan-video");
+    if (!video) return;
+    QR.startScan({
+      video,
+      onCode: (codigo) => this.abrirPorCodigo(codigo),
+      onError: (msg) => {
+        const hint = this.root.querySelector("#scan-hint");
+        if (hint) hint.textContent = msg;
+        UI.toast(msg);
+      },
+    });
+  },
+
   bind() {
     this.root.querySelector("#start-scan")?.addEventListener("click", () => {
       this.scanning = true;
       this.render();
-      setTimeout(() => this.abrir("cli-001"), 1400);
     });
     this.root.querySelector("#cancel-scan")?.addEventListener("click", () => {
+      QR.stopScan();
       this.scanning = false;
       this.render();
     });
     this.root.querySelector("#scan-again")?.addEventListener("click", () => {
       this.scanning = true;
       this.render();
-      setTimeout(() => this.abrir(this.clienteId || "cli-001"), 1100);
     });
+    this.ligarBusca("#busca-id");
+    this.ligarBusca("#busca-id-scan");
     this.root.querySelectorAll("[data-open]").forEach((b) =>
       b.addEventListener("click", () => this.abrir(b.getAttribute("data-open")))
     );
-    const busca = this.root.querySelector("#busca-id");
-    busca?.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      const c = Logic.clientePorCodigo(busca.value);
-      if (c) this.abrir(c.id);
-      else UI.toast("Cliente não encontrado. Na demo, use SDR-28491.");
-    });
     this.root.querySelector("#fechar-comanda")?.addEventListener("click", () => this.fechar());
     this.root.querySelectorAll("[data-drink]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -256,9 +284,12 @@ const GarcomApp = {
               <p class="tiny muted">A comanda continua aberta para marcar novas Tampas.</p>
               <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
           });
+        } else {
+          UI.toast("Esta Saidera não está mais disponível.");
         }
       })
     );
+    if (this.scanning) this.ligarCamera();
   },
 };
 

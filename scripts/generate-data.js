@@ -581,6 +581,7 @@ function addSaidera(clienteId, estabelecimentoId, bebidaId, status, daysAgo, cod
     status,
     conquistadaEm: conquistada,
     utilizadaEm: status === "utilizada" ? isoDaysAgo(Math.max(0, daysAgo - randInt(0, 4)), 23) : null,
+    expiraEm: isoDaysAgo(daysAgo - 15, 12),
   };
   saideras.push(rec);
   return rec;

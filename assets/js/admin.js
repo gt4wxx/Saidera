@@ -70,28 +70,23 @@ const AdminApp = {
   },
 
   dashboard() {
-    return `${Brand.banner("principal", "brand-banner-hero")}<div class="kpis">
+    const r = Logic.resumoRede();
+    return `${Brand.banner("principal", "brand-banner-hero")}<p class="tiny muted" style="margin-bottom:12px">Números desta base demonstrativa (localStorage), não projeção de mercado.</p><div class="kpis">
       ${[
-        ["Estabelecimentos", "138"],
-        ["Usuários", "28.450"],
-        ["Tampas registradas", "184.320"],
-        ["Saideras conquistadas", "14.221"],
-        ["Saideras utilizadas", "11.804"],
-        ["Parceiros", "12"],
-        ["Campanhas", "27"],
+        ["Estabelecimentos", r.estabelecimentos],
+        ["Usuários", r.usuarios],
+        ["Tampas registradas", r.tampas.toLocaleString("pt-BR")],
+        ["Saideras conquistadas", r.saideras],
+        ["Saideras utilizadas", r.usadas],
+        ["Parceiros", r.parceiros],
+        ["Campanhas", r.campanhas],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${v}</b></div>`)
         .join("")}
     </div>
     <div class="grid-2">
-      <section class="panel"><h3>Tampas na rede — 7 dias</h3>${UI.lineChart([18420, 20110, 26340, 24800, 19120, 17640, 21480], ["Qui", "Sex", "Sáb", "Dom", "Seg", "Ter", "Qua"])}</section>
-      <section class="panel"><h3>Saideras por bairro</h3>${UI.bars([
-        { nome: "Atalaia", pct: 28 },
-        { nome: "Coroa do Meio", pct: 16 },
-        { nome: "Jardins", pct: 14 },
-        { nome: "13 de Julho", pct: 12 },
-        { nome: "Farolândia", pct: 10 },
-      ])}</section>
+      <section class="panel"><h3>Tampas na base — por dia da semana</h3>${UI.lineChart(r.semana.values, r.semana.labels)}</section>
+      <section class="panel"><h3>Saideras por bairro</h3>${UI.bars(r.bairros)}</section>
     </div>`;
   },
 
@@ -244,64 +239,64 @@ const AdminApp = {
   },
 
   tampas() {
+    const r = Logic.resumoRede();
     return `<div class="kpis">
-      <div class="kpi"><span>Tampas na base demo</span><b>${Store.all("tampas").length}</b></div>
+      <div class="kpi"><span>Tampas na base</span><b>${Store.all("tampas").length}</b></div>
       <div class="kpi"><span>Consumos</span><b>${Store.all("consumos").length}</b></div>
+      <div class="kpi"><span>Tampas somadas</span><b>${r.tampas.toLocaleString("pt-BR")}</b></div>
     </div>
-    <section class="panel">${UI.lineChart([18420, 20110, 26340, 24800, 19120, 17640, 21480], ["Qui", "Sex", "Sáb", "Dom", "Seg", "Ter", "Qua"])}</section>`;
+    <section class="panel">${UI.lineChart(r.semana.values, r.semana.labels)}</section>`;
   },
 
   saideras() {
     const list = Store.all("saideras").slice(0, 50);
-    const disp = Store.all("saideras").filter((s) => s.status === "disponivel").length;
+    const r = Logic.resumoRede();
     return `<div class="kpis">
-      <div class="kpi"><span>Total demo</span><b>${Store.all("saideras").length}</b></div>
-      <div class="kpi"><span>Disponíveis</span><b>${disp}</b></div>
+      <div class="kpi"><span>Total demo</span><b>${r.saideras}</b></div>
+      <div class="kpi"><span>Disponíveis</span><b>${r.disponiveis}</b></div>
+      <div class="kpi"><span>Expiradas</span><b>${r.expiradas}</b></div>
     </div>
     <section class="panel"><div class="table-wrap"><table class="data">
-      <thead><tr><th>Código</th><th>Cliente</th><th>Bar</th><th>Bebida</th><th>Status</th></tr></thead>
+      <thead><tr><th>Código</th><th>Cliente</th><th>Bar</th><th>Bebida</th><th>Validade</th><th>Status</th></tr></thead>
       <tbody>${list
         .map(
           (s) =>
-            `<tr><td>${s.codigo}</td><td>${Logic.cliente(s.clienteId)?.nome}</td><td>${Logic.est(s.estabelecimentoId)?.nome}</td><td>${Logic.bebida(s.bebidaId)?.nome}</td><td>${s.status}</td></tr>`
+            `<tr><td>${s.codigo}</td><td>${Logic.cliente(s.clienteId)?.nome}</td><td>${Logic.est(s.estabelecimentoId)?.nome}</td><td>${Logic.bebida(s.bebidaId)?.nome}</td><td>${Logic.validadeLabel(s)}</td><td>${s.status}</td></tr>`
         )
         .join("")}</tbody>
     </table></div></section>`;
   },
 
   relatorios() {
+    const r = Logic.resumoRede();
+    const ofertas = Store.all("campanhas").filter((c) => c.disparada).length;
+    const totalCam = Store.all("campanhas").length || 1;
     return `<section class="panel">
-      <h3>Rede Aracaju — visão executiva</h3>
-      <p class="muted" style="margin:8px 0 16px">Números ilustrativos para a apresentação comercial.</p>
+      <h3>Base demonstrativa — visão executiva</h3>
+      <p class="muted" style="margin:8px 0 16px">Calculado a partir dos dados desta demo, não de mercado.</p>
       ${UI.bars([
-        { nome: "Conversão Saidera", pct: 83 },
-        { nome: "Retenção 30 dias", pct: 61 },
-        { nome: "Uso de ofertas", pct: 44 },
-        { nome: "QR lido no salão", pct: 72 },
+        { nome: "Conversão Saidera (usadas / total)", pct: r.conversao },
+        { nome: "Saideras ainda disponíveis", pct: r.saideras ? Math.round((r.disponiveis / r.saideras) * 100) : 0 },
+        { nome: "Campanhas já disparadas", pct: Math.round((ofertas / totalCam) * 100) },
       ])}
     </section>`;
   },
 
   auditoria() {
-    const logs = [
-      ["19/08 14:02", "Registro de consumo", "Bar do Farol · Ellisson · Heineken"],
-      ["19/08 13:40", "Solicitação de campanha", "Heineken Brasil (demo)"],
-      ["19/08 11:12", "Entrega de Saidera", "Chopp Jardins · Stella"],
-      ["18/08 22:10", "Novo estabelecimento", "Atalaia Deck"],
-      ["18/08 19:02", "Meta alterada", "Bar do Farol · Heineken 8 Tampas"],
-    ];
-    return `<section class="panel">${logs
+    return `<section class="panel">${Logic.logsAuditoria()
       .map(
         (l) =>
-          `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a"><div><strong>${l[1]}</strong><p class="tiny muted">${l[2]}</p></div><span class="muted small">${l[0]}</span></div>`
+          `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a"><div><strong>${l.acao}</strong><p class="tiny muted">${l.detalhe}</p></div><span class="muted small">${Logic.fmtDate(l.em)}</span></div>`
       )
-      .join("")}</section>`;
+      .join("") || "<p class='muted'>Nenhum evento ainda. Registre uma Tampa para ver o rastro.</p>"}</section>`;
   },
 
   config() {
+    const cidade = Store.data.meta.cidade || "Aracaju/SE";
+    const meta = Store.data.meta.metaPadraoRede ?? 10;
     return `<section class="panel" style="max-width:520px">
-      <div class="field"><span>Cidade da operação</span><input value="Aracaju/SE"/></div>
-      <div class="field" style="margin-top:10px"><span>Meta padrão da rede</span><input value="10"/></div>
+      <div class="field"><span>Cidade da operação</span><input id="cfg-cidade" value="${cidade}"/></div>
+      <div class="field" style="margin-top:10px"><span>Meta padrão da rede</span><input id="cfg-meta-rede" type="number" value="${meta}"/></div>
       <button class="btn btn-gold" style="margin-top:14px" id="cfg">Salvar</button>
     </section>`;
   },
@@ -369,7 +364,13 @@ const AdminApp = {
         });
       })
     );
-    this.root.querySelector("#cfg")?.addEventListener("click", () => UI.toast("Configurações salvas na demonstração."));
+    this.root.querySelector("#cfg")?.addEventListener("click", () => {
+      Store.data.meta.cidade = this.root.querySelector("#cfg-cidade")?.value?.trim() || "Aracaju/SE";
+      Store.data.meta.metaPadraoRede = Number(this.root.querySelector("#cfg-meta-rede")?.value) || 10;
+      Logic.auditar("Configurações", Store.data.meta.cidade);
+      Store.save();
+      UI.toast("Configurações salvas nesta demonstração.");
+    });
   },
 };
 
