@@ -3,6 +3,8 @@ const ClienteApp = {
   view: "home",
   params: {},
   mapSel: null,
+  mapBairro: null,
+  mapPage: 1,
   homePage: 1,
   homeQuery: "",
   homePerPage: 10,
@@ -128,21 +130,25 @@ const ClienteApp = {
     </article>`;
   },
 
-  estMini(e) {
+  estMini(e, { campanha } = {}) {
+    const me = this.me();
     const drinks = e.bebidas
       .slice(0, 3)
       .map((b) => {
-        const meta = b.meta || e.metaPadrao;
-        return `<span class="chip">${b.nome} — ${meta}</span>`;
+        const cam = campanha && campanha.bebidaId === b.id ? campanha : Logic.patrocinioEm(e.id, b.id);
+        const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, b.id);
+        const meta = Logic.metaDe(e, b.id, me.id);
+        return `<span class="chip ${cam && !usada ? "patrocinio" : ""}">${b.nome} — ${meta}${cam && !usada ? " · oferta" : usada ? " · casa" : ""}</span>`;
       })
       .join("");
+    const camBar = campanha || Logic.patrocinioEm(e.id);
     return `<article class="est-card" data-go="#/est/${e.id}">
       <div class="thumb photo"><img src="${e.imagem}" alt="${e.nome}" onerror="this.style.display='none'"/></div>
       <div class="body">
         <h3>${e.nome}</h3>
         <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)} · ★ ${e.avaliacao}</p>
         <div class="chips">${drinks}<span class="chip">Padrão — ${e.metaPadrao}</span></div>
-        ${e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
+        ${camBar ? `<p class="tiny gold">${Logic.bebida(camBar.bebidaId)?.nome} · ${camBar.metaTampas} Tampas no patrocínio</p>` : e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
         <button class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
       </div>
     </article>`;
@@ -229,52 +235,132 @@ const ClienteApp = {
     return this.home();
   },
 
+  mapZones() {
+    return {
+      Atalaia: { l: 18, t: 72, short: "Atalaia" },
+      "Coroa do Meio": { l: 16, t: 54, short: "Coroa" },
+      Jardins: { l: 50, t: 36, short: "Jardins" },
+      "13 de Julho": { l: 40, t: 24, short: "13 Jul" },
+      Farolândia: { l: 70, t: 46, short: "Farolândia" },
+      Centro: { l: 58, t: 10, short: "Centro" },
+      "Siqueira Campos": { l: 46, t: 14, short: "Siqueira" },
+      "São José": { l: 30, t: 16, short: "São José" },
+      Luzia: { l: 52, t: 28, short: "Luzia" },
+      Grageru: { l: 64, t: 32, short: "Grageru" },
+      "Inácio Barbosa": { l: 82, t: 52, short: "Inácio" },
+      "Ponto Novo": { l: 72, t: 16, short: "Ponto Novo" },
+    };
+  },
+
+  bairrosMapa() {
+    const order = Object.keys(this.mapZones());
+    const set = new Set(
+      Store.all("estabelecimentos")
+        .filter((e) => e.status === "ativo")
+        .map((e) => e.bairro)
+    );
+    return order.filter((b) => set.has(b)).concat([...set].filter((b) => !order.includes(b)));
+  },
+
+  estsDoBairro(bairro) {
+    return Store.all("estabelecimentos")
+      .filter((e) => e.status === "ativo" && (!bairro || e.bairro === bairro))
+      .sort((a, b) => a.distanciaKm - b.distanciaKm);
+  },
+
+  pinPos(est, i, total, zone) {
+    const z = zone || this.mapZones()[est.bairro] || { l: 50, t: 50 };
+    const angle = (i / Math.max(total, 1)) * Math.PI * 2 + 0.4;
+    const r = 3.5 + (i % 5) * 2.1;
+    const left = Math.min(90, Math.max(5, z.l + Math.cos(angle) * r));
+    const top = Math.min(84, Math.max(8, z.t + Math.sin(angle) * r));
+    return { left, top };
+  },
+
   mapa() {
-    const pins = [
-      ["est-001", "18%", "72%", "Atalaia"],
-      ["est-002", "28%", "68%", "Atalaia"],
-      ["est-005", "38%", "74%", "Atalaia"],
-      ["est-009", "48%", "70%", "Atalaia"],
-      ["est-004", "22%", "58%", "Coroa"],
-      ["est-011", "32%", "54%", "Coroa"],
-      ["est-007", "55%", "38%", "Jardins"],
-      ["est-003", "46%", "32%", "13 Jul"],
-      ["est-006", "70%", "48%", "Farolândia"],
-      ["est-012", "62%", "18%", "Centro"],
-      ["est-013", "52%", "22%", "Siqueira"],
-      ["est-008", "42%", "20%", "São José"],
-    ];
-    const sel = this.mapSel || "est-001";
-    const e = Logic.est(sel);
+    const zones = this.mapZones();
+    const bairros = this.bairrosMapa();
+    const bairro = this.mapBairro;
+    const locais = this.estsDoBairro(bairro);
+    const per = this.homePerPage;
+    const pages = Math.max(1, Math.ceil(locais.length / per));
+    if (this.mapPage > pages) this.mapPage = pages;
+    if (this.mapPage < 1) this.mapPage = 1;
+    const start = (this.mapPage - 1) * per;
+    const slice = bairro ? locais.slice(start, start + per) : [];
+    const sel = this.mapSel && locais.some((e) => e.id === this.mapSel) ? this.mapSel : locais[0]?.id;
+    const escolhido = sel ? Logic.est(sel) : null;
+
+    const pins = bairro
+      ? locais
+          .map((e, i) => {
+            const p = this.pinPos(e, i, locais.length);
+            const rest = e.tipo === "restaurante";
+            return `<button class="pin ${rest ? "rest" : ""} ${sel === e.id ? "on" : ""}" style="left:${p.left}%;top:${p.top}%" data-pin="${e.id}" title="${e.nome}"></button>`;
+          })
+          .join("")
+      : bairros
+          .map((nome) => {
+            const z = zones[nome] || { l: 50, t: 50 };
+            const n = this.estsDoBairro(nome).length;
+            return `<button class="pin-cluster" style="left:${z.l}%;top:${z.t}%" data-map-bairro="${nome}" title="${nome}">${n}</button>`;
+          })
+          .join("");
+
+    const zonaOn =
+      bairro && zones[bairro]
+        ? `<div class="map-zone" style="left:${zones[bairro].l}%;top:${zones[bairro].t}%"></div>`
+        : "";
+
+    const labels = Object.entries(zones)
+      .map(
+        ([nome, z]) =>
+          `<button class="map-label ${bairro === nome ? "on" : ""}" style="left:${Math.max(2, z.l - 8)}%;top:${Math.max(3, z.t - 8)}%" data-map-bairro="${nome}">${z.short}</button>`
+      )
+      .join("");
+
     return `${this.back("Mapa de Aracaju")}
-      <div class="map-art">
-        <div class="map-water"></div>
-        <div class="map-label" style="left:8%;top:70%">Atalaia</div>
-        <div class="map-label" style="left:8%;top:52%">Coroa do Meio</div>
-        <div class="map-label" style="left:48%;top:34%">Jardins</div>
-        <div class="map-label" style="left:38%;top:24%">13 de Julho</div>
-        <div class="map-label" style="left:66%;top:44%">Farolândia</div>
-        <div class="map-label" style="left:58%;top:10%">Centro</div>
-        <div class="map-label" style="left:44%;top:12%">Siqueira</div>
-        <div class="map-label" style="left:30%;top:14%">São José</div>
-        <div class="map-label" style="left:50%;top:28%">Luzia</div>
-        <div class="map-label" style="left:62%;top:30%">Grageru</div>
-        ${pins
-          .map(
-            ([id, l, t]) =>
-              `<button class="pin ${sel === id ? "on" : ""}" style="left:${l};top:${t}" data-pin="${id}" title="${Logic.est(id).nome}"></button>`
-          )
+      <p class="muted small" style="margin-bottom:10px">Toque em um bairro para ver todos os bares e restaurantes cadastrados.</p>
+      <div class="pill-tabs" style="margin-bottom:12px">
+        <button class="${!bairro ? "on" : ""}" data-map-bairro="">Todos</button>
+        ${bairros
+          .map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`)
           .join("")}
-        <div class="map-pop">
-          <div class="row between">
-            <div>
-              <strong>${e.nome}</strong>
-              <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)}</p>
+      </div>
+      <div class="map-art ${bairro ? "focused" : ""}">
+        <div class="map-water"></div>
+        ${zonaOn}
+        ${labels}
+        ${pins}
+        ${
+          escolhido && bairro
+            ? `<div class="map-pop">
+                <div class="row between">
+                  <div>
+                    <strong>${escolhido.nome}</strong>
+                    <p class="small muted">📍 ${Logic.tipoEst(escolhido)} · ${escolhido.bairro} · ${Logic.fmtKm(escolhido.distanciaKm)}</p>
+                  </div>
+                  <button class="btn btn-gold btn-sm" data-go="#/est/${escolhido.id}">Ver</button>
+                </div>
+              </div>`
+            : `<div class="map-pop">
+                <strong>${bairro ? bairro : "Aracaju"}</strong>
+                <p class="small muted">${locais.length} estabelecimento${locais.length === 1 ? "" : "s"} cadastrado${locais.length === 1 ? "" : "s"}</p>
+              </div>`
+        }
+      </div>
+      ${
+        bairro
+          ? `<div class="row between" style="margin:16px 0 10px" id="lista-mapa">
+              <div>
+                <h2>${bairro}</h2>
+                <p class="tiny muted">${locais.length} bar${locais.length === 1 ? "" : "es"} e restaurante${locais.length === 1 ? "" : "s"}</p>
+              </div>
             </div>
-            <button class="btn btn-gold btn-sm" data-go="#/est/${e.id}">Ver</button>
-          </div>
-        </div>
-      </div>`;
+            <div class="stack est-list">${slice.map((e) => this.estMini(e)).join("")}</div>
+            ${this.pager(this.mapPage, pages)}`
+          : `<p class="notice" style="margin-top:14px">Escolha uma localidade no mapa ou na lista acima para ver todos os estabelecimentos da região.</p>`
+      }`;
   },
 
   detalhe() {
@@ -283,21 +369,44 @@ const ClienteApp = {
     const me = this.me();
     const drinks = e.bebidas
       .map((b) => {
-        const meta = b.meta || e.metaPadrao;
-        const regra = b.meta ? "Configuração própria" : "Regra padrão";
+        const cam = Logic.patrocinioEm(e.id, b.id);
+        const meta = Logic.metaDe(e, b.id, me.id);
+        const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, b.id);
+        const regra = usada
+          ? `Oferta usada · voltou à casa (${Logic.metaOriginal(e, b.id)} Tampas)`
+          : cam
+            ? `Oferta · ${cam.metaTampas} Tampas (1x)`
+            : b.meta
+              ? "Configuração própria"
+              : "Regra padrão";
         return `<div class="row between pad" style="border-bottom:1px solid #2a2a2a">
           <div><strong>${b.nome}</strong><p class="tiny muted">${regra}</p></div>
-          <span class="badge badge-gold">${meta} Tampas</span>
+          <span class="badge ${cam && !usada ? "badge-gold" : "badge-ghost"}">${meta} Tampas</span>
         </div>`;
       })
       .join("");
-    const mine = Store.all("tampas").filter((t) => t.clienteId === me.id && t.estabelecimentoId === e.id);
-    const prog = mine
+    const mineDrinks = e.bebidas
+      .map((b) => {
+        const existing = Logic.progresso(me.id, e.id, b.id);
+        const cam = Logic.patrocinioEm(e.id, b.id);
+        if (!existing && !cam) return null;
+        return Logic.garantirProgresso(me.id, e.id, b.id);
+      })
+      .filter(Boolean);
+    const prog = mineDrinks
       .map((t) => {
         const beb = Logic.bebida(t.bebidaId);
+        const cam = Logic.patrocinioEm(e.id, t.bebidaId);
         const disp = Logic.saiderasDisponiveis(me.id, e.id, t.bebidaId).length;
+        const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, t.bebidaId);
+        const nota = usada
+          ? `Oferta concluída neste bar. Meta da casa: ${Logic.metaOriginal(e, t.bebidaId)} Tampas`
+          : cam
+            ? `Oferta (uso único): ${cam.metaTampas} Tampas`
+            : "";
         return `<div class="card pad" style="margin-bottom:10px">
           <div class="row between"><strong>${beb.nome}</strong><span>${t.atual} / ${t.meta}</span></div>
+          ${nota ? `<p class="tiny ${usada ? "muted" : "gold"}">${nota}</p>` : ""}
           <div style="margin:8px 0">${UI.tampas(disp ? t.meta : t.atual, t.meta)}</div>
           ${UI.barra(disp ? t.meta : t.atual, t.meta)}
           ${disp ? `<span class="badge badge-green" style="margin-top:8px">SAIDERA DISPONÍVEL</span>` : `<p class="small muted" style="margin-top:8px">Faltam ${t.meta - t.atual}</p>`}
@@ -315,7 +424,7 @@ const ClienteApp = {
       </div>
           <div class="row wrap" style="margin-bottom:14px">
         <span class="badge badge-gold">${Logic.tipoEst(e)}</span>
-        <span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>
+        ${Logic.patrocinioEm(e.id) ? `<span class="badge badge-navy">Patrocínio ativo</span>` : `<span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>`}
         <span class="badge badge-ghost">★ ${e.avaliacao}</span>
       </div>
       <h2>Bebidas</h2>
@@ -396,29 +505,75 @@ const ClienteApp = {
   },
 
   ofertas() {
-    const camps = Store.all("campanhas").filter((c) => c.status === "ativa" || c.disparada);
+    if (this.params.id) return this.ofertaDetalhe();
+    const camps = Logic.campanhasPatrocinio();
     const extra = Store.all("notificacoes").filter((n) => n.clienteId === this.me().id && n.tipo === "oferta" && n.campanhaId);
-    return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Marcas demonstrativas · Aracaju</p>`)}
+    if (!camps.length) {
+      return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhum patrocínio ativo no momento.</p>`)}
+        <p class="notice">Quando o Admin Saidera ativar uma campanha solicitada pelo parceiro, ela aparece aqui com a meta de Tampas dos bares participantes.</p>`;
+    }
+    return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Patrocínios ativados · Aracaju</p>`)}
       ${camps
-        .slice(0, 8)
         .map((c, i) => {
           const par = Store.find("parceiros", c.parceiroId);
           const ests = (c.estabelecimentos || []).slice(0, 3).map((id) => Logic.est(id)?.nome).filter(Boolean);
-          return `<article class="offer-banner photo" data-go="#/est/${c.estabelecimentos[0]}">
-            <img src="${Store.all("estabelecimentos")[i + 1].imagem}" alt="" onerror="this.style.display='none'"/>
+          const img = Logic.est(c.estabelecimentos?.[0])?.imagem || Store.all("estabelecimentos")[i + 1]?.imagem;
+          return `<article class="offer-banner photo" data-go="#/ofertas/${c.id}">
+            <img src="${img}" alt="" onerror="this.style.display='none'"/>
             <div class="overlay"></div>
             <div class="content">
               <span class="badge badge-navy">PATROCINADO · ${par?.selo || "Marca demonstrativa"}</span>
               <h2 style="margin:8px 0 4px">${Logic.bebida(c.bebidaId)?.nome || par?.nome}</h2>
               <p>${c.mensagem}</p>
               <p class="gold" style="font-weight:800;margin:8px 0">${c.metaTampas} Tampas</p>
-              <p class="small">${ests.join(" · ")}</p>
-              <button class="btn btn-gold btn-sm" style="margin-top:10px">Ver estabelecimentos</button>
+              <p class="small">${ests.join(" · ")}${(c.estabelecimentos || []).length > 3 ? " · +" + (c.estabelecimentos.length - 3) : ""}</p>
+              <button class="btn btn-gold btn-sm" style="margin-top:10px">Entrar na oferta</button>
             </div>
           </article>`;
         })
         .join("")}
       ${extra.length ? `<p class="notice">Nova oferta recebida nesta demonstração.</p>` : ""}`;
+  },
+
+  ofertaDetalhe() {
+    const c = Store.find("campanhas", this.params.id);
+    if (!c || c.status !== "ativa" || !c.disparada) {
+      return `${this.back("Oferta")}
+        <p class="muted">Esta oferta ainda não foi ativada pelo Admin Saidera.</p>
+        <button class="btn btn-gold" data-go="#/ofertas">Ver ofertas</button>`;
+    }
+    Logic.aderirCampanha(this.me().id, c.id);
+    const par = Store.find("parceiros", c.parceiroId);
+    const ests = (c.estabelecimentos || []).map((id) => Logic.est(id)).filter(Boolean);
+    const me = this.me();
+    return `${this.back("Oferta")}
+      <span class="badge badge-navy">PATROCINADO · ${par?.nome || ""}</span>
+      <h1 style="margin:10px 0 6px">${c.titulo}</h1>
+      <p class="muted">${c.mensagem}</p>
+      <div class="card pad" style="margin:14px 0">
+        <p class="tiny muted">Regra desta oferta</p>
+        <h2>${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas</h2>
+        <p class="small muted" style="margin-top:6px">Uso único em cada casa: ao bater a meta da oferta, aquele bar volta à quantidade de Tampas da casa.</p>
+      </div>
+      <h2 style="margin-bottom:10px">Bares e restaurantes da oferta</h2>
+      <div class="stack">${ests
+        .map((e) => {
+          const p = Logic.garantirProgresso(me.id, e.id, c.bebidaId);
+          const usada = Logic.ofertaConsumida(me.id, c.id, e.id, c.bebidaId);
+          const casa = Logic.metaOriginal(e, c.bebidaId);
+          return `<article class="card pad" data-go="#/est/${e.id}" style="cursor:pointer">
+            <p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p>
+            <div class="row between"><h3>${e.nome}</h3><strong>${p.atual}/${p.meta}</strong></div>
+            <div style="margin:8px 0">${UI.tampas(p.atual, p.meta)}</div>
+            ${UI.barra(p.atual, p.meta)}
+            <p class="tiny ${usada ? "muted" : "gold"}" style="margin-top:8px">${
+              usada
+                ? `Oferta usada · voltou à regra da casa (${casa} Tampas)`
+                : `${Logic.bebida(c.bebidaId)?.nome} · oferta ${c.metaTampas} Tampas (1x)`
+            }</p>
+          </article>`;
+        })
+        .join("")}</div>`;
   },
 
   perfil() {
@@ -479,7 +634,7 @@ const ClienteApp = {
     return `${this.back("Notificações")}
       ${list
         .map(
-          (n) => `<article class="card pad" style="margin-bottom:8px;opacity:${n.lida ? 0.7 : 1}">
+          (n) => `<article class="card pad" style="margin-bottom:8px;opacity:${n.lida ? 0.7 : 1}" ${n.campanhaId ? `data-go="#/ofertas/${n.campanhaId}"` : ""}>
             <strong>${n.titulo}</strong>
             <p class="small muted">${n.texto}</p>
             <p class="tiny muted">${Logic.fmtDate(n.criadoEm)}</p>
@@ -499,6 +654,18 @@ const ClienteApp = {
     this.root.querySelectorAll("[data-pin]").forEach((el) =>
       el.addEventListener("click", () => {
         this.mapSel = el.getAttribute("data-pin");
+        const est = Logic.est(this.mapSel);
+        if (est?.bairro) this.mapBairro = est.bairro;
+        this.render();
+      })
+    );
+    this.root.querySelectorAll("[data-map-bairro]").forEach((el) =>
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const nome = el.getAttribute("data-map-bairro") || "";
+        this.mapBairro = nome || null;
+        this.mapSel = null;
+        this.mapPage = 1;
         this.render();
       })
     );
@@ -517,7 +684,17 @@ const ClienteApp = {
     this.root.querySelectorAll("[data-page]").forEach((el) =>
       el.addEventListener("click", () => {
         const n = Number(el.getAttribute("data-page"));
-        if (!n || n === this.homePage || el.disabled) return;
+        if (!n || el.disabled) return;
+        if (this.view === "mapa") {
+          if (n === this.mapPage) return;
+          this.mapPage = n;
+          this.render();
+          const body = this.root.querySelector(".phone-body");
+          const list = this.root.querySelector("#lista-mapa");
+          if (body && list) body.scrollTop = Math.max(0, list.offsetTop - 12);
+          return;
+        }
+        if (n === this.homePage) return;
         this.homePage = n;
         this.render();
         const body = this.root.querySelector(".phone-body");

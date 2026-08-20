@@ -135,12 +135,13 @@ const GarcomApp = {
       <div class="drink-pick waiter-drinks">
         ${est.bebidas
           .map((d) => {
-            const meta = d.meta || est.metaPadrao;
+            const meta = Logic.metaDe(est, d.id, c.id);
+            const cam = Logic.ofertaAtivaPara(c.id, this.estId, d.id);
             const prog = Logic.progresso(c.id, this.estId, d.id);
             const n = prog ? `${prog.atual}/${meta}` : `0/${meta}`;
             return `<button class="${this.drinkId === d.id ? "on" : ""}" data-drink="${d.id}">
               <strong>${d.nome}</strong>
-              <p class="tiny muted">${n}</p>
+              <p class="tiny muted">${n}${cam ? " · oferta" : ""}</p>
             </button>`;
           })
           .join("")}
@@ -173,7 +174,12 @@ const GarcomApp = {
     if (res.ganhas) {
       UI.modal({
         center: true,
-        html: `${UI.celebrate("SAIDERA LIBERADA! 🍺", `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo agora: ${res.depois}/${res.meta}.`)}
+        html: `${UI.celebrate(
+            res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDERA LIBERADA! 🍺",
+            res.ofertaConcluida
+              ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo: regra da casa ${res.metaBar} Tampas · agora ${res.depois}/${res.meta}.`
+              : `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo agora: ${res.depois}/${res.meta}.`
+          )}
           <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Entregar agora na comanda</button>`,
       });
     } else {

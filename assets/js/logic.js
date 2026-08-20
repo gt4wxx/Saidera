@@ -65,10 +65,203 @@ const Logic = {
     f.saiderasEntregues = (f.saiderasEntregues || 0) + saideras;
   },
 
-  metaDe(est, bebidaId) {
+  metaOriginal(est, bebidaId) {
+    if (typeof est === "string") est = this.est(est);
+    if (!est) return 10;
     const item = (est.bebidas || []).find((b) => b.id === bebidaId);
-    if (item && item.meta) return item.meta;
+    if (!item) return est.metaPadrao || 10;
+    if (item.metaOriginal != null) return item.metaOriginal;
+    if (item.regra === "patrocinio") return est.metaPadrao || 10;
+    if (item.meta) return item.meta;
     return est.metaPadrao || 10;
+  },
+
+  metaBase(est, bebidaId) {
+    return this.metaOriginal(est, bebidaId);
+  },
+
+  campanhasPatrocinio() {
+    return Store.all("campanhas").filter((c) => c.status === "ativa" && c.disparada);
+  },
+
+  patrocinioEm(estId, bebidaId) {
+    return this.campanhasPatrocinio().find(
+      (c) => (!bebidaId || c.bebidaId === bebidaId) && (c.estabelecimentos || []).includes(estId)
+    );
+  },
+
+  ofertaConsumida(clienteId, campanhaId, estId, bebidaId) {
+    const cli = this.cliente(clienteId);
+    return (cli?.ofertasConsumidas || []).some(
+      (x) => x.campanhaId === campanhaId && x.estabelecimentoId === estId && x.bebidaId === bebidaId
+    );
+  },
+
+  consumirOferta(clienteId, campanhaId, estId, bebidaId) {
+    const cli = this.cliente(clienteId);
+    if (!cli || !campanhaId) return;
+    cli.ofertasConsumidas = cli.ofertasConsumidas || [];
+    if (this.ofertaConsumida(clienteId, campanhaId, estId, bebidaId)) return;
+    cli.ofertasConsumidas.push({
+      campanhaId,
+      estabelecimentoId: estId,
+      bebidaId,
+      em: new Date().toISOString(),
+    });
+  },
+
+  ofertaAtivaPara(clienteId, estId, bebidaId) {
+    const cam = this.patrocinioEm(estId, bebidaId);
+    if (!cam || !clienteId) return null;
+    if (this.ofertaConsumida(clienteId, cam.id, estId, bebidaId)) return null;
+    const cli = this.cliente(clienteId);
+    const aderiu = (cli?.ofertas || []).includes(cam.id);
+    if (aderiu || cam.patrocinioBar) return cam;
+    return null;
+  },
+
+  metaDe(est, bebidaId, clienteId) {
+    if (typeof est === "string") est = this.est(est);
+    if (!est) return 10;
+    if (clienteId) {
+      const cam = this.ofertaAtivaPara(clienteId, est.id, bebidaId);
+      if (cam?.metaTampas) return cam.metaTampas;
+      return this.metaOriginal(est, bebidaId);
+    }
+    const cam = this.patrocinioEm(est.id, bebidaId);
+    if (cam?.metaTampas) return cam.metaTampas;
+    return this.metaOriginal(est, bebidaId);
+  },
+
+  clienteNaOferta(clienteId, campanhaId) {
+    return (this.cliente(clienteId)?.ofertas || []).includes(campanhaId);
+  },
+
+  aderirCampanha(clienteId, campanhaId) {
+    const cam = Store.find("campanhas", campanhaId);
+    const cli = this.cliente(clienteId);
+    if (!cam || !cli) return null;
+    cli.ofertas = cli.ofertas || [];
+    let mudou = false;
+    if (!cli.ofertas.includes(cam.id)) {
+      cli.ofertas.push(cam.id);
+      cam.participantes = (cam.participantes || 0) + 1;
+      mudou = true;
+    }
+    const antes = Store.data.tampas.length;
+    (cam.estabelecimentos || []).forEach((estId) => {
+      this.garantirProgresso(clienteId, estId, cam.bebidaId);
+    });
+    if (mudou || Store.data.tampas.length !== antes) Store.save();
+    return cam;
+  },
+
+  novaSaidera({ clienteId, estabelecimentoId, bebidaId, campanhaId }) {
+    const rec = {
+      id: `sai-live-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+      codigo: `SDR-${8800 + Store.data.saideras.length}`,
+      clienteId,
+      estabelecimentoId,
+      bebidaId,
+      status: "disponivel",
+      conquistadaEm: new Date().toISOString(),
+      utilizadaEm: null,
+      campanhaId: campanhaId || null,
+    };
+    Store.data.saideras.unshift(rec);
+    return rec;
+  },
+
+  ajustarProgressoMeta(p, novaMeta, campanha) {
+    if (!p || !novaMeta || novaMeta < 1) return [];
+    const novas = [];
+    const est = this.est(p.estabelecimentoId);
+    const metaBar = this.metaOriginal(est, p.bebidaId);
+    if (p.atual >= novaMeta) {
+      novas.push(
+        this.novaSaidera({
+          clienteId: p.clienteId,
+          estabelecimentoId: p.estabelecimentoId,
+          bebidaId: p.bebidaId,
+          campanhaId: campanha?.id || p.campanhaId,
+        })
+      );
+      const resto = p.atual - novaMeta;
+      this.consumirOferta(p.clienteId, campanha?.id || p.campanhaId, p.estabelecimentoId, p.bebidaId);
+      const extra = Math.floor(resto / metaBar);
+      for (let i = 0; i < extra; i++) {
+        novas.push(
+          this.novaSaidera({
+            clienteId: p.clienteId,
+            estabelecimentoId: p.estabelecimentoId,
+            bebidaId: p.bebidaId,
+          })
+        );
+      }
+      p.atual = resto % metaBar;
+      p.meta = metaBar;
+    } else {
+      p.meta = novaMeta;
+    }
+    p.atualizadoEm = new Date().toISOString();
+    return novas;
+  },
+
+  ativarPatrocinio(campanha, { canal } = {}) {
+    if (!campanha) return null;
+    campanha.status = "ativa";
+    campanha.disparada = true;
+    campanha.patrocinioBar = true;
+    if (canal) campanha.canal = canal;
+    campanha.ativadaEm = new Date().toISOString();
+    const beb = this.bebida(campanha.bebidaId);
+    const meta = campanha.metaTampas || 6;
+    (campanha.estabelecimentos || []).forEach((estId) => {
+      const est = this.est(estId);
+      if (!est) return;
+      const item = (est.bebidas || []).find((b) => b.id === campanha.bebidaId);
+      if (item) {
+        if (item.metaOriginal == null) item.metaOriginal = item.meta || est.metaPadrao || 10;
+        item.meta = meta;
+        item.regra = "patrocinio";
+        item.campanhaId = campanha.id;
+      } else {
+        est.bebidas = est.bebidas || [];
+        est.bebidas.push({
+          id: campanha.bebidaId,
+          nome: beb?.nome || campanha.bebidaId,
+          meta,
+          metaOriginal: est.metaPadrao || 10,
+          regra: "patrocinio",
+          campanhaId: campanha.id,
+        });
+      }
+      est.promocao = `${beb?.nome || "Oferta"} com Saidera em ${meta} Tampas`;
+    });
+    Store.all("tampas")
+      .filter(
+        (t) => t.bebidaId === campanha.bebidaId && (campanha.estabelecimentos || []).includes(t.estabelecimentoId)
+      )
+      .forEach((t) => {
+        t.campanhaId = campanha.id;
+        this.ajustarProgressoMeta(t, meta, campanha);
+      });
+    const cliId = Store.demo().clienteId;
+    const jaNotificou = Store.all("notificacoes").some((n) => n.campanhaId === campanha.id && n.clienteId === cliId);
+    if (!jaNotificou) {
+      Store.data.notificacoes.unshift({
+        id: `ntf-oferta-${Date.now()}`,
+        clienteId: cliId,
+        titulo: campanha.titulo,
+        texto: `${campanha.mensagem} ${meta} Tampas nos bares participantes.`,
+        tipo: "oferta",
+        lida: false,
+        criadoEm: new Date().toISOString(),
+        campanhaId: campanha.id,
+      });
+    }
+    Store.save();
+    return campanha;
   },
 
   progresso(clienteId, estId, bebidaId) {
@@ -87,12 +280,12 @@ const Logic = {
         estabelecimentoId: estId,
         bebidaId,
         atual: 0,
-        meta: this.metaDe(est, bebidaId),
+        meta: this.metaDe(est, bebidaId, clienteId),
         atualizadoEm: new Date().toISOString(),
       };
       Store.data.tampas.push(p);
     } else {
-      p.meta = this.metaDe(this.est(estId), bebidaId);
+      p.meta = this.metaDe(this.est(estId), bebidaId, clienteId);
     }
     return p;
   },
@@ -117,13 +310,46 @@ const Logic = {
 
   registrarConsumo({ clienteId, estabelecimentoId, bebidaId, quantidade, funcionarioId }) {
     const est = this.est(estabelecimentoId);
-    const meta = this.metaDe(est, bebidaId);
+    const cam = this.ofertaAtivaPara(clienteId, estabelecimentoId, bebidaId);
+    const metaOferta = cam?.metaTampas || null;
+    const metaBar = this.metaOriginal(est, bebidaId);
     const p = this.garantirProgresso(clienteId, estabelecimentoId, bebidaId);
     const antes = p.atual;
-    const total = p.atual + quantidade;
-    const ganhas = Math.floor(total / meta);
-    p.atual = total % meta;
-    p.meta = meta;
+    let ganhas = 0;
+    let ofertaConcluida = false;
+    const novas = [];
+
+    if (metaOferta) {
+      const total = p.atual + quantidade;
+      if (total >= metaOferta) {
+        ganhas += 1;
+        ofertaConcluida = true;
+        novas.push(
+          this.novaSaidera({ clienteId, estabelecimentoId, bebidaId, campanhaId: cam.id })
+        );
+        this.consumirOferta(clienteId, cam.id, estabelecimentoId, bebidaId);
+        const resto = total - metaOferta;
+        const extra = Math.floor(resto / metaBar);
+        ganhas += extra;
+        for (let i = 0; i < extra; i++) {
+          novas.push(this.novaSaidera({ clienteId, estabelecimentoId, bebidaId }));
+        }
+        p.atual = resto % metaBar;
+        p.meta = metaBar;
+      } else {
+        p.atual = total;
+        p.meta = metaOferta;
+      }
+    } else {
+      const total = p.atual + quantidade;
+      const extra = Math.floor(total / metaBar);
+      ganhas = extra;
+      p.atual = total % metaBar;
+      p.meta = metaBar;
+      for (let i = 0; i < extra; i++) {
+        novas.push(this.novaSaidera({ clienteId, estabelecimentoId, bebidaId }));
+      }
+    }
     p.atualizadoEm = new Date().toISOString();
 
     Store.data.consumos.unshift({
@@ -137,40 +363,33 @@ const Logic = {
     });
     this.marcarTurno(funcionarioId || Store.demo().funcionarioId, { tampas: quantidade });
 
-    const novas = [];
-    for (let i = 0; i < ganhas; i++) {
-      const rec = {
-        id: `sai-live-${Date.now()}-${i}`,
-        codigo: `SDR-${8800 + Store.data.saideras.length + i}`,
-        clienteId,
-        estabelecimentoId,
-        bebidaId,
-        status: "disponivel",
-        conquistadaEm: new Date().toISOString(),
-        utilizadaEm: null,
-      };
-      Store.data.saideras.unshift(rec);
-      novas.push(rec);
-    }
-
     const cli = this.cliente(clienteId);
     cli.ultimaVisita = new Date().toLocaleDateString("pt-BR");
     cli.ultimaVisitaIso = new Date().toISOString();
 
+    const titulo = ofertaConcluida
+      ? "Oferta concluída! Você ganhou uma Saidera"
+      : ganhas
+        ? "Você ganhou uma Saidera!"
+        : `${quantidade} Tampa${quantidade > 1 ? "s" : ""} registrada${quantidade > 1 ? "s" : ""}`;
+    const texto = ofertaConcluida
+      ? `${this.bebida(bebidaId).nome} no ${est.nome}. A próxima Saidera volta à regra da casa: ${metaBar} Tampas.`
+      : ganhas
+        ? `${this.bebida(bebidaId).nome} no ${est.nome}. Mostre ao garçom para resgatar.`
+        : `${this.bebida(bebidaId).nome} no ${est.nome}: ${p.atual}/${p.meta}.`;
+
     Store.data.notificacoes.unshift({
       id: `ntf-live-${Date.now()}`,
       clienteId,
-      titulo: ganhas ? "Você ganhou uma Saidera!" : `${quantidade} Tampa${quantidade > 1 ? "s" : ""} registrada${quantidade > 1 ? "s" : ""}`,
-      texto: ganhas
-        ? `${this.bebida(bebidaId).nome} no ${est.nome}. Mostre ao garçom para resgatar.`
-        : `${this.bebida(bebidaId).nome} no ${est.nome}: ${p.atual}/${meta}.`,
+      titulo,
+      texto,
       tipo: ganhas ? "saidera" : "progresso",
       lida: false,
       criadoEm: new Date().toISOString(),
     });
 
     Store.save();
-    return { antes, depois: p.atual, meta, ganhas, novas, progresso: p };
+    return { antes, depois: p.atual, meta: p.meta, ganhas, novas, progresso: p, ofertaConcluida, metaBar };
   },
 
   entregarSaidera(saideraId, funcionarioId) {
@@ -271,19 +490,7 @@ const Logic = {
   },
 
   ofertarCampanhaCliente(campanha) {
-    Store.data.notificacoes.unshift({
-      id: `ntf-oferta-${Date.now()}`,
-      clienteId: Store.demo().clienteId,
-      titulo: campanha.titulo,
-      texto: campanha.mensagem,
-      tipo: "oferta",
-      lida: false,
-      criadoEm: new Date().toISOString(),
-      campanhaId: campanha.id,
-    });
-    campanha.status = "ativa";
-    campanha.disparada = true;
-    Store.save();
+    return this.ativarPatrocinio(campanha);
   },
 };
 

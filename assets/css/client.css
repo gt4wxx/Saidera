@@ -148,6 +148,10 @@
   font-size: 0.72rem; font-weight: 700; color: #e6d9a8;
   cursor: pointer; border: 0;
 }
+.chip.patrocinio {
+  background: var(--gold);
+  color: #171717;
+}
 
 .bottom-nav {
   flex: 0 0 auto;
@@ -190,29 +194,54 @@
   margin-bottom: 14px;
 }
 .map-art {
-  position: relative; height: 520px; border-radius: 28px; overflow: hidden;
+  position: relative; height: 420px; border-radius: 28px; overflow: hidden;
   background:
     radial-gradient(circle at 88% 40%, #1a3a66 0 18%, transparent 19%),
     linear-gradient(180deg, #0d1b33, #132a4a 55%, #0b3a4a);
 }
+.map-art.focused {
+  background:
+    radial-gradient(circle at 88% 40%, #1a3a66 0 18%, transparent 19%),
+    linear-gradient(180deg, #0b1628, #163456 55%, #0b3a4a);
+}
 .map-water {
   position: absolute; right: 0; top: 0; bottom: 0; width: 28%;
   background: linear-gradient(90deg, transparent, rgba(80,160,200,0.25));
+  pointer-events: none;
 }
 .map-label {
   position: absolute; color: rgba(255,255,255,0.55); font-size: 0.68rem; font-weight: 800;
   letter-spacing: 0.08em; text-transform: uppercase;
+  background: transparent; padding: 4px 6px; z-index: 2;
+}
+.map-label.on { color: var(--gold); }
+.map-zone {
+  position: absolute; width: 86px; height: 86px; margin: -43px 0 0 -43px;
+  border-radius: 50%; background: rgba(245,184,0,0.16);
+  box-shadow: 0 0 0 2px rgba(245,184,0,0.28);
+  pointer-events: none;
 }
 .pin {
   position: absolute; width: 18px; height: 18px; border-radius: 50% 50% 50% 0;
   background: var(--gold); transform: rotate(-45deg);
   box-shadow: 0 0 0 6px rgba(245,184,0,0.22);
-  cursor: pointer;
+  cursor: pointer; z-index: 3;
 }
-.pin:hover, .pin.on { animation: pulseGold 1.4s infinite; }
+.pin.rest { background: #ffe27a; }
+.pin:hover, .pin.on { animation: pulseGold 1.4s infinite; z-index: 4; }
+.pin-cluster {
+  position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 50%; background: var(--gold); color: #171717;
+  font-size: 0.72rem; font-weight: 800;
+  display: grid; place-items: center;
+  box-shadow: 0 0 0 6px rgba(245,184,0,0.22);
+  z-index: 3; cursor: pointer;
+}
+.pin-cluster:hover { transform: scale(1.08); }
 .map-pop {
   position: absolute; left: 12px; right: 12px; bottom: 12px;
   background: #171717; border-radius: 20px; padding: 14px;
+  z-index: 5;
 }
 
 .saidera-card {

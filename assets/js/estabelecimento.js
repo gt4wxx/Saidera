@@ -270,8 +270,9 @@ const EstApp = {
             <div class="drink-pick" id="drinks">
               ${drinks
                 .map((d) => {
-                  const meta = d.meta || est.metaPadrao;
-                  return `<button class="${this.drinkId === d.id ? "on" : ""}" data-drink="${d.id}"><strong>${d.nome}</strong><p class="tiny muted">${meta} Tampas</p></button>`;
+                  const meta = Logic.metaDe(est, d.id, c.id);
+                  const cam = Logic.patrocinioEm(this.estId, d.id);
+                  return `<button class="${this.drinkId === d.id ? "on" : ""}" data-drink="${d.id}"><strong>${d.nome}</strong><p class="tiny muted">${meta} Tampas${cam ? " · oferta" : ""}</p></button>`;
                 })
                 .join("")}
             </div>
@@ -306,10 +307,12 @@ const EstApp = {
     <section class="panel">
       ${est.bebidas
         .map((b) => {
-          const meta = b.meta || est.metaPadrao;
+          const cam = Logic.patrocinioEm(est.id, b.id);
+          const meta = Logic.metaDe(est, b.id);
+          const regra = cam ? `Patrocínio ativo · ${cam.titulo}` : b.meta ? "Configuração própria" : "Regra padrão";
           return `<div class="row between" style="padding:14px 0;border-bottom:1px solid #2a2a2a">
-            <div><strong>${b.nome}</strong><p class="tiny muted">${b.meta ? "Configuração própria" : "Regra padrão"}</p></div>
-            <span class="badge badge-gold">${meta} Tampas</span>
+            <div><strong>${b.nome}</strong><p class="tiny muted">${regra}</p></div>
+            <span class="badge ${cam ? "badge-gold" : "badge-ghost"}">${meta} Tampas</span>
           </div>`;
         })
         .join("")}
@@ -419,12 +422,13 @@ const EstApp = {
     return `<section class="panel">${list
       .map((c) => {
         const p = Store.find("parceiros", c.parceiroId);
+        const on = c.status === "ativa" && c.disparada;
         return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a">
-          <div><strong>${c.titulo}</strong><p class="tiny muted">${p?.nome} · ${p?.selo} · ${c.status}</p></div>
-          <span class="badge badge-navy">${c.metaTampas} Tampas</span>
+          <div><strong>${c.titulo}</strong><p class="tiny muted">${p?.nome} · ${Logic.bebida(c.bebidaId)?.nome} · ${c.status}${on ? " · visível no app" : ""}</p></div>
+          <span class="badge ${on ? "badge-gold" : "badge-navy"}">${c.metaTampas} Tampas</span>
         </div>`;
       })
-      .join("")}</section>`;
+      .join("") || "<p class='muted'>Nenhuma campanha neste estabelecimento.</p>"}</section>`;
   },
 
   config() {
@@ -441,7 +445,12 @@ const EstApp = {
     if (res.ganhas) {
       UI.modal({
         center: true,
-        html: `${UI.celebrate("SAIDERA LIBERADA! 🍺", `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo atual: ${res.depois}/${res.meta}.`)}
+        html: `${UI.celebrate(
+          res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDERA LIBERADA! 🍺",
+          res.ofertaConcluida
+            ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo pela regra da casa (${res.metaBar} Tampas): ${res.depois}/${res.meta}.`
+            : `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo atual: ${res.depois}/${res.meta}.`
+        )}
           <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Continuar</button>`,
       });
     } else {
