@@ -78,7 +78,7 @@ const ClienteApp = {
     const me = this.me();
     const unread = Store.all("notificacoes").filter((n) => n.clienteId === me.id && !n.lida).length;
     return `<div class="topbar">
-      <div class="logo-row"><div class="logo-mark">S</div><span>Saidera</span></div>
+      <div class="logo-row">${Brand.horizontal("brand-h brand-h-sm")}</div>
       <div class="row">
         <button class="icon-btn ${unread ? "dot-n" : ""}" data-go="#/notificacoes">${Icons.bell()}</button>
         <img class="avatar" src="${me.avatar}" alt="${me.primeiroNome}" data-go="#/perfil"/>
@@ -214,8 +214,9 @@ const ClienteApp = {
     return `${this.top()}
       <p class="muted small">Aracaju · Dados demonstrativos</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
-      <p class="muted" style="margin-bottom:16px">Qual vai ser sua Saidera hoje?</p>
-      <div class="row" style="margin-bottom:8px">
+      <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
+      ${Brand.banner("secundario", "brand-banner")}
+      <div class="row" style="margin:14px 0 8px">
         <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.homeQuery.replace(/"/g, "&quot;")}"/></div>
         <button class="icon-btn gold" data-go="#/mapa">${Icons.pin()}</button>
       </div>
@@ -510,9 +511,11 @@ const ClienteApp = {
     const extra = Store.all("notificacoes").filter((n) => n.clienteId === this.me().id && n.tipo === "oferta" && n.campanhaId);
     if (!camps.length) {
       return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhuma campanha ativa para você no momento.</p>`)}
-        <p class="notice">Quando o Admin Saidera ativar um pedido do bar ou um patrocínio de marca, a oferta aparece aqui.</p>`;
+        ${Brand.banner("story", "brand-story")}
+        <p class="notice" style="margin-top:14px">Quando o Admin Saidera ativar um pedido do bar ou um patrocínio de marca, a oferta aparece aqui.</p>`;
     }
     return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Campanhas ativas · Aracaju</p>`)}
+      ${Brand.banner("secundario", "brand-banner")}
       ${camps
         .map((c, i) => {
           const par = Store.find("parceiros", c.parceiroId);
@@ -637,6 +640,7 @@ const ClienteApp = {
     const me = this.me();
     return `${this.back("Meu Saidera")}
       <div class="qr-stage">
+        ${Brand.simbolo(72)}
         ${UI.qrSvg()}
         <h2 style="margin-top:8px">${me.primeiroNome}</h2>
         <p class="muted">ID: ${me.codigo}</p>

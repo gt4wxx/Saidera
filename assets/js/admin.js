@@ -53,7 +53,7 @@ const AdminApp = {
     this.root.innerHTML = `<div class="dash-app">
       <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
-        <div class="logo-row pad"><div class="logo-mark">S</div><div><strong>SAIDERA</strong><p class="tiny muted">Admin Master</p></div></div>
+        ${Brand.sideHead("Admin Master")}
         <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
         <div class="side-foot"><p class="tiny muted">Nenhuma marca aqui é parceria oficial.</p>
           <a class="btn btn-ghost btn-sm btn-block" href="../index.html">Trocar perfil</a></div>
@@ -70,7 +70,7 @@ const AdminApp = {
   },
 
   dashboard() {
-    return `<div class="kpis">
+    return `${Brand.banner("principal", "brand-banner-hero")}<div class="kpis">
       ${[
         ["Estabelecimentos", "138"],
         ["Usuários", "28.450"],

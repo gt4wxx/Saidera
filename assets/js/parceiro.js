@@ -78,7 +78,7 @@ const ParceiroApp = {
     this.root.innerHTML = `<div class="dash-app">
       <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
-        <div class="logo-row pad"><div class="logo-mark">S</div><div><strong>SAIDERA</strong><p class="tiny muted">Parceiro</p></div></div>
+        ${Brand.sideHead("Parceiro")}
         <div class="notice" style="margin:0 10px 10px">${this.par().nome}<br/>${this.par().selo}</div>
         <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
         <div class="side-foot"><a class="btn btn-ghost btn-sm btn-block" href="../index.html">Trocar perfil</a></div>
@@ -98,7 +98,7 @@ const ParceiroApp = {
   dashboard() {
     const p = this.par();
     const week = { labels: ["Sem 1", "Sem 2", "Sem 3", "Sem 4"], values: [420, 610, 880, 1742] };
-    return `<div class="kpis">
+    return `${Brand.banner("secundario", "brand-banner")}<div class="kpis">
       ${[
         ["Campanhas ativas", p.campanhasAtivas],
         ["Estabelecimentos", p.estabelecimentos],

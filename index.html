@@ -8,20 +8,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="assets/css/app.css"/>
   <link rel="stylesheet" href="assets/css/client.css"/>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%23F5B800'/><text x='16' y='22' text-anchor='middle' font-size='18' font-family='Arial' font-weight='800'>S</text></svg>"/>
+  <link rel="icon" type="image/png" href="assets/brand/05_favicon.png"/>
+  <link rel="apple-touch-icon" href="assets/brand/10_app_icon_amarelo.png"/>
 </head>
 <body>
   <main class="landing">
     <header class="landing-hero">
-      <div class="logo-row">
-        <div class="logo-mark">S</div>
-        <span>Saidera</span>
-        <span class="badge badge-navy">MVP demonstrativo · Aracaju/SE</span>
-      </div>
-      <h1>A fidelidade que a noite merece.</h1>
-      <p class="lead">O cliente mostra o QR. O garçom escaneia. Cada Tampa aproxima uma Saidera. Escolha um perfil para apresentar o produto.</p>
-      <p class="tiny muted" style="margin-top:14px">Todos os nomes, marcas e números desta tela são fictícios e servem só para a demonstração comercial.</p>
+      <div class="landing-brand" id="landing-brand"></div>
+      <p class="lead" style="margin:0 auto 8px;text-align:center">A fidelidade que a noite merece.</p>
+      <p class="tiny muted" style="margin:0 auto;text-align:center;max-width:46ch">O cliente mostra o QR. O garçom escaneia. Cada Tampa aproxima uma Saidera. Escolha um perfil para apresentar o produto.</p>
+      <p class="tiny muted" style="margin-top:10px;text-align:center">Todos os nomes, marcas e números desta tela são fictícios e servem só para a demonstração comercial.</p>
     </header>
+    <div class="landing-banners" id="landing-banners"></div>
     <section class="roles">
       <a class="role" href="pages/cliente.html">
         <div class="ico" data-ic="beer"></div>
@@ -59,6 +57,7 @@
         </div>
       </a>
     </section>
+    <div class="landing-story-wrap" id="landing-story"></div>
   </main>
   <script src="assets/js/icons.js"></script>
   <script src="assets/js/data-seed.js"></script>
@@ -68,6 +67,9 @@
     document.querySelectorAll("[data-ic]").forEach((el) => {
       el.innerHTML = Icons[el.dataset.ic]();
     });
+    document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">MVP demonstrativo · Aracaju/SE</span>`;
+    document.getElementById("landing-banners").innerHTML = Brand.banner("principal", "brand-banner-hero");
+    document.getElementById("landing-story").innerHTML = Brand.banner("story", "brand-story");
     Store.init();
     UI.bindGlobal();
     document.querySelector("main").insertAdjacentHTML("beforeend", UI.demoWidget());

@@ -55,9 +55,8 @@ const GarcomApp = {
     const e = this.est();
     return `<div class="topbar">
       <div class="logo-row">
-        <div class="logo-mark">S</div>
+        ${Brand.horizontal("brand-h brand-h-sm")}
         <div>
-          <strong>Saidera</strong>
           <p class="tiny muted">${f.nome} · ${e.nome}</p>
         </div>
       </div>
@@ -70,8 +69,9 @@ const GarcomApp = {
     return `${this.top()}
       <p class="tiny muted">Turno no salão · Dados demonstrativos</p>
       <h1 style="margin:8px 0 6px">Pronto para marcar Tampas</h1>
-      <p class="muted" style="margin-bottom:18px">Escaneie o QR do cliente. A comanda fica aberta até você atender outra mesa.</p>
-      <button class="btn btn-gold btn-block scan-cta" id="start-scan">${Icons.qr()} Escanear QR Code</button>
+      <p class="muted" style="margin-bottom:14px">Escaneie o QR do cliente. A comanda fica aberta até você atender outra mesa.</p>
+      ${Brand.banner("secundario", "brand-banner")}
+      <button class="btn btn-gold btn-block scan-cta" id="start-scan" style="margin-top:14px">${Icons.qr()} Escanear QR Code</button>
       <div class="search" style="margin-top:12px">${Icons.search()}<input id="busca-id" placeholder="Ou digite o ID · SDR-28491"/></div>
       <p class="tiny muted" style="margin:16px 0 8px">Atalhos da demonstração</p>
       <div class="row wrap">

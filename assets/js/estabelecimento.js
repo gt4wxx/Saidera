@@ -82,7 +82,7 @@ const EstApp = {
           <div class="row">
             <button class="icon-btn menu-btn" data-menu>${Icons.menu()}</button>
             <div>
-              <p class="tiny muted">SAIDERA · Estabelecimento · Dados demonstrativos</p>
+      <p class="tiny muted">Estabelecimento · Dados demonstrativos</p>
               <h1 id="view-title"></h1>
             </div>
           </div>
@@ -125,7 +125,7 @@ const EstApp = {
       ["config", "Configurações", Icons.settings()],
     ];
     return `<aside class="sidebar" id="sidebar">
-      <div class="logo-row pad"><div class="logo-mark">S</div><div><strong>SAIDERA</strong><p class="tiny muted">${this.est().nome}</p></div></div>
+      ${Brand.sideHead(this.est().nome)}
       <nav>${items
         .map(
           ([id, l, ic]) =>
@@ -144,7 +144,7 @@ const EstApp = {
     const week = Logic.semanaTampas(this.estId);
     const recent = this.recentes();
     const avisos = Logic.avisosDoEst(this.estId).slice(0, 5);
-    return `${
+    return `${Brand.banner("secundario", "brand-banner")}${
       avisos.length
         ? `<section class="panel" style="margin-bottom:16px">
       <h3>Ofertas de parceiros</h3>

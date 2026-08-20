@@ -1,3 +1,52 @@
+const Brand = {
+  pages() {
+    return /\/pages\//.test(location.pathname);
+  },
+  brandDir() {
+    return this.pages() ? "../assets/brand" : "assets/brand";
+  },
+  kitDir() {
+    return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
+  },
+  src(file) {
+    return `${this.brandDir()}/${file}`;
+  },
+  img(file, cls = "", alt = "Saidera") {
+    return `<img class="${cls}" src="${this.src(file)}" alt="${alt}"/>`;
+  },
+  mark(size = 38) {
+    return `<img class="brand-mark" src="${this.src("11_app_icon_preto.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+  },
+  markGold(size = 64) {
+    return `<img class="brand-mark" src="${this.src("10_app_icon_amarelo.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+  },
+  simbolo(size = 56) {
+    return `<img class="brand-simbolo" src="${this.src("02_simbolo_logo.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+  },
+  horizontal(cls = "brand-h") {
+    return this.img("03_logo_horizontal.png", cls);
+  },
+  principal(cls = "brand-principal") {
+    return this.img("03_logo_horizontal.png", cls);
+  },
+  banner(tipo, cls = "brand-banner") {
+    const file =
+      tipo === "story"
+        ? "09_banner_story.png"
+        : tipo === "secundario"
+          ? "08_banner_secundario.png"
+          : "07_banner_principal.png";
+    return `<img class="${cls}" src="${this.kitDir()}/${file}" alt="Saidera"/>`;
+  },
+  sideHead(role) {
+    return `<div class="brand-side pad">
+      ${this.horizontal("brand-h brand-h-side")}
+      <p class="tiny muted">${role}</p>
+    </div>`;
+  },
+};
+window.Brand = Brand;
+
 const UI = {
   toast(msg) {
     let wrap = document.querySelector(".toast-wrap");
@@ -116,7 +165,7 @@ const UI = {
     const bits = Array.from({ length: 12 }, (_, i) => `<i style="margin-left:${(i - 6) * 10}px;animation-delay:${i * 40}ms;background:${i % 2 ? "#F5B800" : "#fff"}"></i>`).join("");
     return `<div class="celebrate">
       <div class="burst">${bits}</div>
-      <div class="logo-mark" style="margin:8px auto 12px;width:64px;height:64px;font-size:1.6rem;animation:pop .4s ease">S</div>
+      <div class="celebrate-mark">${Brand.markGold(72)}</div>
       <h2>${title}</h2>
       <p class="muted" style="margin-top:8px">${sub}</p>
     </div>`;

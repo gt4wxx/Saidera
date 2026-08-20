@@ -12,7 +12,33 @@
   .role { min-height: 150px; padding: 18px; }
 }
 .landing-hero {
-  max-width: 1080px; margin: 0 auto 36px;
+  max-width: 1080px; margin: 0 auto 28px;
+}
+.landing-brand {
+  text-align: center;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.landing-banners {
+  max-width: 1080px; margin: 0 auto 28px;
+  display: grid; gap: 14px;
+}
+.landing-banners img {
+  width: 100%; height: auto;
+}
+.landing-story-wrap {
+  max-width: 1080px; margin: 36px auto 0;
+  display: grid; place-items: center;
+}
+@media (max-width: 640px) {
+  .brand-principal { max-height: 56px; width: min(100%, 300px); }
+  .landing-story-wrap .brand-story { width: min(100%, 220px); }
+}
+@media (min-width: 900px) {
+  .landing-story-wrap { justify-content: end; }
 }
 .landing-hero h1 {
   font-size: clamp(2.2rem, 5vw, 4.2rem);
@@ -91,8 +117,9 @@
 }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 18px;
+  gap: 10px; margin-bottom: 18px;
 }
+.topbar .logo-row { min-width: 0; }
 .avatar {
   width: 42px; height: 42px; border-radius: 14px; object-fit: cover;
   border: 2px solid rgba(245,184,0,0.4);
@@ -183,6 +210,7 @@
   background: var(--cream); color: #171717; border-radius: 28px;
   padding: 22px; text-align: center;
 }
+.qr-stage .brand-simbolo { margin: 0 auto 12px; background: transparent; }
 .qr-box {
   width: 220px; height: 220px; margin: 18px auto;
   background: #fff; border-radius: 24px;

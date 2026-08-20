@@ -57,8 +57,75 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
   box-shadow: inset 0 0 0 3px rgba(0,0,0,0.18), 0 6px 16px rgba(245,184,0,0.28);
   color: #171717; font-weight: 800; font-size: 1.05rem;
 }
-.logo-row { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.04em; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 12px;
+  object-fit: contain; background: transparent; flex: 0 0 auto;
+}
+.brand-simbolo {
+  width: clamp(52px, 16vw, 88px);
+  height: auto;
+  object-fit: contain;
+  background: transparent;
+}
+.brand-h {
+  display: block;
+  height: clamp(28px, 7vw, 40px);
+  width: auto;
+  max-width: min(260px, 68vw);
+  object-fit: contain;
+  object-position: left center;
+}
+.brand-h-sm {
+  height: clamp(26px, 6.5vw, 36px);
+  max-width: min(220px, 58vw);
+}
+.brand-h-side {
+  height: auto;
+  width: min(100%, 228px);
+  max-height: 56px;
+  max-width: 100%;
+}
+.brand-principal {
+  display: block;
+  width: min(560px, 92vw);
+  height: auto;
+  max-height: clamp(52px, 16vw, 96px);
+  margin: 0 auto 8px;
+  object-fit: contain;
+}
+.brand-side {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  min-width: 0;
+}
+.brand-banner,
+.brand-banner-hero {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+  border-radius: clamp(14px, 3vw, 24px);
+  background: transparent;
+}
+.brand-banner-hero { margin: 12px 0 4px; }
+.brand-story {
+  width: min(100%, 280px);
+  height: auto;
+  max-height: min(70vh, 420px);
+  margin: 0 auto;
+  border-radius: clamp(16px, 3vw, 24px);
+  object-fit: contain;
+}
+.celebrate-mark { display: grid; place-items: center; margin: 8px auto 12px; }
+.celebrate-mark .brand-mark { width: 72px; height: 72px; border-radius: 20px; animation: pop .4s ease; }
+.logo-row {
+  display: flex; align-items: center; gap: 10px;
+  min-width: 0; flex: 1;
+  font-weight: 800; letter-spacing: -0.04em;
+}
 .logo-row span { font-size: 1.15rem; }
+.logo-row .brand-h { flex: 0 1 auto; min-width: 0; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
