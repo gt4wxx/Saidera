@@ -165,7 +165,7 @@ const AdminApp = {
             <strong>${c.titulo}</strong>
             <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.metaTampas ? c.metaTampas + " Tampas" : "mensagem"} · ${(c.estabelecimentos || []).length} casa(s) · ${c.status}</p>
             ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${c.mensagem}</p>` : ""}
-            ${c.origem === "estabelecimento" ? `<p class="tiny gold" style="margin-top:4px">Canal ${c.canal || "push"} · ${(c.publicoPotencial || 0).toLocaleString("pt-BR")} destinatários</p>` : ""}
+            ${c.origem === "estabelecimento" ? `<p class="tiny gold" style="margin-top:4px">Canal ${c.canal || "push"} · ${(c.limite || c.clienteIds?.length || c.publicoPotencial || 0).toLocaleString("pt-BR")} destinatários${c.tipo === "chamar" ? " selecionados" : ""}</p>` : ""}
           </div>
           <div class="row" style="flex-shrink:0">
             <span class="badge ${c.status === "solicitada" ? "badge-gold" : on ? "badge-green" : "badge-ghost"}">${on ? "disparada" : c.status}</span>
@@ -225,7 +225,7 @@ const AdminApp = {
           ${pendentes.length
             ? pendentes.map((c) => {
                 const origem = c.origem === "estabelecimento" ? Logic.est(c.estabelecimentoId)?.nome : Store.find("parceiros", c.parceiroId)?.nome;
-                return `<option value="${c.id}">${c.titulo} · ${origem || ""} · ${c.tipo ? Logic.tipoCampanhaLabel(c.tipo) : c.metaTampas + " Tampas"}</option>`;
+                return `<option value="${c.id}">${c.titulo} · ${origem || ""} · ${c.tipo === "chamar" ? (c.limite || c.clienteIds?.length || 0) + " clientes" : c.tipo ? Logic.tipoCampanhaLabel(c.tipo) : c.metaTampas + " Tampas"}</option>`;
               }).join("")
             : `<option value="">Nenhuma solicitação pendente</option>`}
         </select>
@@ -310,6 +310,9 @@ const AdminApp = {
     if (cam?.origem === "estabelecimento") {
       const quem = Logic.publicoCampanhaLabel(cam.publico);
       const extra = cam.metaTampas ? ` A meta desta casa passou a ${cam.metaTampas} Tampas para esse público.` : "";
+      if (cam.tipo === "chamar") {
+        return `Chamar de volta disparado para ${cam.limite || cam.clienteIds?.length || 0} clientes selecionados pela casa.`;
+      }
       return `A campanha da casa foi disparada para ${quem}.${extra}`;
     }
     return "A oferta está no app do cliente. Os bares escolhidos passaram a usar a meta de Tampas da campanha.";

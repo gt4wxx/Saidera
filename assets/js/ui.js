@@ -46,7 +46,8 @@ const UI = {
   },
 
   photo(src, alt = "") {
-    return `<div class="photo"><img src="${src}" alt="${alt}" onerror="this.style.display='none'"/></div>`;
+    const fb = window.Logic?.imagemPadraoEst?.() || src;
+    return `<div class="photo"><img src="${src}" alt="${alt}" onerror="this.onerror=null;this.src='${fb}'"/></div>`;
   },
 
   lineChart(values, labels = []) {

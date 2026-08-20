@@ -38,6 +38,47 @@ const Logic = {
     return est?.tipo === "restaurante" ? "Restaurante" : "Bar";
   },
 
+  imagemPadraoEst(est) {
+    const tipo = typeof est === "string" ? this.est(est)?.tipo : est?.tipo;
+    return tipo === "restaurante"
+      ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900&q=80&auto=format&fit=crop"
+      : "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=900&q=80&auto=format&fit=crop";
+  },
+
+  imagemEst(est) {
+    if (typeof est === "string") est = this.est(est);
+    if (!est) return this.imagemPadraoEst();
+    return est.cartaz || est.imagem || this.imagemPadraoEst(est);
+  },
+
+  lerCartazArquivo(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) {
+        reject(new Error("Escolha uma imagem (JPG, PNG ou WEBP)."));
+        return;
+      }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const max = 900;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Não foi possível ler esta imagem."));
+      };
+      img.src = url;
+    });
+  },
+
   cliente(id) {
     return Store.find("clientes", id);
   },
@@ -113,6 +154,7 @@ const Logic = {
         comparecer: "Comparecer",
         aniversario: "Aniversário",
         tampas: "Tampas reduzidas",
+        chamar: "Chamar de volta",
       }[tipo] || "Patrocínio"
     );
   },
@@ -155,36 +197,57 @@ const Logic = {
         metaTampas: 6,
         alteraMeta: true,
       },
+      chamar: {
+        tipo: "chamar",
+        titulo: `Chamar de volta · ${nome}`,
+        mensagem: `Sua mesa te espera no ${nome}. Faz tempo que você não aparece. Mostre o QR, continue suas Tampas e retire sua Saidera aqui.`,
+        publico: "inativos",
+        metaTampas: null,
+        alteraMeta: false,
+      },
     };
+  },
+
+  inativosDoEst(estId) {
+    const corte = this.hoje().getTime() - 30 * 86400000;
+    const doBar = this.clientesDoEst(estId).filter((c) => c.id !== "cli-001");
+    const frios = doBar.filter((c) => !c.ultimaVisitaIso || new Date(c.ultimaVisitaIso).getTime() < corte);
+    const ids = new Set(frios.map((c) => c.id));
+    const extraBar = doBar.filter((c) => !ids.has(c.id));
+    extraBar.forEach((c) => ids.add(c.id));
+    const pool = [...frios, ...extraBar];
+    Store.all("clientes").forEach((c) => {
+      if (c.id !== "cli-001" && !ids.has(c.id)) pool.push(c);
+    });
+    return pool.slice(0, 80);
   },
 
   publicoCampanha(cam) {
     const estId = cam?.estabelecimentoId || (cam?.estabelecimentos || [])[0];
     if (!estId) return [];
-    let clientes = this.clientesDoEst(estId);
+    if (cam.clienteIds?.length) {
+      return cam.clienteIds.map((id) => this.cliente(id)).filter(Boolean);
+    }
+    let clientes =
+      cam.publico === "inativos" || cam.tipo === "chamar" ? this.inativosDoEst(estId) : this.clientesDoEst(estId);
     if (cam.publico === "aniversario") {
-      clientes = clientes.filter((c) => this.ehAniversarianteMes(c));
-    } else if (cam.publico === "inativos") {
-      const corte = this.hoje().getTime() - 30 * 86400000;
-      clientes = clientes.filter((c) => {
-        if (c.id === "cli-001") return false;
-        if (!c.ultimaVisitaIso) return true;
-        return new Date(c.ultimaVisitaIso).getTime() < corte;
-      });
+      clientes = this.clientesDoEst(estId).filter((c) => this.ehAniversarianteMes(c));
     } else if (cam.publico === "quase") {
       const ids = new Set(
         Store.all("tampas")
           .filter((t) => t.estabelecimentoId === estId && t.meta - t.atual <= 2 && t.atual > 0)
           .map((t) => t.clienteId)
       );
-      clientes = clientes.filter((c) => ids.has(c.id));
+      clientes = this.clientesDoEst(estId).filter((c) => ids.has(c.id));
     }
+    if (cam.limite) clientes = clientes.slice(0, cam.limite);
     return clientes;
   },
 
   clienteNoPublico(clienteId, cam) {
     if (!cam || cam.origem !== "estabelecimento") return true;
-    if (clienteId === Store.demo()?.clienteId && cam.publico !== "aniversario") return true;
+    if (cam.clienteIds?.length) return cam.clienteIds.includes(clienteId);
+    if (clienteId === Store.demo()?.clienteId && cam.publico !== "aniversario" && cam.tipo !== "chamar") return true;
     return this.publicoCampanha(cam).some((c) => c.id === clienteId);
   },
 
@@ -203,11 +266,14 @@ const Logic = {
     bebidaId,
     metaTampas,
     canal,
+    clienteIds,
+    limite,
   }) {
     const est = this.est(estabelecimentoId);
     const modelo = this.modelosCampanhaCasa(est)[tipo] || this.modelosCampanhaCasa(est).comparecer;
     const alteraMeta = modelo.alteraMeta;
     const per = this.periodoCampanha();
+    const ids = [...new Set(clienteIds || [])];
     const cam = {
       id: `cam-casa-${Date.now()}`,
       titulo: titulo || modelo.titulo,
@@ -224,7 +290,9 @@ const Logic = {
       estabelecimentos: [estabelecimentoId],
       periodoInicio: per.inicio,
       periodoFim: per.fim,
-      publicoPotencial: this.estimarPublicoCasa(estabelecimentoId, publico || modelo.publico),
+      clienteIds: ids,
+      limite: ids.length || limite || null,
+      publicoPotencial: ids.length || limite || this.estimarPublicoCasa(estabelecimentoId, publico || modelo.publico),
       participantes: 0,
       saideras: 0,
       canal: canal || "push",
@@ -418,11 +486,12 @@ const Logic = {
     let ids;
     if (cam.origem === "estabelecimento") {
       ids = this.publicoCampanha(cam).map((c) => c.id);
-      if (cam.publico !== "aniversario") {
+      const soLista = cam.clienteIds?.length || cam.tipo === "chamar" || cam.publico === "aniversario";
+      if (!soLista) {
         const demoId = Store.demo().clienteId;
         if (!ids.includes(demoId)) ids.unshift(demoId);
       }
-      ids = ids.slice(0, 40);
+      ids = ids.slice(0, cam.limite || 80);
     } else {
       ids = [Store.demo().clienteId];
     }

@@ -7,6 +7,7 @@ const EstApp = {
   drinkId: "beb-001",
   clienteSel: "cli-001",
   campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
+  volta: { qtd: 10, ids: [], mensagem: "" },
 
   boot() {
     Store.init();
@@ -19,6 +20,13 @@ const EstApp = {
 
   est() {
     return Logic.est(this.estId);
+  },
+
+  aplicarQtdVolta(qtd) {
+    const list = Logic.inativosDoEst(this.estId);
+    const n = Math.max(1, Math.min(Number(qtd) || 1, list.length));
+    this.volta.qtd = n;
+    this.volta.ids = list.slice(0, n).map((c) => c.id);
   },
 
   aplicarModeloCamp(tipo, publico) {
@@ -58,6 +66,7 @@ const EstApp = {
       saideras: () => this.saideras(),
       funcionarios: () => this.funcionarios(),
       inteligencia: () => this.inteligencia(),
+      chamar: () => this.chamar(),
       campanhas: () => this.campanhas(),
       config: () => this.config(),
     };
@@ -91,6 +100,7 @@ const EstApp = {
       saideras: "Saideras",
       funcionarios: "Funcionários",
       inteligencia: "Conheça seus clientes",
+      chamar: "Chamar de volta",
       campanhas: "Campanhas",
       config: "Configurações",
     };
@@ -116,7 +126,7 @@ const EstApp = {
       <nav>${items
         .map(
           ([id, l, ic]) =>
-            `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}<span>${l}</span></a>`
+            `<a class="${this.view === id || (id === "inteligencia" && this.view === "chamar") ? "on" : ""}" href="#/${id}">${ic}<span>${l}</span></a>`
         )
         .join("")}</nav>
       <div class="side-foot">
@@ -431,12 +441,55 @@ const EstApp = {
             const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
             return `<div class="row between" style="padding:8px 0">
               <div><strong>${c.nome}</strong><p class="tiny muted">${Logic.bebida(t?.bebidaId || "beb-001").nome} · ${t ? t.atual + "/" + t.meta : "—"} · última visita há 37 dias</p></div>
-              <button class="btn btn-navy btn-sm" data-solicitar="inativos">Chamar de volta</button>
             </div>`;
           })
           .join("")}
+        <a class="btn btn-gold btn-block" style="margin-top:12px" href="#/chamar">Chamar de volta</a>
       </section>
     </div>`;
+  },
+
+  chamar() {
+    const list = Logic.inativosDoEst(this.estId);
+    if (!this.volta.ids.length) this.aplicarQtdVolta(this.volta.qtd);
+    const modelo = Logic.modelosCampanhaCasa(this.est()).chamar;
+    const msg = this.volta.mensagem || modelo.mensagem;
+    const sel = new Set(this.volta.ids);
+    const chips = [10, 20, 50, list.length].filter((n, i, a) => n <= list.length && a.indexOf(n) === i);
+    return `<section class="panel" style="max-width:720px">
+      <p class="muted" style="margin-bottom:14px">Escolha quantos clientes inativos entram no disparo. Ao terminar, peça ao Admin Saidera para ativar o “chamar de volta”.</p>
+      <div class="field"><span>Quantos clientes</span>
+        <div class="row wrap" style="margin-top:8px;gap:8px">
+          <input id="volta-qtd" type="number" min="1" max="${list.length}" value="${this.volta.qtd}" style="max-width:120px"/>
+          <div class="chips">${chips
+            .map(
+              (n) =>
+                `<button type="button" class="chip ${this.volta.qtd === n ? "on" : ""}" data-volta-qtd="${n}">${n === list.length ? "Todos (" + n + ")" : n}</button>`
+            )
+            .join("")}</div>
+        </div>
+      </div>
+      <p class="notice" style="margin:14px 0"><strong data-volta-count>${sel.size}</strong> cliente${sel.size === 1 ? "" : "s"} selecionado${sel.size === 1 ? "" : "s"} para o disparo.</p>
+      <div class="check-list volta-list">
+        ${list
+          .map((c, i) => {
+            const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
+            const dias = 30 + ((i * 7) % 40);
+            return `<label>
+              <input type="checkbox" value="${c.id}" ${sel.has(c.id) ? "checked" : ""}/>
+              <div>
+                <strong>${c.nome}</strong>
+                <p class="tiny muted">${Logic.bebida(t?.bebidaId || "beb-001")?.nome || "Saidera"} · última visita há ${dias} dias</p>
+              </div>
+            </label>`;
+          })
+          .join("")}
+      </div>
+      <div class="field" style="margin-top:14px"><span>Mensagem pronta</span>
+        <textarea id="volta-msg" rows="3">${msg}</textarea>
+      </div>
+      <button class="btn btn-gold btn-block" style="margin-top:16px" id="pedir-volta">Pedir disparo ao Admin Saidera</button>
+    </section>`;
   },
 
   campanhas() {
@@ -542,11 +595,25 @@ const EstApp = {
 
   config() {
     const est = this.est();
+    const img = Logic.imagemEst(est);
+    const custom = Boolean(est.cartaz);
     return `<section class="panel" style="max-width:560px">
-      <div class="field"><span>Nome</span><input value="${est.nome}"/></div>
-      <div class="field" style="margin-top:10px"><span>Bairro</span><input value="${est.bairro}"/></div>
-      <div class="field" style="margin-top:10px"><span>Saidera padrão</span><input type="number" value="${est.metaPadrao}"/></div>
-      <button class="btn btn-gold" style="margin-top:16px" id="save-cfg">Salvar (demo)</button>
+      <div class="field"><span>Nome</span><input id="cfg-nome" value="${est.nome}"/></div>
+      <div class="field" style="margin-top:10px"><span>Bairro</span><input id="cfg-bairro" value="${est.bairro}"/></div>
+      <div class="field" style="margin-top:10px"><span>Saidera padrão</span><input id="cfg-meta" type="number" value="${est.metaPadrao}"/></div>
+      <div class="field" style="margin-top:16px"><span>Cartaz da casa</span>
+        <p class="tiny muted">Esta foto aparece no app do cliente (lista, perfil da casa e ofertas). Se você não enviar um cartaz, fica a imagem padrão.</p>
+      </div>
+      <div class="cartaz-preview">
+        <img id="cfg-cartaz-img" src="${img}" alt="Cartaz do estabelecimento" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(est)}'"/>
+        <span class="badge ${custom ? "badge-gold" : "badge-ghost"}">${custom ? "Cartaz da casa" : "Imagem padrão"}</span>
+      </div>
+      <input type="file" id="cfg-cartaz" accept="image/jpeg,image/png,image/webp,image/*" hidden/>
+      <div class="row wrap" style="margin-top:12px;gap:8px">
+        <button class="btn btn-navy" type="button" id="pick-cartaz">Enviar cartaz</button>
+        ${custom ? `<button class="btn btn-ghost" type="button" id="reset-cartaz">Usar imagem padrão</button>` : ""}
+      </div>
+      <button class="btn btn-gold" style="margin-top:16px" id="save-cfg">Salvar</button>
     </section>`;
   },
 
@@ -679,11 +746,48 @@ const EstApp = {
         document.querySelector(".modal-bg")?.remove();
       });
     });
-    this.root.querySelector("#save-cfg")?.addEventListener("click", () => UI.toast("Configurações salvas nesta demonstração."));
+    this.root.querySelector("#save-cfg")?.addEventListener("click", () => {
+      const est = this.est();
+      est.nome = this.root.querySelector("#cfg-nome")?.value?.trim() || est.nome;
+      est.bairro = this.root.querySelector("#cfg-bairro")?.value?.trim() || est.bairro;
+      est.metaPadrao = Number(this.root.querySelector("#cfg-meta")?.value) || est.metaPadrao || 10;
+      Store.save();
+      UI.toast("Configurações salvas.");
+    });
+    this.root.querySelector("#pick-cartaz")?.addEventListener("click", () => this.root.querySelector("#cfg-cartaz")?.click());
+    this.root.querySelector("#cfg-cartaz")?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const data = await Logic.lerCartazArquivo(file);
+        const est = this.est();
+        const anterior = est.cartaz;
+        est.cartaz = data;
+        try {
+          Store.save();
+          UI.toast("Cartaz enviado. O cliente já vê esta imagem no app.");
+        } catch {
+          est.cartaz = anterior;
+          UI.toast("A imagem é grande demais. Tente outra foto.");
+        }
+      } catch (err) {
+        UI.toast(err.message || "Não foi possível usar esta imagem.");
+      }
+    });
+    this.root.querySelector("#reset-cartaz")?.addEventListener("click", () => {
+      this.est().cartaz = null;
+      Store.save();
+      UI.toast("Voltamos à imagem padrão.");
+    });
     this.root.querySelectorAll("[data-solicitar]").forEach((b) =>
       b.addEventListener("click", () => {
         const preset = b.getAttribute("data-solicitar") || "comparecer";
-        const map = { inativos: ["comparecer", "inativos"], aniversario: ["aniversario", "aniversario"], quase: ["tampas", "quase"], comparecer: ["comparecer", "todos"] };
+        if (preset === "inativos") {
+          this.aplicarQtdVolta(this.volta.qtd || 10);
+          location.hash = "#/chamar";
+          return;
+        }
+        const map = { aniversario: ["aniversario", "aniversario"], quase: ["tampas", "quase"], comparecer: ["comparecer", "todos"] };
         const [tipo, publico] = map[preset] || ["comparecer", "todos"];
         this.aplicarModeloCamp(tipo, publico);
         location.hash = "#/campanhas";
@@ -691,6 +795,54 @@ const EstApp = {
         this.render();
       })
     );
+    this.root.querySelectorAll("[data-volta-qtd]").forEach((b) =>
+      b.addEventListener("click", () => {
+        this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
+        this.aplicarQtdVolta(b.getAttribute("data-volta-qtd"));
+        this.render();
+      })
+    );
+    this.root.querySelector("#volta-qtd")?.addEventListener("change", (e) => {
+      this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
+      this.aplicarQtdVolta(e.target.value);
+      this.render();
+    });
+    this.root.querySelectorAll(".volta-list input")?.forEach((cb) =>
+      cb.addEventListener("change", () => {
+        this.volta.ids = [...this.root.querySelectorAll(".volta-list input:checked")].map((i) => i.value);
+        this.volta.qtd = this.volta.ids.length || 1;
+        const q = this.root.querySelector("#volta-qtd");
+        if (q) q.value = this.volta.qtd;
+        const n = this.root.querySelector("[data-volta-count]");
+        if (n) n.textContent = String(this.volta.ids.length);
+      })
+    );
+    this.root.querySelector("#pedir-volta")?.addEventListener("click", () => {
+      this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
+      this.volta.ids = [...this.root.querySelectorAll(".volta-list input:checked")].map((i) => i.value);
+      if (!this.volta.ids.length) {
+        UI.toast("Selecione pelo menos um cliente.");
+        return;
+      }
+      const modelo = Logic.modelosCampanhaCasa(this.est()).chamar;
+      const cam = Logic.solicitarCampanhaCasa({
+        estabelecimentoId: this.estId,
+        tipo: "chamar",
+        publico: "inativos",
+        titulo: modelo.titulo,
+        mensagem: this.volta.mensagem || modelo.mensagem,
+        canal: "push",
+        clienteIds: this.volta.ids,
+        limite: this.volta.ids.length,
+      });
+      UI.modal({
+        center: true,
+        html: `<h2>Pedido de disparo enviado</h2>
+          <p class="muted" style="margin:10px 0">Chamar de volta para <strong>${cam.limite} cliente${cam.limite === 1 ? "" : "s"}</strong>.</p>
+          <p class="notice">O Admin Saidera valida e ativa o disparo. Nada entra no app até lá.</p>
+          <button class="btn btn-gold btn-block" style="margin-top:12px" data-close-modal>Ok</button>`,
+      });
+    });
     this.root.querySelectorAll("[data-camp-tipo]").forEach((b) =>
       b.addEventListener("click", () => {
         this.syncCampForm();

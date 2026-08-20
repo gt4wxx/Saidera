@@ -102,7 +102,7 @@ const ClienteApp = {
       const est = Logic.est(recente.estabelecimentoId);
       const beb = Logic.bebida(recente.bebidaId);
       return `<article class="hero-progress" data-go="#/saideras">
-        <div class="bg">${UI.photo(est.imagem)}</div>
+        <div class="bg">${UI.photo(Logic.imagemEst(est), est.nome)}</div>
         <div class="overlay"></div>
         <div class="content">
           <span class="badge badge-gold">VOCÊ GANHOU</span>
@@ -116,7 +116,7 @@ const ClienteApp = {
     const est = Logic.est("est-001");
     const falta = p.meta - p.atual;
     return `<article class="hero-progress" data-go="#/est/est-001">
-      <div class="bg">${UI.photo(est.imagem)}</div>
+      <div class="bg">${UI.photo(Logic.imagemEst(est), est.nome)}</div>
       <div class="overlay"></div>
       <div class="content">
         <span class="badge badge-gold">VOCÊ ESTÁ QUASE LÁ 🍺</span>
@@ -143,7 +143,7 @@ const ClienteApp = {
       .join("");
     const camBar = campanha || Logic.patrocinioEm(e.id);
     return `<article class="est-card" data-go="#/est/${e.id}">
-      <div class="thumb photo"><img src="${e.imagem}" alt="${e.nome}" onerror="this.style.display='none'"/></div>
+      <div class="thumb photo"><img src="${Logic.imagemEst(e)}" alt="${e.nome}" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(e)}'"/></div>
       <div class="body">
         <h3>${e.nome}</h3>
         <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)} · ★ ${e.avaliacao}</p>
@@ -415,7 +415,7 @@ const ClienteApp = {
       .join("");
     return `${this.back(e.nome)}
       <div class="photo" style="height:180px;border-radius:24px;margin-bottom:14px">
-        <img src="${e.imagem}" alt="${e.nome}" onerror="this.style.display='none'"/>
+        <img src="${Logic.imagemEst(e)}" alt="${e.nome}" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(e)}'"/>
         <div class="overlay"></div>
         <div style="position:absolute;bottom:12px;left:14px">
           <h1>${e.nome}</h1>
@@ -518,7 +518,7 @@ const ClienteApp = {
           const par = Store.find("parceiros", c.parceiroId);
           const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
           const ests = (c.estabelecimentos || []).slice(0, 3).map((id) => Logic.est(id)?.nome).filter(Boolean);
-          const img = casa?.imagem || Logic.est(c.estabelecimentos?.[0])?.imagem || Store.all("estabelecimentos")[i + 1]?.imagem;
+          const img = Logic.imagemEst(casa) || Logic.imagemEst(c.estabelecimentos?.[0]) || Logic.imagemEst(Store.all("estabelecimentos")[i + 1]);
           const selo = c.origem === "estabelecimento" ? casa?.nome || "Sua casa" : par?.selo || "Marca demonstrativa";
           return `<article class="offer-banner photo" data-go="#/ofertas/${c.id}">
             <img src="${img}" alt="" onerror="this.style.display='none'"/>
