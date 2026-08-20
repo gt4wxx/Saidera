@@ -1,0 +1,3 @@
+Kit de marca Saidera separado a partir da prancha aprovada.
+Arquivos: logo principal, símbolo, logo horizontal, ícones do aplicativo, favicon, paleta e banners.
+Observação: os recortes preservam exatamente a arte aprovada na prancha; para versões finais transparentes/vetoriais, recomenda-se gerar/exportar cada ativo individualmente.
