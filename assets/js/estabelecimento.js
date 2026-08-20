@@ -8,6 +8,9 @@ const EstApp = {
   clienteSel: "cli-001",
   campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
   volta: { qtd: 10, ids: [], mensagem: "" },
+  cliPage: 1,
+  cliPerPage: 10,
+  cliQuery: "",
 
   boot() {
     Store.init();
@@ -84,7 +87,7 @@ const EstApp = {
             </div>
           </div>
           <div class="row">
-            <div class="search wide search">${Icons.search()}<input placeholder="Buscar cliente" data-jump-search/></div>
+            <div class="search wide search">${Icons.search()}<input placeholder="Buscar cliente" data-jump-search value="${this.view === "clientes" ? this.cliQuery.replace(/"/g, "&quot;") : ""}"/></div>
             <a class="btn btn-gold btn-sm" href="#/registrar">Registrar consumo</a>
           </div>
         </div>
@@ -202,9 +205,49 @@ const EstApp = {
       .join("");
   },
 
+  pager(page, pages, label = "Páginas") {
+    if (pages <= 1) return "";
+    const windowSize = 4;
+    const start = Math.min(page, Math.max(1, pages - windowSize + 1));
+    const end = Math.min(pages, start + windowSize - 1);
+    const nums = [];
+    for (let n = start; n <= end; n++) nums.push(n);
+    const dots = `<span class="pager-dots" aria-hidden="true">…</span>`;
+    const buttons = nums
+      .map(
+        (n) =>
+          `<button type="button" class="pager-num ${n === page ? "on" : ""}" data-page="${n}" aria-label="Página ${n}" ${n === page ? "aria-current='page'" : ""}>${n}</button>`
+      )
+      .join("");
+    return `<nav class="pager" aria-label="${label}">
+      <button type="button" class="pager-nav" data-page="${Math.max(1, page - 1)}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>
+      ${start > 1 ? dots : ""}
+      ${buttons}
+      ${end < pages ? dots : ""}
+      <button type="button" class="pager-nav" data-page="${Math.min(pages, page + 1)}" ${page === pages ? "disabled" : ""} aria-label="Próxima página">›</button>
+    </nav>`;
+  },
+
+  clientesFiltrados() {
+    const q = (this.cliQuery || "").trim().toLowerCase();
+    return Logic.clientesDoEst(this.estId).filter((c) => {
+      if (!q) return true;
+      return [c.nome, c.codigo, c.email, c.telefone, c.primeiroNome].some((v) => (v || "").toLowerCase().includes(q));
+    });
+  },
+
   clientes() {
-    const list = Logic.clientesDoEst(this.estId).slice(0, 50);
-    const rows = list
+    const list = this.clientesFiltrados();
+    const per = this.cliPerPage;
+    const pages = Math.max(1, Math.ceil(list.length / per));
+    if (this.cliPage > pages) this.cliPage = pages;
+    if (this.cliPage < 1) this.cliPage = 1;
+    const page = this.cliPage;
+    const start = (page - 1) * per;
+    const slice = list.slice(start, start + per);
+    const from = list.length ? start + 1 : 0;
+    const to = start + slice.length;
+    const rows = slice
       .map((c) => {
         const prefs = Logic.preferencias(c.id, this.estId);
         const fav = prefs[0] ? Logic.bebida(prefs[0].id) : Logic.bebida(c.bebidaFavoritaId);
@@ -221,12 +264,16 @@ const EstApp = {
         </tr>`;
       })
       .join("");
+    const busca = this.cliQuery.trim()
+      ? `${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.cliQuery.trim()}”`
+      : `${from}–${to} de ${list.length} clientes com movimento nesta casa`;
     return `<section class="panel">
-      <p class="muted small" style="margin-bottom:12px">${list.length} clientes com movimento neste estabelecimento.</p>
+      <p class="muted small" style="margin-bottom:12px">${busca}</p>
       <div class="table-wrap"><table class="data">
         <thead><tr><th>Cliente</th><th>Favorita</th><th>Tampas</th><th>Saideras</th><th>Última visita</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows || `<tr><td colspan="6" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
       </table></div>
+      ${this.pager(page, pages, "Páginas de clientes")}
     </section>`;
   },
 
@@ -643,6 +690,35 @@ const EstApp = {
   bind() {
     this.root.querySelector("[data-menu]")?.addEventListener("click", () => this.root.querySelector("#sidebar")?.classList.toggle("open"));
     this.root.querySelectorAll("[data-href]").forEach((tr) => tr.addEventListener("click", () => (location.hash = tr.getAttribute("data-href"))));
+    this.root.querySelectorAll("[data-page]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const n = Number(el.getAttribute("data-page"));
+        if (!n || el.disabled || n === this.cliPage) return;
+        this.cliPage = n;
+        this.render();
+        this.root.querySelector(".table-wrap")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      })
+    );
+    const buscaHead = this.root.querySelector("[data-jump-search]");
+    buscaHead?.addEventListener("input", (e) => {
+      if (this.view !== "clientes") return;
+      this.cliQuery = e.target.value;
+      this.cliPage = 1;
+      this.render();
+      const again = this.root.querySelector("[data-jump-search]");
+      if (again) {
+        again.focus();
+        const len = again.value.length;
+        again.setSelectionRange(len, len);
+      }
+    });
+    buscaHead?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || this.view === "clientes") return;
+      const q = buscaHead.value.toLowerCase();
+      const c = Store.all("clientes").find((x) => x.nome.toLowerCase().includes(q) || x.codigo.toLowerCase().includes(q));
+      if (c) location.hash = `#/cliente/${c.id}`;
+      else UI.toast("Cliente não encontrado na demonstração.");
+    });
     this.root.querySelectorAll("[data-entregar]").forEach((btn) =>
       btn.addEventListener("click", () => {
         const [cid, bid] = btn.getAttribute("data-entregar").split("|");
