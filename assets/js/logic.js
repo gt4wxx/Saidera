@@ -80,14 +80,169 @@ const Logic = {
     return this.metaOriginal(est, bebidaId);
   },
 
-  campanhasPatrocinio() {
-    return Store.all("campanhas").filter((c) => c.status === "ativa" && c.disparada);
+  campanhasPatrocinio(clienteId) {
+    return Store.all("campanhas").filter((c) => {
+      if (c.status !== "ativa" || !c.disparada) return false;
+      if (clienteId && !this.clienteNoPublico(clienteId, c)) return false;
+      return true;
+    });
   },
 
-  patrocinioEm(estId, bebidaId) {
-    return this.campanhasPatrocinio().find(
-      (c) => (!bebidaId || c.bebidaId === bebidaId) && (c.estabelecimentos || []).includes(estId)
+  patrocinioEm(estId, bebidaId, clienteId) {
+    return this.campanhasPatrocinio(clienteId).find((c) => {
+      if (!c.metaTampas || c.alteraMeta === false) return false;
+      if (bebidaId && c.bebidaId !== bebidaId) return false;
+      if (!(c.estabelecimentos || []).includes(estId)) return false;
+      if (clienteId && !this.clienteNoPublico(clienteId, c)) return false;
+      if (!clienteId && c.publico === "aniversario") return false;
+      return true;
+    });
+  },
+
+  mesNiverPad() {
+    return String(this.hoje().getMonth() + 1).padStart(2, "0");
+  },
+
+  ehAniversarianteMes(cli) {
+    return (cli?.nascimento || "").includes(`/${this.mesNiverPad()}/`);
+  },
+
+  tipoCampanhaLabel(tipo) {
+    return (
+      {
+        comparecer: "Comparecer",
+        aniversario: "Aniversário",
+        tampas: "Tampas reduzidas",
+      }[tipo] || "Patrocínio"
     );
+  },
+
+  publicoCampanhaLabel(publico) {
+    return (
+      {
+        todos: "Quem frequenta e usa o app",
+        aniversario: "Aniversariantes do mês",
+        inativos: "Sem retornar há 30 dias",
+        quase: "Próximos da Saidera",
+      }[publico] || "Público da casa"
+    );
+  },
+
+  modelosCampanhaCasa(est) {
+    const nome = est?.nome || "sua casa";
+    return {
+      comparecer: {
+        tipo: "comparecer",
+        titulo: `Sua mesa te espera no ${nome}`,
+        mensagem: `Sua mesa te espera no ${nome}. Mostre o QR, continue suas Tampas e retire sua Saidera aqui.`,
+        publico: "todos",
+        metaTampas: null,
+        alteraMeta: false,
+      },
+      aniversario: {
+        tipo: "aniversario",
+        titulo: `Aniversário no ${nome}`,
+        mensagem: `Feliz aniversário! Neste mês sua Saidera chega mais rápido no ${nome}. Mostre o QR e aproveite.`,
+        publico: "aniversario",
+        metaTampas: 6,
+        alteraMeta: true,
+      },
+      tampas: {
+        tipo: "tampas",
+        titulo: `Saidera acelerada no ${nome}`,
+        mensagem: `Essa semana sua Saidera chega mais rápido no ${nome}. Mostre o QR, complete as Tampas e retire sua rodada.`,
+        publico: "todos",
+        metaTampas: 6,
+        alteraMeta: true,
+      },
+    };
+  },
+
+  publicoCampanha(cam) {
+    const estId = cam?.estabelecimentoId || (cam?.estabelecimentos || [])[0];
+    if (!estId) return [];
+    let clientes = this.clientesDoEst(estId);
+    if (cam.publico === "aniversario") {
+      clientes = clientes.filter((c) => this.ehAniversarianteMes(c));
+    } else if (cam.publico === "inativos") {
+      const corte = this.hoje().getTime() - 30 * 86400000;
+      clientes = clientes.filter((c) => {
+        if (c.id === "cli-001") return false;
+        if (!c.ultimaVisitaIso) return true;
+        return new Date(c.ultimaVisitaIso).getTime() < corte;
+      });
+    } else if (cam.publico === "quase") {
+      const ids = new Set(
+        Store.all("tampas")
+          .filter((t) => t.estabelecimentoId === estId && t.meta - t.atual <= 2 && t.atual > 0)
+          .map((t) => t.clienteId)
+      );
+      clientes = clientes.filter((c) => ids.has(c.id));
+    }
+    return clientes;
+  },
+
+  clienteNoPublico(clienteId, cam) {
+    if (!cam || cam.origem !== "estabelecimento") return true;
+    if (clienteId === Store.demo()?.clienteId && cam.publico !== "aniversario") return true;
+    return this.publicoCampanha(cam).some((c) => c.id === clienteId);
+  },
+
+  estimarPublicoCasa(estId, publico) {
+    const n = this.publicoCampanha({ estabelecimentoId: estId, estabelecimentos: [estId], publico }).length;
+    const demo = { todos: 486, aniversario: 36, inativos: 127, quase: 47 };
+    return Math.max(n, demo[publico] || n);
+  },
+
+  solicitarCampanhaCasa({
+    estabelecimentoId,
+    tipo,
+    publico,
+    titulo,
+    mensagem,
+    bebidaId,
+    metaTampas,
+    canal,
+  }) {
+    const est = this.est(estabelecimentoId);
+    const modelo = this.modelosCampanhaCasa(est)[tipo] || this.modelosCampanhaCasa(est).comparecer;
+    const alteraMeta = modelo.alteraMeta;
+    const per = this.periodoCampanha();
+    const cam = {
+      id: `cam-casa-${Date.now()}`,
+      titulo: titulo || modelo.titulo,
+      origem: "estabelecimento",
+      estabelecimentoId,
+      parceiroId: null,
+      status: "solicitada",
+      tipo,
+      publico: publico || modelo.publico,
+      mensagem: mensagem || modelo.mensagem,
+      metaTampas: alteraMeta ? Number(metaTampas) || modelo.metaTampas || 6 : null,
+      alteraMeta,
+      bebidaId: alteraMeta ? bebidaId || est?.bebidas?.[0]?.id || "beb-001" : bebidaId || "beb-001",
+      estabelecimentos: [estabelecimentoId],
+      periodoInicio: per.inicio,
+      periodoFim: per.fim,
+      publicoPotencial: this.estimarPublicoCasa(estabelecimentoId, publico || modelo.publico),
+      participantes: 0,
+      saideras: 0,
+      canal: canal || "push",
+      disparada: false,
+      patrocinioBar: false,
+      solicitadaEm: new Date().toISOString(),
+    };
+    Store.data.campanhas.unshift(cam);
+    Store.save();
+    return cam;
+  },
+
+  periodoCampanha(dias = 12) {
+    const d = this.hoje();
+    const fim = new Date(d);
+    fim.setDate(fim.getDate() + dias);
+    const fmt = (x) => x.toLocaleDateString("pt-BR");
+    return { inicio: fmt(d), fim: fmt(fim) };
   },
 
   ofertaConsumida(clienteId, campanhaId, estId, bebidaId) {
@@ -111,7 +266,7 @@ const Logic = {
   },
 
   ofertaAtivaPara(clienteId, estId, bebidaId) {
-    const cam = this.patrocinioEm(estId, bebidaId);
+    const cam = this.patrocinioEm(estId, bebidaId, clienteId);
     if (!cam || !clienteId) return null;
     if (this.ofertaConsumida(clienteId, cam.id, estId, bebidaId)) return null;
     const cli = this.cliente(clienteId);
@@ -211,57 +366,80 @@ const Logic = {
     if (!campanha) return null;
     campanha.status = "ativa";
     campanha.disparada = true;
-    campanha.patrocinioBar = true;
     if (canal) campanha.canal = canal;
     campanha.ativadaEm = new Date().toISOString();
-    const beb = this.bebida(campanha.bebidaId);
-    const meta = campanha.metaTampas || 6;
-    (campanha.estabelecimentos || []).forEach((estId) => {
-      const est = this.est(estId);
-      if (!est) return;
-      const item = (est.bebidas || []).find((b) => b.id === campanha.bebidaId);
-      if (item) {
-        if (item.metaOriginal == null) item.metaOriginal = item.meta || est.metaPadrao || 10;
-        item.meta = meta;
-        item.regra = "patrocinio";
-        item.campanhaId = campanha.id;
-      } else {
-        est.bebidas = est.bebidas || [];
-        est.bebidas.push({
-          id: campanha.bebidaId,
-          nome: beb?.nome || campanha.bebidaId,
-          meta,
-          metaOriginal: est.metaPadrao || 10,
-          regra: "patrocinio",
-          campanhaId: campanha.id,
+    const alteraMeta = campanha.alteraMeta !== false && campanha.metaTampas;
+    campanha.patrocinioBar = Boolean(alteraMeta);
+    if (alteraMeta) {
+      const beb = this.bebida(campanha.bebidaId);
+      const meta = campanha.metaTampas;
+      const soPublico = campanha.origem === "estabelecimento" && campanha.publico && campanha.publico !== "todos";
+      if (!soPublico) {
+        (campanha.estabelecimentos || []).forEach((estId) => {
+          const est = this.est(estId);
+          if (!est) return;
+          const item = (est.bebidas || []).find((b) => b.id === campanha.bebidaId);
+          if (item) {
+            if (item.metaOriginal == null) item.metaOriginal = item.meta || est.metaPadrao || 10;
+            item.meta = meta;
+            item.regra = "patrocinio";
+            item.campanhaId = campanha.id;
+          } else {
+            est.bebidas = est.bebidas || [];
+            est.bebidas.push({
+              id: campanha.bebidaId,
+              nome: beb?.nome || campanha.bebidaId,
+              meta,
+              metaOriginal: est.metaPadrao || 10,
+              regra: "patrocinio",
+              campanhaId: campanha.id,
+            });
+          }
+          est.promocao = `${beb?.nome || "Oferta"} com Saidera em ${meta} Tampas`;
         });
       }
-      est.promocao = `${beb?.nome || "Oferta"} com Saidera em ${meta} Tampas`;
-    });
-    Store.all("tampas")
-      .filter(
-        (t) => t.bebidaId === campanha.bebidaId && (campanha.estabelecimentos || []).includes(t.estabelecimentoId)
-      )
-      .forEach((t) => {
-        t.campanhaId = campanha.id;
-        this.ajustarProgressoMeta(t, meta, campanha);
-      });
-    const cliId = Store.demo().clienteId;
-    const jaNotificou = Store.all("notificacoes").some((n) => n.campanhaId === campanha.id && n.clienteId === cliId);
-    if (!jaNotificou) {
+      Store.all("tampas")
+        .filter(
+          (t) => t.bebidaId === campanha.bebidaId && (campanha.estabelecimentos || []).includes(t.estabelecimentoId)
+        )
+        .forEach((t) => {
+          if (campanha.origem === "estabelecimento" && !this.clienteNoPublico(t.clienteId, campanha)) return;
+          t.campanhaId = campanha.id;
+          this.ajustarProgressoMeta(t, meta, campanha);
+        });
+    }
+    this.notificarDisparoCampanha(campanha);
+    Store.save();
+    return campanha;
+  },
+
+  notificarDisparoCampanha(cam) {
+    const extra = cam.metaTampas ? ` ${cam.metaTampas} Tampas nesta casa.` : "";
+    let ids;
+    if (cam.origem === "estabelecimento") {
+      ids = this.publicoCampanha(cam).map((c) => c.id);
+      if (cam.publico !== "aniversario") {
+        const demoId = Store.demo().clienteId;
+        if (!ids.includes(demoId)) ids.unshift(demoId);
+      }
+      ids = ids.slice(0, 40);
+    } else {
+      ids = [Store.demo().clienteId];
+    }
+    ids.forEach((cliId, i) => {
+      const ja = Store.all("notificacoes").some((n) => n.campanhaId === cam.id && n.clienteId === cliId);
+      if (ja) return;
       Store.data.notificacoes.unshift({
-        id: `ntf-oferta-${Date.now()}`,
+        id: `ntf-oferta-${Date.now()}-${i}-${cliId}`,
         clienteId: cliId,
-        titulo: campanha.titulo,
-        texto: `${campanha.mensagem} ${meta} Tampas nos bares participantes.`,
+        titulo: cam.titulo,
+        texto: `${cam.mensagem}${extra}`,
         tipo: "oferta",
         lida: false,
         criadoEm: new Date().toISOString(),
-        campanhaId: campanha.id,
+        campanhaId: cam.id,
       });
-    }
-    Store.save();
-    return campanha;
+    });
   },
 
   progresso(clienteId, estId, bebidaId) {
@@ -445,6 +623,9 @@ const Logic = {
     Store.all("consumos")
       .filter((c) => c.estabelecimentoId === estId)
       .forEach((c) => ids.add(c.clienteId));
+    Store.all("saideras")
+      .filter((s) => s.estabelecimentoId === estId)
+      .forEach((s) => ids.add(s.clienteId));
     return [...ids].map((id) => this.cliente(id)).filter(Boolean);
   },
 

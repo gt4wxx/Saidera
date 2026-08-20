@@ -150,18 +150,26 @@ const AdminApp = {
   },
 
   campanhas() {
-    return `<section class="panel">${Store.all("campanhas")
+    const pendentes = Store.all("campanhas").filter((c) => c.status === "solicitada" || (c.status === "ativa" && !c.disparada)).length;
+    return `<section class="panel">
+      ${pendentes ? `<p class="notice" style="margin-bottom:14px">${pendentes} pedido(s) aguardando validação e disparo.</p>` : ""}
+      ${Store.all("campanhas")
       .map((c) => {
         const p = Store.find("parceiros", c.parceiroId);
+        const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
         const on = c.status === "ativa" && c.disparada;
-        return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a">
+        const origem = c.origem === "estabelecimento" ? casa?.nome || "Estabelecimento" : p?.nome || "Parceiro";
+        const tipo = c.origem === "estabelecimento" ? Logic.tipoCampanhaLabel(c.tipo) : "Patrocínio";
+        return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a;align-items:flex-start;gap:12px">
           <div>
             <strong>${c.titulo}</strong>
-            <p class="tiny muted">${p?.nome} · ${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas · ${(c.estabelecimentos || []).length} casas · ${c.status}</p>
+            <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.metaTampas ? c.metaTampas + " Tampas" : "mensagem"} · ${(c.estabelecimentos || []).length} casa(s) · ${c.status}</p>
+            ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${c.mensagem}</p>` : ""}
+            ${c.origem === "estabelecimento" ? `<p class="tiny gold" style="margin-top:4px">Canal ${c.canal || "push"} · ${(c.publicoPotencial || 0).toLocaleString("pt-BR")} destinatários</p>` : ""}
           </div>
-          <div class="row">
-            <span class="badge ${c.status === "solicitada" ? "badge-gold" : on ? "badge-green" : "badge-ghost"}">${on ? "patrocínio ativo" : c.status}</span>
-            ${c.status === "solicitada" || (c.status === "ativa" && !c.disparada) ? `<button class="btn btn-gold btn-sm" data-ativar="${c.id}">Ativar e disparar</button>` : ""}
+          <div class="row" style="flex-shrink:0">
+            <span class="badge ${c.status === "solicitada" ? "badge-gold" : on ? "badge-green" : "badge-ghost"}">${on ? "disparada" : c.status}</span>
+            ${c.status === "solicitada" || (c.status === "ativa" && !c.disparada) ? `<button class="btn btn-gold btn-sm" data-ativar="${c.id}">Validar e disparar</button>` : ""}
           </div>
         </div>`;
       })
@@ -211,11 +219,14 @@ const AdminApp = {
     const estimado = Logic.audienciasEstimar(this.aud);
     const pendentes = Store.all("campanhas").filter((c) => c.status === "solicitada" || (c.status === "ativa" && !c.disparada));
     return `<section class="panel" style="max-width:640px">
-      <h3>Ativar patrocínio e disparar</h3>
+      <h3>Validar e disparar</h3>
       <div class="field" style="margin:10px 0"><span>Campanha</span>
         <select id="cam-disp">
           ${pendentes.length
-            ? pendentes.map((c) => `<option value="${c.id}">${c.titulo} · ${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas · ${c.status}</option>`).join("")
+            ? pendentes.map((c) => {
+                const origem = c.origem === "estabelecimento" ? Logic.est(c.estabelecimentoId)?.nome : Store.find("parceiros", c.parceiroId)?.nome;
+                return `<option value="${c.id}">${c.titulo} · ${origem || ""} · ${c.tipo ? Logic.tipoCampanhaLabel(c.tipo) : c.metaTampas + " Tampas"}</option>`;
+              }).join("")
             : `<option value="">Nenhuma solicitação pendente</option>`}
         </select>
       </div>
@@ -226,9 +237,9 @@ const AdminApp = {
             .join("")}
         </div>
       </div>
-      <p class="notice" style="margin:14px 0">A oferta entra no app do cliente e os bares escolhidos passam a usar a meta de Tampas da campanha. Destinatários estimados: ${estimado.toLocaleString("pt-BR")}.</p>
+      <p class="notice" style="margin:14px 0">O Admin valida o pedido e dispara. Campanhas da casa vão para quem frequenta o app; patrocínio de marca altera a meta de Tampas nos bares escolhidos. Estimativa de rede: ${estimado.toLocaleString("pt-BR")}.</p>
       ${pendentes.length ? `<p class="small muted">${pendentes.length} campanha(s) aguardando ativação.</p>` : ""}
-      <button class="btn btn-gold btn-block" id="simular" ${pendentes.length ? "" : "disabled"}>Ativar patrocínio</button>
+      <button class="btn btn-gold btn-block" id="simular" ${pendentes.length ? "" : "disabled"}>Validar e disparar</button>
     </section>`;
   },
 
@@ -295,6 +306,15 @@ const AdminApp = {
     </section>`;
   },
 
+  msgAtivacao(cam) {
+    if (cam?.origem === "estabelecimento") {
+      const quem = Logic.publicoCampanhaLabel(cam.publico);
+      const extra = cam.metaTampas ? ` A meta desta casa passou a ${cam.metaTampas} Tampas para esse público.` : "";
+      return `A campanha da casa foi disparada para ${quem}.${extra}`;
+    }
+    return "A oferta está no app do cliente. Os bares escolhidos passaram a usar a meta de Tampas da campanha.";
+  },
+
   bind() {
     this.root.querySelector("[data-menu]")?.addEventListener("click", () => this.root.querySelector("#sidebar")?.classList.toggle("open"));
     this.root.querySelectorAll("[data-bairro]").forEach((b) =>
@@ -330,7 +350,7 @@ const AdminApp = {
       Logic.ativarPatrocinio(cam, { canal: this.aud.canal });
       UI.modal({
         center: true,
-        html: `${UI.celebrate("Patrocínio ativado", "A oferta está no app do cliente. Os bares escolhidos passaram a usar a meta de Tampas da campanha.")}
+        html: `${UI.celebrate("Disparo ativado", this.msgAtivacao(cam))}
           <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Fechar</button>`,
       });
     });
@@ -341,7 +361,7 @@ const AdminApp = {
         Logic.ativarPatrocinio(cam, { canal: this.aud.canal });
         UI.modal({
           center: true,
-          html: `${UI.celebrate("Patrocínio ativado", "A oferta aparece no cliente com a regra de Tampas nos bares participantes.")}
+          html: `${UI.celebrate("Disparo ativado", this.msgAtivacao(cam))}
             <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Fechar</button>`,
         });
       })

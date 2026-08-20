@@ -176,6 +176,7 @@ const ParceiroApp = {
       const cam = {
         id: `cam-live-${Date.now()}`,
         titulo: `${obj} · ${Logic.bebida(bebidaId)?.nome || "Marca"}`,
+        origem: "parceiro",
         parceiroId: this.parId,
         status: "solicitada",
         mensagem: this.root.querySelector("#msg").value,

@@ -135,3 +135,27 @@ body.dash {
   width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block;
 }
 .status-dot.off { background: var(--gray-2); }
+
+.tipo-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tipo-card {
+  text-align: left;
+  background: #1a1a1a;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  padding: 16px 14px;
+  min-height: 132px;
+  color: inherit;
+}
+.tipo-card h3 { margin: 8px 0 4px; font-size: 1rem; }
+.tipo-card.on { border-color: var(--gold); background: var(--gold-dim); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: #262626; border-radius: 999px; padding: 8px 12px;
+  font-size: 0.8rem; font-weight: 700; color: #e6d9a8;
+  cursor: pointer; border: 0;
+}
+.chip.on { background: var(--gold); color: #171717; }
+
+@media (max-width: 720px) {
+  .tipo-pick { grid-template-columns: 1fr; }
+}

@@ -6,6 +6,7 @@ const EstApp = {
   qty: 1,
   drinkId: "beb-001",
   clienteSel: "cli-001",
+  campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
 
   boot() {
     Store.init();
@@ -18,6 +19,26 @@ const EstApp = {
 
   est() {
     return Logic.est(this.estId);
+  },
+
+  aplicarModeloCamp(tipo, publico) {
+    const modelo = Logic.modelosCampanhaCasa(this.est())[tipo] || Logic.modelosCampanhaCasa(this.est()).comparecer;
+    this.campForm.tipo = tipo;
+    this.campForm.publico = publico || modelo.publico;
+    this.campForm.mensagem = modelo.mensagem;
+    this.campForm.meta = modelo.metaTampas || 6;
+    this.campForm.bebidaId = this.est()?.bebidas?.[0]?.id || "beb-001";
+  },
+
+  syncCampForm() {
+    const msg = this.root.querySelector("#camp-msg")?.value;
+    const meta = this.root.querySelector("#camp-meta")?.value;
+    const bebida = this.root.querySelector("#camp-bebida")?.value;
+    const canal = this.root.querySelector("#camp-canal")?.value;
+    if (msg != null) this.campForm.mensagem = msg;
+    if (meta != null) this.campForm.meta = Number(meta) || 6;
+    if (bebida) this.campForm.bebidaId = bebida;
+    if (canal) this.campForm.canal = canal;
   },
 
   route() {
@@ -362,7 +383,7 @@ const EstApp = {
     const quase = Store.all("tampas")
       .filter((t) => t.estabelecimentoId === this.estId && t.meta - t.atual <= 2 && t.atual > 0)
       .slice(0, 6);
-    const niver = Logic.clientesDoEst(this.estId).filter((c) => c.nascimento?.includes("/08/") || c.nascimento?.includes("/11/")).slice(0, 6);
+    const niver = Logic.clientesDoEst(this.estId).filter((c) => Logic.ehAniversarianteMes(c) || c.nascimento?.includes("/11/")).slice(0, 6);
     return `<div class="kpis">
       ${[
         ["Clientes cadastrados", "1.284"],
@@ -392,7 +413,7 @@ const EstApp = {
         ${quase
           .map((t) => {
             const c = Logic.cliente(t.clienteId);
-            return `<div class="row between" style="padding:8px 0"><div><strong>${c?.primeiroNome}</strong><p class="tiny muted">${Logic.bebida(t.bebidaId).nome} ${t.atual}/${t.meta}</p></div><span class="gold small">Falta ${t.meta - t.atual}</span></div>`;
+            return `<div class="row between" style="padding:8px 0"><div><strong>${c?.primeiroNome}</strong><p class="tiny muted">${Logic.bebida(t.bebidaId).nome} ${t.atual}/${t.meta}</p></div><button class="btn btn-gold btn-sm" data-solicitar="quase">Acelerar</button></div>`;
           })
           .join("")}
       </section>
@@ -401,6 +422,7 @@ const EstApp = {
       <section class="panel">
         <h3>Aniversariantes</h3>
         ${niver.map((c) => `<div class="row between" style="padding:8px 0"><span>${c.nome}</span><span class="muted small">${c.nascimento}</span></div>`).join("")}
+        <button class="btn btn-gold btn-sm btn-block" style="margin-top:12px" data-solicitar="aniversario">Campanha de aniversário</button>
       </section>
       <section class="panel">
         <h3>Clientes inativos</h3>
@@ -409,7 +431,7 @@ const EstApp = {
             const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
             return `<div class="row between" style="padding:8px 0">
               <div><strong>${c.nome}</strong><p class="tiny muted">${Logic.bebida(t?.bebidaId || "beb-001").nome} · ${t ? t.atual + "/" + t.meta : "—"} · última visita há 37 dias</p></div>
-              <button class="btn btn-navy btn-sm" data-solicitar>Solicitar campanha</button>
+              <button class="btn btn-navy btn-sm" data-solicitar="inativos">Chamar de volta</button>
             </div>`;
           })
           .join("")}
@@ -418,17 +440,104 @@ const EstApp = {
   },
 
   campanhas() {
-    const list = Store.all("campanhas").filter((c) => (c.estabelecimentos || []).includes(this.estId));
-    return `<section class="panel">${list
-      .map((c) => {
-        const p = Store.find("parceiros", c.parceiroId);
-        const on = c.status === "ativa" && c.disparada;
-        return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a">
-          <div><strong>${c.titulo}</strong><p class="tiny muted">${p?.nome} · ${Logic.bebida(c.bebidaId)?.nome} · ${c.status}${on ? " · visível no app" : ""}</p></div>
-          <span class="badge ${on ? "badge-gold" : "badge-navy"}">${c.metaTampas} Tampas</span>
+    const est = this.est();
+    const form = this.campForm;
+    const modelos = Logic.modelosCampanhaCasa(est);
+    const tipos = [
+      ["comparecer", "Comparecer", "Chamar quem já frequenta a casa e usa o app para consumo e retirada da Saidera.", Icons.megaphone()],
+      ["aniversario", "Aniversário", "Oferta pronta para quem faz aniversário neste mês.", Icons.gift()],
+      ["tampas", "Tampas reduzidas", "Saidera mais rápida: menos Tampas nesta casa.", Icons.tampas()],
+    ];
+    const publicos = [
+      ["todos", "Quem frequenta"],
+      ["aniversario", "Aniversariantes"],
+      ["quase", "Quase Saidera"],
+      ["inativos", "Inativos"],
+    ];
+    const drinks = (est.bebidas || []).slice(0, 10);
+    const estimado = form.tipo ? Logic.estimarPublicoCasa(this.estId, form.publico) : 0;
+    const list = Store.all("campanhas").filter(
+      (c) => c.estabelecimentoId === this.estId || (c.estabelecimentos || []).includes(this.estId)
+    );
+    const alteraMeta = form.tipo === "tampas" || form.tipo === "aniversario";
+    return `<section class="panel" style="margin-bottom:16px">
+      <h3>Nova campanha em massa</h3>
+      <p class="muted" style="margin:6px 0 14px">Escolha o tipo. A mensagem e o público já vêm prontos — ajuste se quiser e envie ao Admin Saidera para validar e disparar.</p>
+      <div class="tipo-pick">
+        ${tipos
+          .map(
+            ([id, nome, desc, ic]) =>
+              `<button type="button" class="tipo-card ${form.tipo === id ? "on" : ""}" data-camp-tipo="${id}">
+                <span class="gold">${ic}</span>
+                <h3>${nome}</h3>
+                <p class="tiny muted">${desc}</p>
+              </button>`
+          )
+          .join("")}
+      </div>
+      ${
+        form.tipo
+          ? `<div style="margin-top:18px">
+        <p class="tiny muted" style="margin-bottom:8px">Para quem dispara</p>
+        <div class="chips" style="margin-bottom:14px">
+          ${publicos
+            .map(
+              ([id, nome]) =>
+                `<button type="button" class="chip ${form.publico === id ? "on" : ""}" data-camp-publico="${id}">${nome}</button>`
+            )
+            .join("")}
+        </div>
+        <div class="form-grid">
+          ${
+            alteraMeta
+              ? `<div class="field"><span>Bebida da oferta</span>
+            <select id="camp-bebida">
+              ${drinks
+                .map((b) => `<option value="${b.id}" ${b.id === form.bebidaId ? "selected" : ""}>${b.nome}</option>`)
+                .join("")}
+            </select>
+          </div>
+          <div class="field"><span>Nova meta de Tampas</span><input id="camp-meta" type="number" min="3" max="12" value="${form.meta}"/></div>`
+              : ""
+          }
+          <div class="field"><span>Canal</span>
+            <select id="camp-canal">
+              ${["push", "whatsapp", "email"]
+                .map((c) => `<option value="${c}" ${form.canal === c ? "selected" : ""}>${c}</option>`)
+                .join("")}
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px"><span>Mensagem pronta</span>
+          <textarea id="camp-msg" rows="3">${form.mensagem || modelos[form.tipo].mensagem}</textarea>
+        </div>
+        <p class="notice" style="margin:14px 0">Destinatários estimados: <strong>${estimado.toLocaleString("pt-BR")}</strong> · ${Logic.publicoCampanhaLabel(form.publico)} · ${form.canal}. O Admin vê este pedido e ativa o disparo.</p>
+        <button class="btn btn-gold btn-block" id="enviar-camp-casa">Enviar ao Admin Saidera</button>
+      </div>`
+          : ""
+      }
+    </section>
+    <section class="panel">
+      <h3 style="margin-bottom:8px">Campanhas desta casa</h3>
+      ${
+        list
+          .map((c) => {
+            const p = Store.find("parceiros", c.parceiroId);
+            const on = c.status === "ativa" && c.disparada;
+            const origem = c.origem === "estabelecimento" ? "Sua solicitação" : p?.nome || "Parceiro";
+            const tipo = c.tipo ? Logic.tipoCampanhaLabel(c.tipo) : "Patrocínio";
+            return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a;align-items:flex-start">
+          <div>
+            <strong>${c.titulo}</strong>
+            <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.status}${on ? " · visível no app" : c.status === "solicitada" ? " · aguardando admin" : ""}</p>
+            ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${c.mensagem}</p>` : ""}
+          </div>
+          <span class="badge ${on ? "badge-gold" : c.status === "solicitada" ? "badge-navy" : "badge-ghost"}">${c.metaTampas ? c.metaTampas + " Tampas" : "Mensagem"}</span>
         </div>`;
-      })
-      .join("") || "<p class='muted'>Nenhuma campanha neste estabelecimento.</p>"}</section>`;
+          })
+          .join("") || "<p class='muted'>Nenhuma campanha neste estabelecimento.</p>"
+      }
+    </section>`;
   },
 
   config() {
@@ -573,10 +682,57 @@ const EstApp = {
     this.root.querySelector("#save-cfg")?.addEventListener("click", () => UI.toast("Configurações salvas nesta demonstração."));
     this.root.querySelectorAll("[data-solicitar]").forEach((b) =>
       b.addEventListener("click", () => {
-        UI.toast("Solicitação de campanha enviada ao Saidera.");
+        const preset = b.getAttribute("data-solicitar") || "comparecer";
+        const map = { inativos: ["comparecer", "inativos"], aniversario: ["aniversario", "aniversario"], quase: ["tampas", "quase"], comparecer: ["comparecer", "todos"] };
+        const [tipo, publico] = map[preset] || ["comparecer", "todos"];
+        this.aplicarModeloCamp(tipo, publico);
         location.hash = "#/campanhas";
+        this.view = "campanhas";
+        this.render();
       })
     );
+    this.root.querySelectorAll("[data-camp-tipo]").forEach((b) =>
+      b.addEventListener("click", () => {
+        this.syncCampForm();
+        this.aplicarModeloCamp(b.getAttribute("data-camp-tipo"));
+        this.render();
+      })
+    );
+    this.root.querySelectorAll("[data-camp-publico]").forEach((b) =>
+      b.addEventListener("click", () => {
+        this.syncCampForm();
+        this.campForm.publico = b.getAttribute("data-camp-publico");
+        this.render();
+      })
+    );
+    this.root.querySelector("#enviar-camp-casa")?.addEventListener("click", () => {
+      this.syncCampForm();
+      if (!this.campForm.tipo) {
+        UI.toast("Escolha o tipo da campanha.");
+        return;
+      }
+      const modelo = Logic.modelosCampanhaCasa(this.est())[this.campForm.tipo];
+      const payload = {
+        estabelecimentoId: this.estId,
+        tipo: this.campForm.tipo,
+        publico: this.campForm.publico,
+        titulo: modelo.titulo,
+        mensagem: this.campForm.mensagem || modelo.mensagem,
+        bebidaId: this.campForm.bebidaId,
+        metaTampas: this.campForm.meta,
+        canal: this.campForm.canal,
+      };
+      this.campForm.tipo = null;
+      const cam = Logic.solicitarCampanhaCasa(payload);
+      UI.modal({
+        center: true,
+        html: `<h2>Pedido enviado ao Admin Saidera</h2>
+          <p class="muted" style="margin:10px 0 6px">${cam.titulo}</p>
+          <p class="small muted">${Logic.publicoCampanhaLabel(cam.publico)} · ${cam.publicoPotencial.toLocaleString("pt-BR")} destinatários · canal ${cam.canal}.</p>
+          <p class="notice" style="margin:12px 0">Nada entra no app até o Admin validar e ativar o disparo.</p>
+          <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
+      });
+    });
     const busca = this.root.querySelector("#busca-cli");
     busca?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {

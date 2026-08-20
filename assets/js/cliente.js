@@ -506,28 +506,30 @@ const ClienteApp = {
 
   ofertas() {
     if (this.params.id) return this.ofertaDetalhe();
-    const camps = Logic.campanhasPatrocinio();
+    const camps = Logic.campanhasPatrocinio(this.me().id);
     const extra = Store.all("notificacoes").filter((n) => n.clienteId === this.me().id && n.tipo === "oferta" && n.campanhaId);
     if (!camps.length) {
-      return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhum patrocínio ativo no momento.</p>`)}
-        <p class="notice">Quando o Admin Saidera ativar uma campanha solicitada pelo parceiro, ela aparece aqui com a meta de Tampas dos bares participantes.</p>`;
+      return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhuma campanha ativa para você no momento.</p>`)}
+        <p class="notice">Quando o Admin Saidera ativar um pedido do bar ou um patrocínio de marca, a oferta aparece aqui.</p>`;
     }
-    return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Patrocínios ativados · Aracaju</p>`)}
+    return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Campanhas ativas · Aracaju</p>`)}
       ${camps
         .map((c, i) => {
           const par = Store.find("parceiros", c.parceiroId);
+          const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
           const ests = (c.estabelecimentos || []).slice(0, 3).map((id) => Logic.est(id)?.nome).filter(Boolean);
-          const img = Logic.est(c.estabelecimentos?.[0])?.imagem || Store.all("estabelecimentos")[i + 1]?.imagem;
+          const img = casa?.imagem || Logic.est(c.estabelecimentos?.[0])?.imagem || Store.all("estabelecimentos")[i + 1]?.imagem;
+          const selo = c.origem === "estabelecimento" ? casa?.nome || "Sua casa" : par?.selo || "Marca demonstrativa";
           return `<article class="offer-banner photo" data-go="#/ofertas/${c.id}">
             <img src="${img}" alt="" onerror="this.style.display='none'"/>
             <div class="overlay"></div>
             <div class="content">
-              <span class="badge badge-navy">PATROCINADO · ${par?.selo || "Marca demonstrativa"}</span>
-              <h2 style="margin:8px 0 4px">${Logic.bebida(c.bebidaId)?.nome || par?.nome}</h2>
+              <span class="badge badge-navy">${c.origem === "estabelecimento" ? "DA CASA" : "PATROCINADO"} · ${selo}</span>
+              <h2 style="margin:8px 0 4px">${c.origem === "estabelecimento" ? c.titulo : Logic.bebida(c.bebidaId)?.nome || par?.nome}</h2>
               <p>${c.mensagem}</p>
-              <p class="gold" style="font-weight:800;margin:8px 0">${c.metaTampas} Tampas</p>
+              ${c.metaTampas ? `<p class="gold" style="font-weight:800;margin:8px 0">${c.metaTampas} Tampas</p>` : `<p class="gold" style="font-weight:800;margin:8px 0">Compareça e mostre o QR</p>`}
               <p class="small">${ests.join(" · ")}${(c.estabelecimentos || []).length > 3 ? " · +" + (c.estabelecimentos.length - 3) : ""}</p>
-              <button class="btn btn-gold btn-sm" style="margin-top:10px">Entrar na oferta</button>
+              <button class="btn btn-gold btn-sm" style="margin-top:10px">${c.metaTampas ? "Entrar na oferta" : "Ver convite"}</button>
             </div>
           </article>`;
         })
@@ -544,23 +546,37 @@ const ClienteApp = {
     }
     Logic.aderirCampanha(this.me().id, c.id);
     const par = Store.find("parceiros", c.parceiroId);
+    const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
     const ests = (c.estabelecimentos || []).map((id) => Logic.est(id)).filter(Boolean);
     const me = this.me();
+    const daCasa = c.origem === "estabelecimento";
     return `${this.back("Oferta")}
-      <span class="badge badge-navy">PATROCINADO · ${par?.nome || ""}</span>
+      <span class="badge badge-navy">${daCasa ? "DA CASA · " + (casa?.nome || "") : "PATROCINADO · " + (par?.nome || "")}</span>
       <h1 style="margin:10px 0 6px">${c.titulo}</h1>
       <p class="muted">${c.mensagem}</p>
       <div class="card pad" style="margin:14px 0">
-        <p class="tiny muted">Regra desta oferta</p>
-        <h2>${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas</h2>
-        <p class="small muted" style="margin-top:6px">Uso único em cada casa: ao bater a meta da oferta, aquele bar volta à quantidade de Tampas da casa.</p>
+        <p class="tiny muted">${daCasa ? Logic.tipoCampanhaLabel(c.tipo) : "Regra desta oferta"}</p>
+        ${
+          c.metaTampas
+            ? `<h2>${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas</h2>
+        <p class="small muted" style="margin-top:6px">${daCasa && c.publico === "aniversario" ? "Oferta de aniversário: uso único nesta casa." : "Uso único em cada casa: ao bater a meta da oferta, aquele bar volta à quantidade de Tampas da casa."}</p>`
+            : `<h2>Compareça e mostre o QR</h2>
+        <p class="small muted" style="margin-top:6px">Continue suas Tampas e retire sua Saidera nesta casa.</p>`
+        }
       </div>
-      <h2 style="margin-bottom:10px">Bares e restaurantes da oferta</h2>
+      <h2 style="margin-bottom:10px">${daCasa ? "Nesta casa" : "Bares e restaurantes da oferta"}</h2>
       <div class="stack">${ests
         .map((e) => {
+          if (!c.metaTampas) {
+            return `<article class="card pad" data-go="#/est/${e.id}" style="cursor:pointer">
+            <p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p>
+            <h3>${e.nome}</h3>
+            <p class="tiny gold" style="margin-top:8px">Mostre o QR no salão para consumo e retirada da Saidera.</p>
+          </article>`;
+          }
           const p = Logic.garantirProgresso(me.id, e.id, c.bebidaId);
           const usada = Logic.ofertaConsumida(me.id, c.id, e.id, c.bebidaId);
-          const casa = Logic.metaOriginal(e, c.bebidaId);
+          const regraCasa = Logic.metaOriginal(e, c.bebidaId);
           return `<article class="card pad" data-go="#/est/${e.id}" style="cursor:pointer">
             <p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p>
             <div class="row between"><h3>${e.nome}</h3><strong>${p.atual}/${p.meta}</strong></div>
@@ -568,7 +584,7 @@ const ClienteApp = {
             ${UI.barra(p.atual, p.meta)}
             <p class="tiny ${usada ? "muted" : "gold"}" style="margin-top:8px">${
               usada
-                ? `Oferta usada · voltou à regra da casa (${casa} Tampas)`
+                ? `Oferta usada · voltou à regra da casa (${regraCasa} Tampas)`
                 : `${Logic.bebida(c.bebidaId)?.nome} · oferta ${c.metaTampas} Tampas (1x)`
             }</p>
           </article>`;
