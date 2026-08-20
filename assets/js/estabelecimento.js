@@ -143,7 +143,24 @@ const EstApp = {
     const r = Logic.resumoEst(this.estId);
     const week = Logic.semanaTampas(this.estId);
     const recent = this.recentes();
-    return `<div class="kpis">
+    const avisos = Logic.avisosDoEst(this.estId).slice(0, 5);
+    return `${
+      avisos.length
+        ? `<section class="panel" style="margin-bottom:16px">
+      <h3>Ofertas de parceiros</h3>
+      ${avisos
+        .map(
+          (a) =>
+            `<div style="padding:12px 0;border-bottom:1px solid #2a2a2a">
+              <strong>${a.titulo}</strong>
+              <p class="small muted" style="margin-top:4px">${a.texto}</p>
+            </div>`
+        )
+        .join("")}
+      <a class="gold small" href="#/campanhas" style="display:inline-block;margin-top:10px">Ver em Campanhas</a>
+    </section>`
+        : ""
+    }<div class="kpis">
       ${[
         ["Clientes hoje", r.clientesHoje],
         ["Tampas registradas", r.tampasHoje],
@@ -629,7 +646,7 @@ const EstApp = {
             return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a;align-items:flex-start">
           <div>
             <strong>${c.titulo}</strong>
-            <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.status}${on ? " · visível no app" : c.status === "solicitada" ? " · aguardando admin" : ""}</p>
+            <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.status}${on ? " · visível no app" : c.status === "solicitada" ? " · aguardando admin" : ""}${c.origem !== "estabelecimento" && c.periodoInicio ? " · " + Logic.periodoTexto(c) : ""}</p>
             ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${c.mensagem}</p>` : ""}
           </div>
           <span class="badge ${on ? "badge-gold" : c.status === "solicitada" ? "badge-navy" : "badge-ghost"}">${c.metaTampas ? c.metaTampas + " Tampas" : "Mensagem"}</span>

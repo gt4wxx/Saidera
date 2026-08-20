@@ -313,6 +313,74 @@ const Logic = {
     return { inicio: fmt(d), fim: fmt(fim) };
   },
 
+  periodoTexto(cam) {
+    if (!cam?.periodoInicio) return "";
+    if (cam.umDia || cam.periodoInicio === cam.periodoFim || !cam.periodoFim) return `no dia ${cam.periodoInicio}`;
+    return `de ${cam.periodoInicio} até ${cam.periodoFim}`;
+  },
+
+  isoParaBR(iso) {
+    if (!iso) return "";
+    if (iso.includes("/")) return iso;
+    const [y, m, d] = iso.split("-");
+    if (!d) return iso;
+    return `${d}/${m}/${y}`;
+  },
+
+  brParaIso(br) {
+    if (!br) return "";
+    if (br.includes("-")) return br;
+    const [d, m, y] = br.split("/");
+    return `${y}-${m}-${d}`;
+  },
+
+  bebidasDoParceiro(par) {
+    if (typeof par === "string") par = Store.find("parceiros", par);
+    if (!par) return [];
+    if (par.bebidaIds?.length) return par.bebidaIds.map((id) => this.bebida(id)).filter(Boolean);
+    const key = (par.nome || "").toLowerCase();
+    const list = Store.all("bebidas").filter((b) => {
+      const marca = (b.marca || "").toLowerCase();
+      if (!marca || marca === "casa") return false;
+      return key.includes(marca) || key.includes(marca.split(" ")[0]);
+    });
+    return list.length ? list : [this.bebida("beb-001")].filter(Boolean);
+  },
+
+  vendeBebida(est, bebidaId) {
+    if (typeof est === "string") est = this.est(est);
+    return (est?.bebidas || []).some((b) => b.id === bebidaId);
+  },
+
+  estsQueVendem(bebidaIds) {
+    const ids = (Array.isArray(bebidaIds) ? bebidaIds : [bebidaIds]).filter(Boolean);
+    return Store.all("estabelecimentos").filter((e) => e.status === "ativo" && ids.some((id) => this.vendeBebida(e, id)));
+  },
+
+  avisarEstabelecimentosParceiro(cam) {
+    if (!cam) return;
+    Store.data.avisosEstabelecimento = Store.data.avisosEstabelecimento || [];
+    const par = Store.find("parceiros", cam.parceiroId);
+    const beb = this.bebida(cam.bebidaId);
+    const periodo = this.periodoTexto(cam);
+    (cam.estabelecimentos || []).forEach((estId, i) => {
+      Store.data.avisosEstabelecimento.unshift({
+        id: `aviso-${Date.now()}-${i}-${estId}`,
+        estabelecimentoId: estId,
+        parceiroId: cam.parceiroId,
+        campanhaId: cam.id,
+        titulo: `Oferta de ${par?.nome || "parceiro"}`,
+        texto: `${par?.nome || "Um parceiro"} fez uma oferta de ${cam.metaTampas} Tampas para a Saidera de ${beb?.nome || "bebida"} ${periodo}.`,
+        lida: false,
+        criadoEm: new Date().toISOString(),
+      });
+    });
+  },
+
+  avisosDoEst(estId) {
+    return (Store.data.avisosEstabelecimento || []).filter((a) => a.estabelecimentoId === estId);
+  },
+
   ofertaConsumida(clienteId, campanhaId, estId, bebidaId) {
     const cli = this.cliente(clienteId);
     return (cli?.ofertasConsumidas || []).some(

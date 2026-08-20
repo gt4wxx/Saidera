@@ -165,7 +165,7 @@ const AdminApp = {
             <strong>${c.titulo}</strong>
             <p class="tiny muted">${origem} · ${tipo}${c.publico ? " · " + Logic.publicoCampanhaLabel(c.publico) : ""} · ${c.metaTampas ? c.metaTampas + " Tampas" : "mensagem"} · ${(c.estabelecimentos || []).length} casa(s) · ${c.status}</p>
             ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${c.mensagem}</p>` : ""}
-            ${c.origem === "estabelecimento" ? `<p class="tiny gold" style="margin-top:4px">Canal ${c.canal || "push"} · ${(c.limite || c.clienteIds?.length || c.publicoPotencial || 0).toLocaleString("pt-BR")} destinatários${c.tipo === "chamar" ? " selecionados" : ""}</p>` : ""}
+            ${c.origem === "estabelecimento" ? `<p class="tiny gold" style="margin-top:4px">Canal ${c.canal || "push"} · ${(c.limite || c.clienteIds?.length || c.publicoPotencial || 0).toLocaleString("pt-BR")} destinatários${c.tipo === "chamar" ? " selecionados" : ""}</p>` : c.periodoInicio ? `<p class="tiny gold" style="margin-top:4px">${Logic.periodoTexto(c)} · ${(c.estabelecimentos || []).length} casa(s)</p>` : ""}
           </div>
           <div class="row" style="flex-shrink:0">
             <span class="badge ${c.status === "solicitada" ? "badge-gold" : on ? "badge-green" : "badge-ghost"}">${on ? "disparada" : c.status}</span>
