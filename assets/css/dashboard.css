@@ -6,13 +6,19 @@ body.dash {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 .sidebar {
   background: #111;
   border-right: 1px solid #222;
   padding: 18px 12px;
   display: flex; flex-direction: column; gap: 6px;
-  position: sticky; top: 0; height: 100vh;
+  position: sticky; top: 0; height: 100vh; height: 100dvh;
+  overflow-y: auto;
+  z-index: 40;
+}
+.sidebar-scrim {
+  display: none;
 }
 .sidebar nav a, .sidebar nav button {
   display: flex; align-items: center; gap: 10px;
@@ -25,10 +31,10 @@ body.dash {
   background: #1c1c1c; color: var(--gold);
 }
 .side-foot { margin-top: auto; padding: 10px; }
-.dash-main { padding: 22px 26px 48px; min-width: 0; }
+.dash-main { padding: 22px 26px 48px; min-width: 0; overflow-x: hidden; }
 .dash-head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; margin-bottom: 22px;
+  gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
 }
 .dash-head h1 { font-size: 1.7rem; }
 .panel {
@@ -46,17 +52,42 @@ body.dash {
 
 @media (max-width: 720px) {
   .form-grid { grid-template-columns: 1fr; }
+  .dash-head { align-items: stretch; }
+  .dash-head > .row { flex-wrap: wrap; }
+  .search.wide { max-width: none; width: 100%; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .drink-pick { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  table.data { font-size: 0.8rem; }
+  table.data th, table.data td { padding: 10px 8px; }
 }
 @media (max-width: 1024px) {
   .dash-app { grid-template-columns: 1fr; }
   .sidebar {
     position: fixed; z-index: 40; transform: translateX(-110%);
-    width: min(280px, 86vw); transition: transform .25s ease;
+    width: min(300px, 88vw); height: 100dvh; transition: transform .25s ease;
+    box-shadow: none;
   }
-  .sidebar.open { transform: none; }
+  .sidebar.open { transform: none; box-shadow: 16px 0 40px rgba(0,0,0,0.4); }
+  .sidebar-scrim {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 39;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .dash-app:has(.sidebar.open) .sidebar-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
   .menu-btn { display: grid; }
   .kpis { grid-template-columns: 1fr 1fr; }
-  .dash-main { padding: 16px; }
+  .dash-main { padding: 14px 14px 88px; }
+  .dash-head h1 { font-size: 1.35rem; }
+}
+@media (min-width: 700px) and (max-width: 1099px) {
+  .kpis { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 1100px) {
   .kpis { grid-template-columns: repeat(4, 1fr); }

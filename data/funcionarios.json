@@ -42,41 +42,41 @@
   {
     "id": "fun-005",
     "nome": "Pedro Henrique",
-    "cargo": "Garçom",
-    "estabelecimentoId": "est-004",
+    "cargo": "Atendente",
+    "estabelecimentoId": "est-006",
     "status": "ativo",
-    "tampasHoje": 36,
-    "saiderasEntregues": 3,
+    "tampasHoje": 27,
+    "saiderasEntregues": 0,
     "avatar": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop"
   },
   {
     "id": "fun-006",
     "nome": "Luiza Mendes",
     "cargo": "Garçom",
-    "estabelecimentoId": "est-005",
+    "estabelecimentoId": "est-010",
     "status": "ativo",
-    "tampasHoje": 12,
-    "saiderasEntregues": 6,
+    "tampasHoje": 4,
+    "saiderasEntregues": 5,
     "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop"
   },
   {
     "id": "fun-007",
     "nome": "Rafael Costa",
     "cargo": "Gerente",
-    "estabelecimentoId": "est-005",
+    "estabelecimentoId": "est-009",
     "status": "ativo",
-    "tampasHoje": 24,
-    "saiderasEntregues": 6,
+    "tampasHoje": 20,
+    "saiderasEntregues": 1,
     "avatar": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop"
   },
   {
     "id": "fun-008",
     "nome": "Bianca Lopes",
-    "cargo": "Garçom",
-    "estabelecimentoId": "est-008",
+    "cargo": "Gerente",
+    "estabelecimentoId": "est-009",
     "status": "ativo",
-    "tampasHoje": 6,
-    "saiderasEntregues": 1,
+    "tampasHoje": 37,
+    "saiderasEntregues": 6,
     "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop"
   }
 ]

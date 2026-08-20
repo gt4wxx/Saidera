@@ -3,6 +3,9 @@ const ClienteApp = {
   view: "home",
   params: {},
   mapSel: null,
+  homePage: 1,
+  homeQuery: "",
+  homePerPage: 10,
 
   boot() {
     Store.init();
@@ -52,7 +55,7 @@ const ClienteApp = {
   },
 
   nav() {
-    if (["est", "qr", "notificacoes", "historico", "mapa"].includes(this.view)) return "";
+    if (this.view === "qr") return "";
     const items = [
       ["explorar", "Explorar", Icons.compass()],
       ["tampas", "Tampas", Icons.tampas()],
@@ -137,7 +140,7 @@ const ClienteApp = {
       <div class="thumb photo"><img src="${e.imagem}" alt="${e.nome}" onerror="this.style.display='none'"/></div>
       <div class="body">
         <h3>${e.nome}</h3>
-        <p class="small muted">📍 ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)} · ★ ${e.avaliacao}</p>
+        <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)} · ★ ${e.avaliacao}</p>
         <div class="chips">${drinks}<span class="chip">Padrão — ${e.metaPadrao}</span></div>
         ${e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
         <button class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
@@ -145,26 +148,81 @@ const ClienteApp = {
     </article>`;
   },
 
+  norm(s) {
+    return (s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  },
+
+  listaEstabelecimentos() {
+    const q = this.norm(this.homeQuery.trim());
+    return Store.all("estabelecimentos")
+      .filter((e) => e.status === "ativo")
+      .filter((e) => {
+        if (!q) return true;
+        return [e.nome, e.bairro, e.endereco, e.promocao, Logic.tipoEst(e)].some((v) => this.norm(v).includes(q));
+      })
+      .sort((a, b) => a.distanciaKm - b.distanciaKm);
+  },
+
+  pager(page, pages) {
+    if (pages <= 1) return "";
+    const windowSize = 4;
+    const start = Math.min(page, Math.max(1, pages - windowSize + 1));
+    const end = Math.min(pages, start + windowSize - 1);
+    const nums = [];
+    for (let n = start; n <= end; n++) nums.push(n);
+    const dots = `<span class="pager-dots" aria-hidden="true">…</span>`;
+    const buttons = nums
+      .map(
+        (n) =>
+          `<button type="button" class="pager-num ${n === page ? "on" : ""}" data-page="${n}" aria-label="Página ${n}" ${n === page ? "aria-current='page'" : ""}>${n}</button>`
+      )
+      .join("");
+    return `<nav class="pager" aria-label="Páginas de estabelecimentos">
+      <button type="button" class="pager-nav" data-page="${Math.max(1, page - 1)}" ${page === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>
+      ${start > 1 ? dots : ""}
+      ${buttons}
+      ${end < pages ? dots : ""}
+      <button type="button" class="pager-nav" data-page="${Math.min(pages, page + 1)}" ${page === pages ? "disabled" : ""} aria-label="Próxima página">›</button>
+    </nav>`;
+  },
+
   home() {
     const me = this.me();
-    const near = Store.all("estabelecimentos")
-      .filter((e) => e.status === "ativo")
-      .sort((a, b) => a.distanciaKm - b.distanciaKm)
-      .slice(0, 10);
+    const list = this.listaEstabelecimentos();
+    const per = this.homePerPage;
+    const pages = Math.max(1, Math.ceil(list.length / per));
+    if (this.homePage > pages) this.homePage = pages;
+    if (this.homePage < 1) this.homePage = 1;
+    const page = this.homePage;
+    const start = (page - 1) * per;
+    const slice = list.slice(start, start + per);
+    const from = list.length ? start + 1 : 0;
+    const to = start + slice.length;
+    const titulo = this.homeQuery.trim() ? "Resultados" : "Próximos de você";
+    const busca = this.homeQuery.trim()
+      ? `<p class="tiny muted">${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.homeQuery.trim()}”</p>`
+      : `<p class="tiny muted">${from}–${to} de ${list.length}</p>`;
     return `${this.top()}
       <p class="muted small">Aracaju · Dados demonstrativos</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:16px">Qual vai ser sua Saidera hoje?</p>
       <div class="row" style="margin-bottom:8px">
-        <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home/></div>
+        <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.homeQuery.replace(/"/g, "&quot;")}"/></div>
         <button class="icon-btn gold" data-go="#/mapa">${Icons.pin()}</button>
       </div>
       ${this.heroCard()}
-      <div class="row between" style="margin-bottom:10px">
-        <h2>Próximos de você</h2>
+      <div class="row between" style="margin-bottom:10px" id="lista-bares">
+        <div>
+          <h2>${titulo}</h2>
+          ${busca}
+        </div>
         <button class="small gold" data-go="#/mapa">Ver mapa</button>
       </div>
-      <div class="stack">${near.map((e) => this.estMini(e)).join("")}</div>`;
+      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e)).join("") : `<p class="muted" style="grid-column:1/-1">Nenhum bar ou restaurante encontrado.</p>`}</div>
+      ${this.pager(page, pages)}`;
   },
 
   explorar() {
@@ -211,7 +269,7 @@ const ClienteApp = {
           <div class="row between">
             <div>
               <strong>${e.nome}</strong>
-              <p class="small muted">📍 ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)}</p>
+              <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)}</p>
             </div>
             <button class="btn btn-gold btn-sm" data-go="#/est/${e.id}">Ver</button>
           </div>
@@ -252,10 +310,11 @@ const ClienteApp = {
         <div class="overlay"></div>
         <div style="position:absolute;bottom:12px;left:14px">
           <h1>${e.nome}</h1>
-          <p class="small">${e.bairro} · ${e.aberto ? "Aberto agora" : "Fechado"} · ${Logic.fmtKm(e.distanciaKm)}</p>
+          <p class="small">${Logic.tipoEst(e)} · ${e.bairro} · ${e.aberto ? "Aberto agora" : "Fechado"} · ${Logic.fmtKm(e.distanciaKm)}</p>
         </div>
       </div>
-      <div class="row wrap" style="margin-bottom:14px">
+          <div class="row wrap" style="margin-bottom:14px">
+        <span class="badge badge-gold">${Logic.tipoEst(e)}</span>
         <span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>
         <span class="badge badge-ghost">★ ${e.avaliacao}</span>
       </div>
@@ -444,9 +503,28 @@ const ClienteApp = {
       })
     );
     const search = this.root.querySelector("[data-search-home]");
-    search?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this.go("#/mapa");
+    search?.addEventListener("input", (e) => {
+      this.homeQuery = e.target.value;
+      this.homePage = 1;
+      this.render();
+      const again = this.root.querySelector("[data-search-home]");
+      if (again) {
+        again.focus();
+        const len = again.value.length;
+        again.setSelectionRange(len, len);
+      }
     });
+    this.root.querySelectorAll("[data-page]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const n = Number(el.getAttribute("data-page"));
+        if (!n || n === this.homePage || el.disabled) return;
+        this.homePage = n;
+        this.render();
+        const body = this.root.querySelector(".phone-body");
+        const list = this.root.querySelector("#lista-bares");
+        if (body && list) body.scrollTop = Math.max(0, list.offsetTop - 12);
+      })
+    );
   },
 };
 

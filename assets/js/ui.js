@@ -132,6 +132,9 @@ const UI = {
       }
       const close = e.target.closest("[data-close-modal]");
       if (close) close.closest(".modal-bg")?.remove();
+      if (e.target.closest("[data-close-menu]")) {
+        document.querySelector("#sidebar")?.classList.remove("open");
+      }
     });
   },
 };

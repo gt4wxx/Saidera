@@ -42,6 +42,7 @@ const EstApp = {
     };
     const html = (map[this.view] || map.dashboard)();
     this.root.innerHTML = `<div class="dash-app">
+      <div class="sidebar-scrim" data-close-menu></div>
       ${this.sidebar()}
       <main class="dash-main">
         <div class="dash-head">

@@ -37,6 +37,7 @@ const ParceiroApp = {
       ["estabelecimentos", "Estabelecimentos", Icons.building()],
     ];
     this.root.innerHTML = `<div class="dash-app">
+      <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
         <div class="logo-row pad"><div class="logo-mark">S</div><div><strong>SAIDERA</strong><p class="tiny muted">Parceiro</p></div></div>
         <div class="notice" style="margin:0 10px 10px">${this.par().nome}<br/>${this.par().selo}</div>

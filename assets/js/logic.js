@@ -34,6 +34,10 @@ const Logic = {
     return Store.find("estabelecimentos", id);
   },
 
+  tipoEst(est) {
+    return est?.tipo === "restaurante" ? "Restaurante" : "Bar";
+  },
+
   cliente(id) {
     return Store.find("clientes", id);
   },

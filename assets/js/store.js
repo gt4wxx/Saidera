@@ -1,4 +1,4 @@
-const STORE_KEY = "saidera_v1";
+const STORE_KEY = "saidera_v2";
 
 const Store = {
   data: null,

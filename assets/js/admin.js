@@ -51,6 +51,7 @@ const AdminApp = {
     };
     const html = (map[this.view] || map.dashboard)();
     this.root.innerHTML = `<div class="dash-app">
+      <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
         <div class="logo-row pad"><div class="logo-mark">S</div><div><strong>SAIDERA</strong><p class="tiny muted">Admin Master</p></div></div>
         <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
@@ -100,11 +101,12 @@ const AdminApp = {
     return `<section class="panel">
       <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-est" placeholder="Filtrar por nome ou bairro" value="${q}"/></div>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Nome</th><th>Bairro</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Padrão</th><th>Status</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Bairro</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Padrão</th><th>Status</th></tr></thead>
         <tbody>${list
           .map(
             (e) => `<tr>
               <td><strong>${e.nome}</strong><p class="tiny muted">${e.endereco}</p></td>
+              <td>${Logic.tipoEst(e)}</td>
               <td>${e.bairro}</td><td>${e.clientes}</td><td>${e.tampas.toLocaleString("pt-BR")}</td>
               <td>${e.saideras}</td><td>${e.metaPadrao}</td>
               <td><span class="badge ${e.status === "ativo" ? "badge-green" : "badge-ghost"}">${e.status}</span></td>
