@@ -3,10 +3,17 @@ require __DIR__ . '/_proteger.php';
 saidera_proteger('cliente');
 $titulo = 'Saidera · Cliente';
 $css = ['../assets/css/client.css'];
+$manifest = '../manifest-cliente.webmanifest';
 require __DIR__ . '/_cabecalho.php';
 $v = saidera_v();
 ?>
 <body class="client-page">
+  <script>
+  (function () {
+    var stand = window.matchMedia("(display-mode: standalone)").matches || Boolean(window.navigator.standalone);
+    if (!stand) location.replace("../entrar.php");
+  })();
+  </script>
   <div id="app"></div>
   <script src="../assets/js/icons.js?v=<?= $v ?>"></script>
   <script src="../assets/js/api.js?v=<?= $v ?>"></script>

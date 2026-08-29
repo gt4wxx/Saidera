@@ -509,3 +509,9 @@ body.client-page .demo-fab {
   cursor: pointer;
 }
 .avatar-edit img { object-fit: cover; }
+.entrar-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.entrar-tabs .chip { flex: 1; justify-content: center; }

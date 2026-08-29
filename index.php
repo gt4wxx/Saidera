@@ -46,11 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             $u = auth_login((string) $_POST['email'], (string) $_POST['senha']);
             auditar('Novo cliente', $nome);
-            header('Location: ' . session_payload($u)['pagina']);
+            header('Location: entrar.php?instalar=1');
             exit;
         }
 
         $u = auth_login((string) ($_POST['email'] ?? ''), (string) ($_POST['senha'] ?? ''));
+        if (($u['papel'] ?? '') === 'cliente') {
+            header('Location: entrar.php?instalar=1');
+            exit;
+        }
         header('Location: ' . session_payload($u)['pagina']);
         exit;
     } catch (Throwable $e) {
@@ -61,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $me = auth_user();
         if ($me) {
+            if (($me['papel'] ?? '') === 'cliente') {
+                header('Location: entrar.php');
+                exit;
+            }
             header('Location: ' . session_payload($me)['pagina']);
             exit;
         }
@@ -87,11 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
   <script>
-    (function () {
-      if (!("serviceWorker" in navigator)) return;
-      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
-      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-    })();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
   </script>
 </head>
 <body>
@@ -99,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <header class="landing-hero">
       <div class="landing-brand" id="landing-brand"></div>
       <p class="lead" style="margin:0 auto 8px;text-align:center">A fidelidade que a noite merece.</p>
-      <p class="tiny muted" style="margin:0 auto 16px;text-align:center;max-width:46ch">Entre com e-mail e senha. Cliente se cadastra aqui. Casa, garçom, parceiro e admin recebem acesso pelo painel.</p>
+      <p class="tiny muted" style="margin:0 auto 16px;text-align:center;max-width:46ch">Casa, garçom, parceiro e admin entram aqui. Cliente usa o QR da mesa ou o app.</p>
     </header>
     <section class="card pad" style="max-width:440px;margin:0 auto 18px">
       <form id="form-login" method="post" action="index.php">
@@ -109,21 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field" style="margin-top:10px"><span>Senha</span><input name="senha" type="password" required autocomplete="current-password"/></div>
         <p class="tiny" id="login-erro" style="color:#f87171;margin-top:8px"><?= h($erroLogin) ?></p>
         <button type="submit" class="btn btn-gold btn-block" style="margin-top:12px">Entrar</button>
-      </form>
-    </section>
-    <section class="card pad" style="max-width:440px;margin:0 auto 24px">
-      <form id="form-cadastro" method="post" action="index.php">
-        <input type="hidden" name="acao" value="cadastro"/>
-        <h2 style="margin-bottom:8px">Criar conta de cliente</h2>
-        <p class="tiny muted" style="margin-bottom:12px">Você recebe um QR pessoal (SDR-…) para quando o garçom precisar.</p>
-        <div class="field"><span>Nome</span><input name="nome" required/></div>
-        <div class="field" style="margin-top:10px"><span>E-mail</span><input name="email" type="email" required/></div>
-        <div class="field" style="margin-top:10px"><span>Senha</span><input name="senha" type="password" minlength="6" required/></div>
-        <div class="field" style="margin-top:10px"><span>Telefone</span><input name="telefone"/></div>
-        <div class="field" style="margin-top:10px"><span>Nascimento</span><input name="nascimento" type="date"/></div>
-        <div class="field" style="margin-top:10px"><span>Bairro</span><input name="bairro"/></div>
-        <p class="tiny" id="cad-erro" style="color:#f87171;margin-top:8px"><?= h($erroCad) ?></p>
-        <button type="submit" class="btn btn-navy btn-block" style="margin-top:12px">Cadastrar</button>
+        <p class="tiny muted" style="margin-top:14px;text-align:center">Cliente? <a href="entrar.php" style="color:#F5B800">Entre pelo app</a></p>
       </form>
     </section>
   </main>

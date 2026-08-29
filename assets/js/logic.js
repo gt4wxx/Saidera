@@ -258,6 +258,14 @@ const Logic = {
     return est?.tipo === "restaurante" ? "Restaurante" : "Bar";
   },
 
+  urlEntrarCliente(estId) {
+    const base = /\/pages\//.test(location.pathname)
+      ? new URL("../entrar.php", location.href.split("#")[0])
+      : new URL("entrar.php", location.href.split("#")[0]);
+    if (estId) base.searchParams.set("casa", estId);
+    return base.href;
+  },
+
   menusCasaCatalogo() {
     return [
       { id: "dashboard", nome: "Visão Geral", fixo: true },

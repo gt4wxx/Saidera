@@ -263,6 +263,7 @@ const EstApp = {
       ["#/atender", "btn-navy", "Ler QR do cliente"],
       ["#/saideras", "btn-ghost", "Baixar Saidera"],
       ["#/campanhas", "btn-ghost", "Pedir campanha"],
+      ["#/config", "btn-ghost", "QR do app"],
     ];
     return `${Brand.banner("secundario", "brand-banner")}
     ${atalhos.length ? `<div class="atalhos">${atalhos.map(([href, cls, lab]) => `<a class="btn ${cls} btn-sm" href="${href}">${lab}</a>`).join("")}</div>` : ""}
@@ -1082,7 +1083,18 @@ const EstApp = {
     const est = this.est();
     const img = Logic.imagemEst(est);
     const custom = Boolean(est.cartaz);
+    const convite = Logic.urlEntrarCliente(this.estId);
     return `<div class="cfg-grid">
+    <section class="panel" id="cfg-qr-app">
+      <h3>QR para o cliente</h3>
+      <p class="tiny muted" style="margin:6px 0 12px">Imprima e cole na mesa, no balcão ou no cartaz. Quem não tem o app cai no login/cadastro. Quem já tem abre o Saidera. Pode repetir este QR quantas vezes quiser.</p>
+      <div class="qr-convite">${QR.svg(convite, 200)}</div>
+      <p class="tiny" style="margin:12px 0;word-break:break-all">${this.esc(convite)}</p>
+      <div class="row wrap" style="gap:8px">
+        <button type="button" class="btn btn-gold btn-sm" data-act="convite-copiar">Copiar link</button>
+        <button type="button" class="btn btn-navy btn-sm" data-act="convite-imprimir">Imprimir QR</button>
+      </div>
+    </section>
     <section class="panel">
       <h3>Casa</h3>
       <div class="field"><span>Nome</span><input id="cfg-nome" value="${this.esc(est.nome || "")}"/></div>
@@ -1285,6 +1297,31 @@ const EstApp = {
       if (!p) return;
       if (!confirm(`Passar a casa para o plano ${p.nome}? Os menus mudam na hora.`)) return;
       await this.post("planos/escolher", { planoId: id }, `Plano ${p.nome} ativado.`);
+      return;
+    }
+    if (act === "convite-copiar") {
+      const url = Logic.urlEntrarCliente(this.estId);
+      const ok = navigator.clipboard?.writeText?.(url);
+      if (ok && typeof ok.then === "function") ok.then(() => UI.toast("Link copiado.")).catch(() => prompt("Copie o link", url));
+      else {
+        prompt("Copie o link", url);
+      }
+      return;
+    }
+    if (act === "convite-imprimir") {
+      const url = Logic.urlEntrarCliente(this.estId);
+      const w = window.open("", "_blank");
+      if (!w) {
+        UI.toast("Permita a janela de impressão.");
+        return;
+      }
+      w.document.write(`<!DOCTYPE html><html><head><title>QR Saidera</title>
+        <style>body{font-family:sans-serif;text-align:center;padding:24px;color:#171717}svg{width:280px;height:280px}p{word-break:break-all;font-size:12px}</style>
+        </head><body><h1>Saidera</h1><p>Leia para entrar no app</p>${QR.svg(url, 280)}<p>${this.esc(url)}</p>
+        <p>${this.esc(this.est()?.nome || "")}</p></body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
       return;
     }
     if (act === "cfg-senha") {

@@ -16,7 +16,8 @@ const Store = {
       return false;
     }
     if (!me) {
-      location.href = API.home();
+      const cliente = papel === "cliente" || /cliente\.php/.test(location.pathname);
+      location.href = cliente ? (/\/pages\//.test(location.pathname) ? "../entrar.php" : "entrar.php") : API.home();
       return false;
     }
     if (papel && me.papel !== papel) {

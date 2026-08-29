@@ -342,10 +342,11 @@ const UI = {
   },
 
   pwaInit() {
+    if (this._pwaReady) return;
+    this._pwaReady = true;
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((r) => r.unregister());
-      }).catch(() => {});
+      const sw = this.pages() ? "../sw.js" : "sw.js";
+      navigator.serviceWorker.register(sw).catch(() => {});
     }
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
@@ -358,14 +359,23 @@ const UI = {
     });
   },
 
-  async pwaInstall() {
+  async pwaPedirInstalacao() {
+    if (this.pwaStandalone()) return "standalone";
     if (this._pwaPrompt) {
       this._pwaPrompt.prompt();
-      await this._pwaPrompt.userChoice.catch(() => {});
+      const choice = await this._pwaPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
       this._pwaPrompt = null;
-      return;
+      return choice.outcome === "accepted" ? "accepted" : "dismissed";
     }
-    this.toast("No Chrome ou Edge: menu ⋮ → Instalar Saidera.");
+    if (this.pwaIos()) return "ios";
+    return "unavailable";
+  },
+
+  async pwaInstall() {
+    const r = await this.pwaPedirInstalacao();
+    if (r === "ios") this.toast("No iPhone: Compartilhar → Adicionar à Tela de Início.");
+    else if (r === "unavailable") this.toast("No Chrome ou Edge: menu ⋮ → Instalar Saidera.");
+    return r;
   },
 };
 

@@ -70,7 +70,8 @@ const API = {
     } catch {
       /* ainda redireciona */
     }
-    location.href = `${this.home()}?sair=1`;
+    const cliente = /cliente\.php/.test(location.pathname);
+    location.href = cliente ? "../entrar.php?sair=1" : `${this.home()}?sair=1`;
   },
 };
 

@@ -17,6 +17,10 @@ const ClienteApp = {
   })(),
 
   async boot() {
+    if (!UI.pwaStandalone()) {
+      location.replace("../entrar.php");
+      return;
+    }
     const ok = await Store.init({ papel: "cliente" });
     if (!ok) return;
     UI.bindGlobal();

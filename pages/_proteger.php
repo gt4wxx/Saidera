@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/api/lib/app.php';
 
 function saidera_v(): string
 {
-    return '15';
+    return '16';
 }
 
 function saidera_proteger(string $papel): void
@@ -22,7 +22,7 @@ function saidera_proteger(string $papel): void
         exit;
     }
     if (!$u) {
-        header('Location: ../index.php');
+        header('Location: ' . ($papel === 'cliente' ? '../entrar.php' : '../index.php'));
         exit;
     }
     if ($u['papel'] !== $papel) {

@@ -953,6 +953,7 @@ const AdminApp = {
         <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar endereço</button>
         <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
       </div>
+      <p class="tiny muted" style="margin-top:12px">Link do app desta casa (QR na mesa): <span style="word-break:break-all;color:#F5B800">${this.esc(Logic.urlEntrarCliente(e.id))}</span></p>
     </section>
     <div class="grid-2">
       <section class="panel">

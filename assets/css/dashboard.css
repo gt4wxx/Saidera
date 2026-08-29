@@ -33,6 +33,14 @@ body.dash {
 .sidebar nav a.locked { opacity: 0.5; }
 .sidebar nav a.locked.on { opacity: 1; }
 .side-foot { margin-top: auto; padding: 10px; }
+.qr-convite {
+  display: grid;
+  place-items: center;
+  background: #FFF9E8;
+  border-radius: 18px;
+  padding: 16px;
+}
+.qr-convite svg { width: min(200px, 70vw); height: auto; }
 .dash-main { padding: 22px 26px 48px; min-width: 0; overflow-x: hidden; }
 .dash-main .brand-banner,
 .dash-main .brand-banner-hero { margin-bottom: 16px; object-fit: contain; }

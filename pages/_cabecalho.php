@@ -17,16 +17,12 @@ $css = $css ?? [];
 <?php endforeach; ?>
   <link rel="icon" type="image/png" href="../assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="../assets/brand/apple-touch.png"/>
-  <link rel="manifest" href="../manifest.webmanifest"/>
+  <link rel="manifest" href="<?= htmlspecialchars($manifest ?? '../manifest.webmanifest') ?>"/>
   <meta name="theme-color" content="#171717"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
   <script>
-    (function () {
-      if (!("serviceWorker" in navigator)) return;
-      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
-      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-    })();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(function () {});
   </script>
 </head>
