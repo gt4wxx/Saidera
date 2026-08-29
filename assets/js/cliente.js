@@ -36,6 +36,7 @@ const ClienteApp = {
   },
 
   render() {
+    if (window.QR?.stopScan) QR.stopScan();
     const html = {
       home: () => this.home(),
       explorar: () => this.explorar(),
@@ -46,6 +47,7 @@ const ClienteApp = {
       ofertas: () => this.ofertas(),
       perfil: () => this.perfil(),
       qr: () => this.qr(),
+      ler: () => this.ler(),
       notificacoes: () => this.notificacoes(),
       historico: () => this.historico(),
       preferencias: () => this.preferencias(),
@@ -59,7 +61,7 @@ const ClienteApp = {
   },
 
   nav() {
-    if (this.view === "qr") return "";
+    if (this.view === "qr" || this.view === "ler") return "";
     const items = [
       ["explorar", "Explorar", Icons.compass()],
       ["tampas", "Tampas", Icons.tampas()],
@@ -82,6 +84,7 @@ const ClienteApp = {
     return `<div class="topbar">
       <div class="logo-row">${Brand.horizontal("brand-h brand-h-sm")}</div>
       <div class="row">
+        <button class="icon-btn" data-go="#/qr" title="Meu QR">${Icons.qr()}</button>
         <button class="icon-btn ${unread ? "dot-n" : ""}" data-go="#/notificacoes">${Icons.bell()}</button>
         <img class="avatar" src="${me.avatar}" alt="${me.primeiroNome}" data-go="#/perfil"/>
       </div>
@@ -89,10 +92,12 @@ const ClienteApp = {
   },
 
   back(title) {
+    const outro = this.view === "ler" ? "#/qr" : "#/ler";
+    const dica = this.view === "ler" ? "Meu QR" : "Ler QR da casa";
     return `<div class="topbar">
       <button class="icon-btn" data-back>${Icons.back()}</button>
       <strong>${title}</strong>
-      <button class="icon-btn" data-go="#/qr">${Icons.qr()}</button>
+      <button class="icon-btn" data-go="${outro}" title="${dica}">${Icons.qr()}</button>
     </div>`;
   },
 
@@ -217,6 +222,10 @@ const ClienteApp = {
       <p class="muted small">Aracaju · Dados demonstrativos</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
+      <div class="row" style="gap:8px;margin-bottom:14px">
+        <button class="btn btn-gold grow" data-go="#/ler" style="min-height:52px">${Icons.qr()} Ler QR da casa</button>
+        <button class="btn btn-dark" data-go="#/qr" style="min-height:52px">Meu QR</button>
+      </div>
       ${Brand.banner("secundario", "brand-banner")}
       <div class="row" style="margin:14px 0 8px">
         <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.homeQuery.replace(/"/g, "&quot;")}"/></div>
@@ -434,7 +443,10 @@ const ClienteApp = {
       <div class="card" style="margin:10px 0 18px">${drinks}</div>
       <h2>Seu progresso aqui</h2>
       <div style="margin-top:10px">${prog || `<p class="muted">Você ainda não acumulou Tampas neste bar.</p>`}</div>
-      <button class="btn btn-gold btn-block" style="margin-top:16px" data-go="#/qr">Mostrar meu QR Code</button>`;
+      <div class="row" style="gap:8px;margin-top:16px">
+        <button class="btn btn-gold grow" data-go="#/ler">Ler QR da casa</button>
+        <button class="btn btn-dark" data-go="#/qr">Meu QR</button>
+      </div>`;
   },
 
   tampas() {
@@ -502,8 +514,10 @@ const ClienteApp = {
                   <p class="muted">${e.nome}</p>
                   <p class="small" style="margin:8px 0">Conquistada em: ${Logic.fmtDate(s.conquistadaEm)}</p>
                   <p class="small ${urgente ? "gold" : "muted"}">${Logic.validadeLabel(s)}${s.expiraEm ? " · " + Logic.fmtDate(s.expiraEm) : ""}</p>
-                  <p class="tiny">Código: <strong>${s.codigo}</strong></p>
-                  ${s.status === "disponivel" ? `<button class="btn btn-gold btn-block" style="margin-top:12px" data-go="#/qr">Mostrar ao garçom</button>` : ""}
+                  <p class="saidera-id">ID da Saidera</p>
+                  <p class="saidera-code">${s.codigo}</p>
+                  ${s.status === "disponivel" ? `<p class="small muted" style="margin-top:8px">Informe este ID à casa para retirar. Se pedirem, mostre também o seu QR.</p>
+                  <button class="btn btn-dark btn-block" style="margin-top:12px" data-go="#/qr">Mostrar meu QR</button>` : ""}
                 </article>`;
               })
               .join("")
@@ -610,7 +624,10 @@ const ClienteApp = {
         <h1>${me.nome}</h1>
         <p class="muted">${me.telefone} · ${me.email}</p>
         <p class="small muted">Nascimento ${me.nascimento} · ${me.cidade}</p>
-        <button class="btn btn-gold" data-go="#/qr">Meu QR Code</button>
+        <div class="row" style="gap:8px;justify-content:center;margin-top:10px">
+          <button class="btn btn-gold btn-sm" data-go="#/ler">Ler QR da casa</button>
+          <button class="btn btn-dark btn-sm" data-go="#/qr">Meu QR</button>
+        </div>
       </div>
       <div class="grid-3" style="margin-bottom:16px">
         <div class="kpi"><b>${m.tampas}</b><span>Tampas</span></div>
@@ -655,6 +672,65 @@ const ClienteApp = {
         .join("")}`;
   },
 
+  ler() {
+    return `${this.back("Ler QR da casa")}
+      <p class="muted" style="margin-bottom:14px">Aponte a câmera para o cupom que a casa imprimiu. As Tampas entram neste aparelho, no restaurante certo.</p>
+      <div class="scan-stage" style="margin:0 0 16px">
+        <div class="scan-frame live" style="margin:0 auto">
+          <video id="scan-video-cli" playsinline muted autoplay></video>
+          <i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+      <p class="tiny muted" id="scan-hint-cli" style="text-align:center;margin-bottom:14px">Aguardando o QR…</p>
+      <div class="search">${Icons.search()}<input id="tkt-manual" placeholder="Ou digite o código · TKT-…"/></div>
+      <button class="btn btn-gold btn-block" id="tkt-ok" style="margin-top:12px">Adicionar Tampas</button>
+      <p class="tiny muted" style="margin-top:12px;text-align:center">Cada cupom é de uso único. Depois de lido, acaba.</p>`;
+  },
+
+  aplicarTicket(codigo) {
+    if (this._lendo) return;
+    const raw = String(codigo || "").trim();
+    if (!raw) {
+      UI.toast("Aponte o QR ou digite o código do cupom.");
+      return;
+    }
+    this._lendo = true;
+    if (window.QR?.stopScan) QR.stopScan();
+    const res = Logic.resgatarTicket(raw, this.me().id);
+    if (!res.ok) {
+      this._lendo = false;
+      UI.toast(res.erro);
+      if (this.view === "ler") this.iniciarScanCliente();
+      return;
+    }
+    const itens = res.ticket.itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
+    this.go("#/tampas");
+    this._lendo = false;
+    UI.modal({
+      center: true,
+      html: `${UI.celebrate(
+        res.ganhas ? "SAIDERA LIBERADA! 🍺" : "TAMPAS ADICIONADAS",
+        `${itens} no ${res.est.nome}.`
+      )}<button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ver minhas Tampas</button>`,
+    });
+  },
+
+  iniciarScanCliente() {
+    const video = this.root.querySelector("#scan-video-cli");
+    const hint = this.root.querySelector("#scan-hint-cli");
+    if (!video || !window.QR?.startScan) return;
+    QR.startScan({
+      video,
+      onCode: (_parsed, raw) => {
+        const codigo = QR.parseTicket(raw) || _parsed;
+        this.aplicarTicket(codigo);
+      },
+      onError: (msg) => {
+        if (hint) hint.textContent = msg || "Digite o código do cupom abaixo.";
+      },
+    });
+  },
+
   qr() {
     const me = this.me();
     return `${this.back("Meu Saidera")}
@@ -663,8 +739,9 @@ const ClienteApp = {
         ${UI.qrSvg(me.codigo)}
         <h2 style="margin-top:8px">${me.primeiroNome}</h2>
         <p class="muted">ID: ${me.codigo}</p>
-        <p style="margin-top:12px">Mostre este QR Code ao garçom para registrar suas Tampas. É o seu ID — ele pode escanear de novo sempre que precisar.</p>
-        <p class="tiny muted" style="margin-top:10px">O código contém ${me.codigo}. Use outro celular no app do garçom e aponte a câmera.</p>
+        <p style="margin-top:12px">Mostre este QR ao garçom se ele precisar abrir a sua comanda. É o seu ID — pode usar sempre.</p>
+        <p class="tiny muted" style="margin-top:10px">O caminho principal continua sendo ler o cupom impresso da casa. Este QR fica aqui se precisar.</p>
+        <button class="btn btn-gold btn-block" style="margin-top:16px" data-go="#/ler">Ler QR da casa</button>
       </div>`;
   },
 
@@ -801,6 +878,13 @@ const ClienteApp = {
       Logic.salvarPrefsCliente(this.me().id, { bebidaFavoritaId: e.target.value });
       UI.toast("Bebida favorita atualizada.");
     });
+    this.root.querySelector("#tkt-ok")?.addEventListener("click", () => {
+      this.aplicarTicket(this.root.querySelector("#tkt-manual")?.value);
+    });
+    this.root.querySelector("#tkt-manual")?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.aplicarTicket(e.target.value);
+    });
+    if (this.view === "ler") this.iniciarScanCliente();
   },
 };
 

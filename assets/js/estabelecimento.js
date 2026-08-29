@@ -6,6 +6,8 @@ const EstApp = {
   qty: 1,
   drinkId: "beb-001",
   clienteSel: "cli-001",
+  ticketQtys: null,
+  ticketGeradoId: null,
   campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
   volta: { qtd: 10, ids: [], mensagem: "" },
   cliPage: 1,
@@ -65,6 +67,7 @@ const EstApp = {
       clientes: () => this.clientes(),
       cliente: () => this.perfilCliente(),
       registrar: () => this.registrar(),
+      atender: () => this.atender(),
       bebidas: () => this.bebidas(),
       saideras: () => this.saideras(),
       funcionarios: () => this.funcionarios(),
@@ -88,7 +91,8 @@ const EstApp = {
           </div>
           <div class="row">
             <div class="search wide search">${Icons.search()}<input placeholder="Buscar cliente" data-jump-search value="${this.view === "clientes" ? this.cliQuery.replace(/"/g, "&quot;") : ""}"/></div>
-            <a class="btn btn-gold btn-sm" href="#/registrar">Registrar consumo</a>
+            <a class="btn btn-dark btn-sm" href="#/atender">QR do cliente</a>
+            <a class="btn btn-gold btn-sm" href="#/registrar">Gerar QR</a>
           </div>
         </div>
         ${html}
@@ -98,7 +102,8 @@ const EstApp = {
       dashboard: "Visão geral",
       clientes: "Clientes",
       cliente: this.params.id ? Logic.cliente(this.params.id)?.nome : "Cliente",
-      registrar: "Registrar consumo",
+      registrar: "Gerar QR das Tampas",
+      atender: "QR do cliente",
       bebidas: "Bebidas",
       saideras: "Saideras",
       funcionarios: "Funcionários",
@@ -116,7 +121,8 @@ const EstApp = {
     const items = [
       ["dashboard", "Visão Geral", Icons.home()],
       ["clientes", "Clientes", Icons.users()],
-      ["registrar", "Registrar consumo", Icons.plus()],
+      ["registrar", "Gerar QR", Icons.qr()],
+      ["atender", "QR do cliente", Icons.user()],
       ["bebidas", "Bebidas", Icons.beer()],
       ["saideras", "Saideras", Icons.gift()],
       ["funcionarios", "Funcionários", Icons.user()],
@@ -203,8 +209,8 @@ const EstApp = {
         const falta = p.meta - p.atual;
         const beb = Logic.bebida(drinkId);
         const action = disp.length
-          ? `<button class="btn btn-gold btn-sm" data-entregar="${id}|${drinkId}">Entregar Saidera</button>`
-          : `<a class="btn btn-dark btn-sm" href="#/registrar/${id}">+ Registrar consumo</a>`;
+          ? `<a class="btn btn-gold btn-sm" href="#/saideras">Baixar com o ID</a>`
+          : `<a class="btn btn-dark btn-sm" href="#/registrar">Gerar QR</a>`;
         return `<div class="row between" style="padding:12px 0;border-top:1px solid #2a2a2a">
           <div class="person">
             <img src="${c.avatar}" alt=""/>
@@ -320,7 +326,10 @@ const EstApp = {
           <div class="kpi"><b>${sais.filter((s) => s.status === "utilizada").length}</b><span>Utilizadas</span></div>
           <div class="kpi"><b>${sais.filter((s) => s.status === "disponivel").length}</b><span>Disponíveis</span></div>
         </div>
-        <a class="btn btn-gold btn-block" style="margin-top:14px" href="#/registrar/${c.id}">Registrar consumo</a>
+        <div class="row" style="gap:8px;margin-top:14px">
+          <a class="btn btn-gold grow" href="#/registrar">Gerar QR</a>
+          <a class="btn btn-dark grow" href="#/atender/${c.id}">QR do cliente</a>
+        </div>
       </section>
       <section class="panel">
         <h3>Preferências</h3>
@@ -341,16 +350,126 @@ const EstApp = {
     </div>`;
   },
 
+  ensureTicketQtys() {
+    const drinks = this.est()?.bebidas || [];
+    if (!this.ticketQtys) {
+      this.ticketQtys = {};
+      drinks.forEach((d, i) => {
+        this.ticketQtys[d.id] = i === 0 ? 1 : 0;
+      });
+      return;
+    }
+    drinks.forEach((d) => {
+      if (this.ticketQtys[d.id] == null) this.ticketQtys[d.id] = 0;
+    });
+  },
+
+  ticketItens() {
+    this.ensureTicketQtys();
+    return (this.est()?.bebidas || [])
+      .map((d) => ({
+        bebidaId: d.id,
+        nome: d.nome,
+        quantidade: Number(this.ticketQtys[d.id]) || 0,
+      }))
+      .filter((i) => i.quantidade > 0);
+  },
+
+  ticketSlip(t) {
+    const est = this.est();
+    const payload = window.QR?.payloadTicket ? QR.payloadTicket(t.codigo) : t.codigo;
+    const svg = window.QR?.svg ? QR.svg(payload, 200) : UI.qrSvg(t.codigo);
+    return `<article class="ticket-print" id="ticket-print">
+      ${Brand.horizontal("brand-h")}
+      <p class="ticket-house">${est.nome}</p>
+      <p class="tiny">ID do estabelecimento: <strong>${est.id}</strong></p>
+      <div class="ticket-qr">${svg}</div>
+      <h2>${t.codigo}</h2>
+      <ul class="ticket-itens">${t.itens.map((i) => `<li><strong>${i.quantidade}×</strong> ${i.nome}</li>`).join("")}</ul>
+      <p class="badge badge-gold">USO ÚNICO</p>
+      <p class="tiny" style="margin-top:10px">O cliente lê este QR no app Saidera. Depois de usado, o cupom acaba.</p>
+    </article>`;
+  },
+
   registrar() {
+    this.ensureTicketQtys();
+    const est = this.est();
+    const drinks = est.bebidas || [];
+    const itens = this.ticketItens();
+    const total = itens.reduce((a, i) => a + i.quantidade, 0);
+    const gerado = this.ticketGeradoId ? Store.find("tickets", this.ticketGeradoId) : null;
+    const tickets = Store.all("tickets").filter((t) => t.estabelecimentoId === this.estId).slice(0, 20);
+    return `<div class="grid-2 ticket-layout">
+      <section class="panel ticket-composer no-print">
+        <p class="notice" style="margin-bottom:14px">Monte o cupom, imprima e entregue ao cliente. A casa não precisa do ID dele — quem lê o QR é o celular do cliente.</p>
+        <h3 style="margin-bottom:10px">Bebidas neste cupom</h3>
+        ${drinks
+          .map((d) => {
+            const q = Number(this.ticketQtys[d.id]) || 0;
+            return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a">
+              <div><strong>${d.nome}</strong><p class="tiny muted">Tampas neste QR</p></div>
+              <div class="qty">
+                <button type="button" data-tkt-qty="${d.id}" data-dir="-1">−</button>
+                <strong style="min-width:24px;text-align:center">${q}</strong>
+                <button type="button" data-tkt-qty="${d.id}" data-dir="1">+</button>
+              </div>
+            </div>`;
+          })
+          .join("")}
+        <p class="small" style="margin:14px 0 10px">${total ? `${total} Tampa${total > 1 ? "s" : ""} · ${itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ")}` : "Escolha pelo menos uma bebida."}</p>
+        <button class="btn btn-gold btn-block" id="gerar-ticket" style="min-height:56px" ${total ? "" : "disabled"}>Gerar QR para imprimir</button>
+      </section>
+      <div>
+        ${
+          gerado && !gerado.usado
+            ? `<section class="panel" style="margin-bottom:14px">
+                <div class="row between no-print" style="margin-bottom:12px">
+                  <h3>Pronto para imprimir</h3>
+                  <div class="row" style="gap:8px">
+                    <button class="btn btn-gold btn-sm" id="print-ticket">${Icons.printer()} Imprimir</button>
+                    <button class="btn btn-ghost btn-sm" id="novo-ticket">Novo cupom</button>
+                  </div>
+                </div>
+                ${this.ticketSlip(gerado)}
+              </section>`
+              : `<section class="panel no-print" style="margin-bottom:14px"><p class="muted">O cupom impresso traz o nome das bebidas, a quantidade, o ID desta casa e um QR de uso único.</p></section>`
+        }
+        <section class="panel ticket-list no-print">
+          <h3 style="margin-bottom:10px">Cupons desta casa</h3>
+          ${
+            tickets.length
+              ? `<div class="table-wrap"><table class="data">
+                <thead><tr><th>Código</th><th>Bebidas</th><th>Status</th><th></th></tr></thead>
+                <tbody>${tickets
+                  .map((t) => {
+                    const resumo = t.itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
+                    return `<tr>
+                      <td>${t.codigo}</td>
+                      <td>${resumo}</td>
+                      <td><span class="badge ${t.usado ? "badge-ghost" : "badge-green"}">${t.usado ? "usado" : "disponível"}</span></td>
+                      <td>${!t.usado ? `<button class="btn btn-dark btn-sm" data-ver-ticket="${t.id}">Ver / imprimir</button>` : ""}</td>
+                    </tr>`;
+                  })
+                  .join("")}</tbody>
+              </table></div>`
+              : `<p class="muted">Nenhum cupom gerado ainda.</p>`
+          }
+        </section>
+      </div>
+    </div>`;
+  },
+
+  atender() {
     const preset = this.params.id || this.clienteSel;
     const c = Logic.cliente(preset);
     const est = this.est();
     const drinks = est.bebidas;
     const p = c ? Logic.garantirProgresso(c.id, this.estId, this.drinkId) : null;
     return `<section class="panel" style="max-width:720px">
-      <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou escanear QR Code" value="${c ? c.nome : ""}"/></div>
-      <div class="row" style="margin-bottom:16px">
-        <button class="btn btn-navy btn-sm" id="scan-qr">${Icons.qr()} Escanear QR Code</button>
+      <p class="notice" style="margin-bottom:14px">Use quando o cliente mostrar o QR dele. O caminho principal continua sendo o cupom impresso em Gerar QR.</p>
+      <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-28491" value="${c ? c.nome : ""}"/></div>
+      <div class="row wrap" style="margin-bottom:16px;gap:8px">
+        <button class="btn btn-navy btn-sm" id="scan-qr">${Icons.qr()} Escanear QR do cliente</button>
         <button class="btn btn-dark btn-sm" data-pick="cli-001">Ellisson</button>
         <button class="btn btn-dark btn-sm" data-pick="cli-002">Carlos</button>
         <button class="btn btn-dark btn-sm" data-pick="cli-003">Maria</button>
@@ -359,7 +478,7 @@ const EstApp = {
         c
           ? `<div class="person" style="margin-bottom:18px">
               <img src="${c.avatar}" alt=""/>
-              <div><strong>${c.nome}</strong><p class="small muted">${c.codigo} · última visita ${c.ultimaVisita}</p></div>
+              <div><strong>${c.nome}</strong><p class="small muted">${c.codigo} · QR de identificação</p></div>
             </div>
             <h3 style="margin-bottom:10px">Bebida</h3>
             <div class="drink-pick" id="drinks">
@@ -384,7 +503,7 @@ const EstApp = {
               </div>
             </div>
             <button class="btn btn-gold btn-block" id="do-reg" style="min-height:56px;font-size:1.02rem">REGISTRAR ${this.qty} TAMPA${this.qty > 1 ? "S" : ""}</button>`
-          : `<p class="muted">Busque um cliente para começar. Na demo, use Ellisson.</p>`
+          : `<p class="muted">Escaneie o QR do cliente ou use um atalho da demo.</p>`
       }
     </section>`;
   },
@@ -416,16 +535,23 @@ const EstApp = {
 
   saideras() {
     const list = Store.all("saideras").filter((s) => s.estabelecimentoId === this.estId).slice(0, 40);
-    return `<section class="panel"><div class="table-wrap"><table class="data">
-      <thead><tr><th>Código</th><th>Cliente</th><th>Bebida</th><th>Status</th><th>Conquistada</th><th></th></tr></thead>
+    return `<section class="panel" style="margin-bottom:14px">
+      <h3>Baixar Saidera</h3>
+      <p class="muted small" style="margin:6px 0 12px">O cliente informa o ID da Saidera (ex.: SDR-8842). A casa não precisa do ID do cliente.</p>
+      <div class="row wrap" style="gap:8px">
+        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saidera · SDR-8842" maxlength="16"/></div>
+        <button class="btn btn-gold" id="entregar-sai">Confirmar entrega</button>
+      </div>
+    </section>
+    <section class="panel"><div class="table-wrap"><table class="data">
+      <thead><tr><th>Código</th><th>Cliente</th><th>Bebida</th><th>Status</th><th>Conquistada</th></tr></thead>
       <tbody>${list
         .map((s) => {
           const c = Logic.cliente(s.clienteId);
           return `<tr>
-            <td>${s.codigo}</td><td>${c?.nome || "—"}</td><td>${Logic.bebida(s.bebidaId)?.nome}</td>
+            <td><strong>${s.codigo}</strong></td><td>${c?.nome || "—"}</td><td>${Logic.bebida(s.bebidaId)?.nome}</td>
             <td><span class="badge ${s.status === "disponivel" ? "badge-green" : "badge-ghost"}">${s.status}</span></td>
             <td>${Logic.fmtDate(s.conquistadaEm)}</td>
-            <td>${s.status === "disponivel" ? `<button class="btn btn-gold btn-sm" data-entregar-id="${s.id}">Entregar</button>` : ""}</td>
           </tr>`;
         })
         .join("")}</tbody>
@@ -679,13 +805,8 @@ const EstApp = {
       </div>
       <button class="btn btn-gold" style="margin-top:16px" id="save-cfg">Salvar</button>
       <section style="margin-top:28px">
-        <h3>Cartaz de mesa</h3>
-        <p class="tiny muted" style="margin:8px 0 12px">O cliente abre o app e mostra o QR dele. Este cartaz lembra o fluxo no salão.</p>
-        <div class="qr-stage" style="max-width:280px;margin:0 auto;background:#1a1a1a;color:var(--cream)">
-          ${Brand.horizontal("brand-h")}
-          ${UI.qrSvg("SDR-28491")}
-          <p class="small" style="margin-top:10px">Peça o QR Saidera do cliente<br/><strong>SDR-28491</strong> na demo</p>
-        </div>
+        <h3>Como funciona no salão</h3>
+        <p class="tiny muted" style="margin:8px 0 12px">Caminho principal: gere o QR em <strong>Gerar QR</strong>, imprima e entregue. O cliente lê no app. Se precisar, leia o QR do cliente em <strong>QR do cliente</strong> ou no app do garçom. Para baixar a Saidera, o cliente informa o ID dela (SDR-…).</p>
       </section>
     </section>`;
   },
@@ -745,23 +866,60 @@ const EstApp = {
       if (c) location.hash = `#/cliente/${c.id}`;
       else UI.toast("Cliente não encontrado na demonstração.");
     });
-    this.root.querySelectorAll("[data-entregar]").forEach((btn) =>
+    this.root.querySelectorAll("[data-tkt-qty]").forEach((btn) =>
       btn.addEventListener("click", () => {
-        const [cid, bid] = btn.getAttribute("data-entregar").split("|");
-        const s = Logic.entregarPrimeira(cid, this.estId, bid);
-        if (s) UI.toast(`Saidera ${s.codigo} entregue.`);
+        this.ensureTicketQtys();
+        const id = btn.getAttribute("data-tkt-qty");
+        const dir = Number(btn.getAttribute("data-dir")) || 0;
+        const atual = Number(this.ticketQtys[id]) || 0;
+        this.ticketQtys[id] = Math.max(0, Math.min(20, atual + dir));
+        this.render();
       })
     );
-    this.root.querySelectorAll("[data-entregar-id]").forEach((btn) =>
+    this.root.querySelector("#gerar-ticket")?.addEventListener("click", () => {
+      const itens = this.ticketItens();
+      if (!itens.length) {
+        UI.toast("Escolha pelo menos uma bebida.");
+        return;
+      }
+      const t = Logic.criarTicket({ estabelecimentoId: this.estId, itens });
+      if (!t) {
+        UI.toast("Não foi possível gerar o QR.");
+        return;
+      }
+      this.ticketGeradoId = t.id;
+      this.render();
+      UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
+    });
+    this.root.querySelector("#print-ticket")?.addEventListener("click", () => window.print());
+    this.root.querySelector("#novo-ticket")?.addEventListener("click", () => {
+      this.ticketGeradoId = null;
+      this.render();
+    });
+    this.root.querySelectorAll("[data-ver-ticket]").forEach((btn) =>
       btn.addEventListener("click", () => {
-        const s = Logic.entregarSaidera(btn.getAttribute("data-entregar-id"));
-        if (s) UI.toast(`Saidera ${s.codigo} entregue.`);
+        this.ticketGeradoId = btn.getAttribute("data-ver-ticket");
+        this.render();
+        this.root.querySelector("#ticket-print")?.scrollIntoView({ block: "start", behavior: "smooth" });
       })
     );
+    this.root.querySelector("#entregar-sai")?.addEventListener("click", () => {
+      const codigo = this.root.querySelector("#sai-codigo")?.value || "";
+      const res = Logic.entregarSaideraPorCodigo(codigo, this.estId);
+      if (!res.ok) {
+        UI.toast(res.erro);
+        return;
+      }
+      UI.toast(`Saidera ${res.saidera.codigo} entregue.`);
+      this.root.querySelector("#sai-codigo").value = "";
+    });
+    this.root.querySelector("#sai-codigo")?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.root.querySelector("#entregar-sai")?.click();
+    });
     this.root.querySelectorAll("[data-pick]").forEach((b) =>
       b.addEventListener("click", () => {
         this.clienteSel = b.getAttribute("data-pick");
-        location.hash = `#/registrar/${this.clienteSel}`;
+        location.hash = `#/atender/${this.clienteSel}`;
         this.route();
       })
     );
@@ -783,6 +941,7 @@ const EstApp = {
       const cid = this.params.id || this.clienteSel;
       const c = Logic.cliente(cid);
       const b = Logic.bebida(this.drinkId);
+      if (!c) return;
       const res = Logic.registrarConsumo({
         clienteId: cid,
         estabelecimentoId: this.estId,
@@ -791,18 +950,32 @@ const EstApp = {
       });
       this.afterRegister(res, c, b);
     });
+    this.root.querySelector("#busca-cli")?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const d = QR.decode(e.target.value);
+      if (d.tipo === "ticket") {
+        UI.toast("Este é um cupom da casa. O cliente lê no app dele.");
+        return;
+      }
+      const c = Logic.clientePorCodigo(d.codigo);
+      if (c) {
+        this.clienteSel = c.id;
+        location.hash = `#/atender/${c.id}`;
+        this.route();
+      } else UI.toast("Cliente não encontrado.");
+    });
     this.root.querySelector("#scan-qr")?.addEventListener("click", () => {
       const m = UI.modal({
         center: true,
         onClose: () => QR.stopScan(),
-        html: `<h2>Escanear QR Code</h2>
+        html: `<h2>QR do cliente</h2>
           <div class="scan-stage" style="margin:16px 0">
             <div class="scan-frame live" style="margin:0 auto">
               <video id="scan-video-est" playsinline muted autoplay></video>
               <i></i><i></i><i></i><i></i>
             </div>
           </div>
-          <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR do cliente</p>
+          <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR pessoal do cliente</p>
           <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
           <div class="row wrap" style="margin-top:12px;gap:8px">
             <button class="btn btn-dark btn-sm" data-use="cli-001">Ellisson</button>
@@ -813,22 +986,33 @@ const EstApp = {
       const abrir = (id) => {
         QR.stopScan();
         m.close();
-        location.hash = `#/registrar/${id}`;
+        this.clienteSel = id;
+        location.hash = `#/atender/${id}`;
       };
       m.el.querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => abrir(b.getAttribute("data-use"))));
       m.el.querySelector("#busca-qr-modal")?.addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
-        const c = Logic.clientePorCodigo(QR.parse(e.target.value));
+        const d = QR.decode(e.target.value);
+        if (d.tipo === "ticket") {
+          UI.toast("Este é um cupom da casa. O cliente lê no app dele.");
+          return;
+        }
+        const c = Logic.clientePorCodigo(d.codigo);
         if (c) abrir(c.id);
         else UI.toast("Cliente não encontrado.");
       });
       const video = m.el.querySelector("#scan-video-est");
       QR.startScan({
         video,
-        onCode: (codigo) => {
-          const c = Logic.clientePorCodigo(codigo);
+        onCode: (_codigo, raw) => {
+          const d = QR.decode(raw || _codigo);
+          if (d.tipo === "ticket") {
+            UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
+            return;
+          }
+          const c = Logic.clientePorCodigo(d.codigo);
           if (c) abrir(c.id);
-          else UI.toast("QR não reconhecido.");
+          else UI.toast("QR do cliente não reconhecido.");
         },
         onError: (msg) => {
           const h = m.el.querySelector("#scan-hint-est");
@@ -1017,17 +1201,6 @@ const EstApp = {
           <p class="notice" style="margin:12px 0">Nada entra no app até o Admin validar e ativar o disparo.</p>
           <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
       });
-    });
-    const busca = this.root.querySelector("#busca-cli");
-    busca?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const q = busca.value.toLowerCase();
-        const c = Store.all("clientes").find((x) => x.nome.toLowerCase().includes(q) || x.codigo.toLowerCase().includes(q));
-        if (c) {
-          this.clienteSel = c.id;
-          location.hash = `#/registrar/${c.id}`;
-        } else UI.toast("Cliente não encontrado na demonstração.");
-      }
     });
   },
 };

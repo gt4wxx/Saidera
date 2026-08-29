@@ -11,6 +11,7 @@ const Logic = {
     const saved = sessionStorage.getItem("saidera_cliente");
     if (saved && this.cliente(saved)) demo.clienteId = saved;
     if (!Store.data.auditoria) Store.data.auditoria = [];
+    if (!Store.data.tickets) Store.data.tickets = [];
     if (!Store.data.meta.cidade) Store.data.meta.cidade = "Aracaju/SE";
     if (Store.data.meta.metaPadraoRede == null) Store.data.meta.metaPadraoRede = 10;
     this.hidratarSaideras();
@@ -780,7 +781,119 @@ const Logic = {
     );
   },
 
-  registrarConsumo({ clienteId, estabelecimentoId, bebidaId, quantidade, funcionarioId }) {
+  ticketPorCodigo(q) {
+    let s = String(q || "").trim().toUpperCase();
+    if (!s) return null;
+    const parsed = window.QR?.parseTicket?.(s);
+    if (parsed) s = parsed;
+    return Store.all("tickets").find((t) => String(t.codigo || "").toUpperCase() === s) || null;
+  },
+
+  novoCodigoTicket() {
+    let codigo = "";
+    do {
+      const raw = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "X").slice(2, 7);
+      codigo = `TKT-${(raw + "XXXXX").slice(0, 5)}`;
+    } while (this.ticketPorCodigo(codigo));
+    return codigo;
+  },
+
+  criarTicket({ estabelecimentoId, itens }) {
+    if (!Store.data.tickets) Store.data.tickets = [];
+    const limpos = (itens || [])
+      .map((i) => ({
+        bebidaId: i.bebidaId,
+        nome: this.bebida(i.bebidaId)?.nome || i.nome || "Bebida",
+        quantidade: Math.max(0, Number(i.quantidade) || 0),
+      }))
+      .filter((i) => i.bebidaId && i.quantidade > 0);
+    if (!limpos.length) return null;
+    const ticket = {
+      id: `tkt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      codigo: this.novoCodigoTicket(),
+      estabelecimentoId,
+      itens: limpos,
+      usado: false,
+      usadoPor: null,
+      usadoEm: null,
+      criadoEm: new Date().toISOString(),
+    };
+    Store.data.tickets.unshift(ticket);
+    this.auditar(
+      "QR de tampas gerado",
+      `${this.est(estabelecimentoId)?.nome || ""} · ${ticket.codigo} · ${limpos.map((i) => `${i.quantidade}× ${i.nome}`).join(", ")}`
+    );
+    Store.save();
+    return ticket;
+  },
+
+  resgatarTicket(codigo, clienteId) {
+    if (!Store.data.tickets) Store.data.tickets = [];
+    const t = this.ticketPorCodigo(window.QR?.parseTicket?.(codigo) || codigo);
+    if (!t) return { ok: false, erro: "QR inválido. Peça um novo cupom à casa." };
+    if (t.usado) return { ok: false, erro: "Este QR já foi usado. Cada cupom vale uma vez." };
+    const est = this.est(t.estabelecimentoId);
+    if (!est) return { ok: false, erro: "Estabelecimento deste QR não foi encontrado." };
+    const cli = this.cliente(clienteId);
+    if (!cli) return { ok: false, erro: "Cliente da demonstração não encontrado." };
+    t.usado = true;
+    t.usadoPor = clienteId;
+    t.usadoEm = new Date().toISOString();
+    const resultados = [];
+    let ganhas = 0;
+    const novas = [];
+    t.itens.forEach((item) => {
+      const res = this.registrarConsumo({
+        clienteId,
+        estabelecimentoId: t.estabelecimentoId,
+        bebidaId: item.bebidaId,
+        quantidade: item.quantidade,
+        silencioso: true,
+        persistir: false,
+      });
+      resultados.push({ ...item, ...res });
+      ganhas += res.ganhas || 0;
+      (res.novas || []).forEach((s) => novas.push(s));
+    });
+    const resumo = t.itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
+    Store.data.notificacoes.unshift({
+      id: `ntf-tkt-${Date.now()}`,
+      clienteId,
+      titulo: ganhas ? "Você ganhou uma Saidera!" : "Tampas adicionadas",
+      texto: `${resumo} no ${est.nome}.`,
+      tipo: ganhas ? "saidera" : "progresso",
+      lida: false,
+      criadoEm: new Date().toISOString(),
+    });
+    this.auditar("QR de tampas resgatado", `${est.nome} · ${cli.primeiroNome} · ${t.codigo} · ${resumo}`);
+    Store.save();
+    return { ok: true, ticket: t, est, resultados, ganhas, novas };
+  },
+
+  entregarSaideraPorCodigo(codigo, estabelecimentoId, funcionarioId) {
+    this.hidratarSaideras();
+    const raw = String(codigo || "")
+      .trim()
+      .toUpperCase()
+      .replace(/^(SDR)(\d)/, "SDR-$2");
+    if (!raw) return { ok: false, erro: "Informe o ID da Saidera." };
+    const s = Store.all("saideras").find((x) => String(x.codigo || "").toUpperCase() === raw);
+    if (!s) return { ok: false, erro: "Saidera não encontrada. Confira o ID com o cliente." };
+    if (s.estabelecimentoId !== estabelecimentoId) {
+      return { ok: false, erro: `Esta Saidera é do ${this.est(s.estabelecimentoId)?.nome || "outro estabelecimento"}.` };
+    }
+    if (s.status === "utilizada") return { ok: false, erro: "Esta Saidera já foi utilizada." };
+    if (s.status === "expirada" || (s.expiraEm && new Date(s.expiraEm) < this.hoje())) {
+      s.status = "expirada";
+      Store.save();
+      return { ok: false, erro: "Esta Saidera expirou." };
+    }
+    const ok = this.entregarSaidera(s.id, funcionarioId);
+    if (!ok) return { ok: false, erro: "Não foi possível entregar esta Saidera." };
+    return { ok: true, saidera: ok };
+  },
+
+  registrarConsumo({ clienteId, estabelecimentoId, bebidaId, quantidade, funcionarioId, silencioso, persistir }) {
     const est = this.est(estabelecimentoId);
     const cam = this.ofertaAtivaPara(clienteId, estabelecimentoId, bebidaId);
     const metaOferta = cam?.metaTampas || null;
@@ -825,7 +938,7 @@ const Logic = {
     p.atualizadoEm = new Date().toISOString();
 
     Store.data.consumos.unshift({
-      id: `con-live-${Date.now()}`,
+        id: `con-live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       clienteId,
       estabelecimentoId,
       bebidaId,
@@ -839,29 +952,30 @@ const Logic = {
     cli.ultimaVisita = new Date().toLocaleDateString("pt-BR");
     cli.ultimaVisitaIso = new Date().toISOString();
 
-    const titulo = ofertaConcluida
-      ? "Oferta concluída! Você ganhou uma Saidera"
-      : ganhas
-        ? "Você ganhou uma Saidera!"
-        : `${quantidade} Tampa${quantidade > 1 ? "s" : ""} registrada${quantidade > 1 ? "s" : ""}`;
-    const texto = ofertaConcluida
-      ? `${this.bebida(bebidaId).nome} no ${est.nome}. A próxima Saidera volta à regra da casa: ${metaBar} Tampas.`
-      : ganhas
-        ? `${this.bebida(bebidaId).nome} no ${est.nome}. Mostre ao garçom para resgatar.`
-        : `${this.bebida(bebidaId).nome} no ${est.nome}: ${p.atual}/${p.meta}.`;
+    if (!silencioso) {
+      const titulo = ofertaConcluida
+        ? "Oferta concluída! Você ganhou uma Saidera"
+        : ganhas
+          ? "Você ganhou uma Saidera!"
+          : `${quantidade} Tampa${quantidade > 1 ? "s" : ""} registrada${quantidade > 1 ? "s" : ""}`;
+      const texto = ofertaConcluida
+        ? `${this.bebida(bebidaId).nome} no ${est.nome}. A próxima Saidera volta à regra da casa: ${metaBar} Tampas.`
+        : ganhas
+          ? `${this.bebida(bebidaId).nome} no ${est.nome}. Informe o ID da Saidera à casa para retirar.`
+          : `${this.bebida(bebidaId).nome} no ${est.nome}: ${p.atual}/${p.meta}.`;
 
-    Store.data.notificacoes.unshift({
-      id: `ntf-live-${Date.now()}`,
-      clienteId,
-      titulo,
-      texto,
-      tipo: ganhas ? "saidera" : "progresso",
-      lida: false,
-      criadoEm: new Date().toISOString(),
-    });
-
-    this.auditar("Registro de consumo", `${est.nome} · ${cli.primeiroNome} · ${this.bebida(bebidaId).nome} ×${quantidade}`);
-    Store.save();
+      Store.data.notificacoes.unshift({
+        id: `ntf-live-${Date.now()}`,
+        clienteId,
+        titulo,
+        texto,
+        tipo: ganhas ? "saidera" : "progresso",
+        lida: false,
+        criadoEm: new Date().toISOString(),
+      });
+      this.auditar("Registro de consumo", `${est.nome} · ${cli.primeiroNome} · ${this.bebida(bebidaId).nome} ×${quantidade}`);
+    }
+    if (persistir !== false) Store.save();
     return { antes, depois: p.atual, meta: p.meta, ganhas, novas, progresso: p, ofertaConcluida, metaBar };
   },
 

@@ -284,6 +284,21 @@
   border-radius: 24px; padding: 18px; margin-bottom: 12px;
 }
 .saidera-card.used { opacity: 0.72; filter: grayscale(0.3); }
+.saidera-id {
+  margin-top: 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-2);
+}
+.saidera-code {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  margin-top: 2px;
+}
 
 .celebrate {
   text-align: center; padding: 12px 8px 4px;
@@ -359,6 +374,34 @@ body.client-page .demo-fab {
 }
 
 .waiter-body { padding-bottom: 28px; }
+.waiter-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.waiter-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  min-height: 132px;
+  padding: 16px 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(245,184,0,0.18);
+  background: #1a1a1a;
+  color: inherit;
+}
+.waiter-action strong { font-size: 0.95rem; }
+.waiter-action span { font-size: 0.75rem; color: #9a9a9a; line-height: 1.35; }
+.waiter-action.gold { background: var(--gold-dim); border-color: rgba(245,184,0,0.4); }
+.waiter-action.navy { background: #14213D; border-color: #1c3260; }
+.scan-frame.scan-lg { width: min(260px, 72vw); height: min(260px, 72vw); }
+@media (max-width: 420px) {
+  .waiter-actions { grid-template-columns: 1fr; }
+}
+.waiter-scan { margin-top: 16px; }
 .scan-frame.live { overflow: hidden; background: #000; }
 .scan-frame video {
   position: absolute; inset: 0;

@@ -218,3 +218,57 @@ body.dash {
 @media (max-width: 720px) {
   .tipo-pick { grid-template-columns: 1fr; }
 }
+
+.ticket-print {
+  background: #FFF9E8;
+  color: #171717;
+  border-radius: 20px;
+  padding: 22px 18px 20px;
+  text-align: center;
+  max-width: 320px;
+  margin: 0 auto;
+}
+.ticket-print .brand-h { margin: 0 auto 8px; max-height: 36px; width: auto; }
+.ticket-print .ticket-house { font-weight: 800; margin: 4px 0 2px; }
+.ticket-print h2 {
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  margin: 8px 0 10px;
+}
+.ticket-print .ticket-qr { display: grid; place-items: center; }
+.ticket-print .qr-real { background: #FFF9E8; margin: 8px auto; }
+.ticket-itens {
+  list-style: none;
+  text-align: left;
+  max-width: 220px;
+  margin: 0 auto 12px;
+}
+.ticket-itens li {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(23, 23, 23, 0.12);
+  font-size: 0.95rem;
+}
+
+@media print {
+  .no-print,
+  .sidebar,
+  .sidebar-scrim,
+  .dash-head,
+  .demo-fab,
+  .ticket-composer,
+  .ticket-list,
+  .menu-btn {
+    display: none !important;
+  }
+  .dash-app { display: block; background: #fff; }
+  .dash-main { padding: 0; margin: 0; }
+  .grid-2.ticket-layout { display: block; }
+  .panel { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
+  .ticket-print {
+    box-shadow: none;
+    max-width: 80mm;
+    margin: 0;
+    border-radius: 0;
+  }
+  body { background: #fff !important; color: #171717; }
+}

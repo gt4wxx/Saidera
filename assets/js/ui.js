@@ -159,7 +159,7 @@ const UI = {
       <summary>MODO DEMO</summary>
       <div class="demo-panel">
         <strong>Roteiro da apresentação</strong>
-        <p>1. Cliente mostra o QR (código real do ID).<br/>2. Garçom aponta a câmera — ou digita SDR-28491.<br/>3. +1 Heineken → Saidera liberada (vale 15 dias).<br/>4. Entrega na mesma tela.<br/>5. +2 Heineken sem escanear de novo → 2/8.<br/>Excedente: Coca-Cola 8/10 + 5.</p>
+        <p>1. A casa imprime o cupom de Tampas; o cliente lê no app.<br/>2. Se precisar, o cliente mostra o QR dele e o garçom abre a comanda.<br/>3. Cada cupom impresso é de uso único.<br/>4. Para baixar a Saidera, informe o ID (SDR-…).<br/>Demo: Ellisson · SDR-28491 · Heineken 7/8.</p>
         <button class="btn btn-gold btn-block btn-sm" data-action="reset-demo">Resetar demonstração</button>
       </div>
     </details>`;

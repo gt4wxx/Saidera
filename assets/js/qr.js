@@ -5,13 +5,43 @@ const QR = {
     return `SAIDERA:${String(codigo || "").replace(/\s/g, "").toUpperCase()}`;
   },
 
-  parse(text) {
+  payloadTicket(codigo) {
+    return `SAIDERA-T:${String(codigo || "").replace(/\s/g, "").toUpperCase()}`;
+  },
+
+  parseTicket(text) {
     const t = String(text || "").trim();
+    const tagged = t.match(/SAIDERA-T:\s*([A-Z0-9\-]+)/i);
+    if (tagged) return tagged[1].toUpperCase();
+    const tkt = t.match(/\bTKT-[A-Z0-9]+\b/i);
+    return tkt ? tkt[0].toUpperCase() : null;
+  },
+
+  parseCliente(text) {
+    const t = String(text || "").trim();
+    if (this.parseTicket(t)) return null;
     const tagged = t.match(/SAIDERA:\s*([A-Z0-9\-]+)/i);
     if (tagged) return tagged[1].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase();
     const sdr = t.match(/\bSDR-?\d+\b/i);
     if (sdr) return sdr[0].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase();
-    return t;
+    return null;
+  },
+
+  decode(text) {
+    const t = String(text || "").trim();
+    const ticket = this.parseTicket(t);
+    if (ticket) return { tipo: "ticket", codigo: ticket };
+    const tagged = t.match(/SAIDERA:\s*([A-Z0-9\-]+)/i);
+    if (tagged) {
+      return { tipo: "cliente", codigo: tagged[1].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase() };
+    }
+    const sdr = t.match(/\bSDR-?\d+\b/i);
+    if (sdr) return { tipo: "sdr", codigo: sdr[0].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase() };
+    return { tipo: "desconhecido", codigo: t };
+  },
+
+  parse(text) {
+    return this.decode(text).codigo || String(text || "").trim();
   },
 
   svg(text, size = 188) {
