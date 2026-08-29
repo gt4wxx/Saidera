@@ -785,24 +785,56 @@ const AdminApp = {
     </section>`;
   },
 
-  checksMenus(selecionados) {
-    const sel = new Set(selecionados || Logic.menusCasaCatalogo().map((m) => m.id));
-    return `<div class="check-list">${Logic.menusCasaCatalogo()
-      .map(
-        (m) => `<label>
-          <input type="checkbox" data-menu-pln="${m.id}" ${sel.has(m.id) ? "checked" : ""} ${m.fixo ? "disabled" : ""}/>
-          <div><strong>${this.esc(m.nome)}</strong>${m.fixo ? `<p class="tiny muted">Sempre visível para a casa</p>` : ""}</div>
-        </label>`
-      )
+  checksMenus(livres) {
+    const allowed = new Set(livres || Logic.menusCasaCatalogo().map((m) => m.id));
+    return `<div class="check-list" data-pln-menus>${Logic.menusCasaCatalogo()
+      .map((m) => {
+        const bloqueado = !m.fixo && !allowed.has(m.id);
+        return `<label class="${m.fixo ? "is-fixo" : ""}${bloqueado ? " is-block" : ""}">
+          <input type="checkbox" data-menu-pln="${m.id}" data-fixo="${m.fixo ? "1" : "0"}" ${bloqueado ? "checked" : ""} ${m.fixo ? "disabled" : ""}/>
+          <div>
+            <strong>${this.esc(m.nome)}</strong>
+            <p class="tiny muted">${m.fixo ? "Sempre livre" : bloqueado ? "Bloqueado — fica turvo na casa" : "Marque para bloquear"}</p>
+          </div>
+        </label>`;
+      })
       .join("")}</div>`;
   },
 
   menusDoForm(root = this.root) {
-    const ids = [];
-    root.querySelectorAll("[data-menu-pln]").forEach((el) => {
-      if (el.checked || el.disabled) ids.push(el.getAttribute("data-menu-pln"));
+    const box = root.querySelector("[data-pln-menus]") || root;
+    const blocked = new Set();
+    box.querySelectorAll("[data-menu-pln]").forEach((el) => {
+      if (el.getAttribute("data-fixo") === "1") return;
+      if (el.checked) blocked.add(el.getAttribute("data-menu-pln"));
     });
-    return ids;
+    return Logic.menusCasaCatalogo()
+      .map((m) => m.id)
+      .filter((id) => !blocked.has(id));
+  },
+
+  ligarMenusPlano(root) {
+    if (!root) return;
+    root.querySelectorAll("[data-pln-menus] label").forEach((lab) => {
+      const inp = lab.querySelector("[data-menu-pln]");
+      const hint = lab.querySelector(".tiny");
+      if (!inp || inp.disabled) return;
+      const sync = () => {
+        lab.classList.toggle("is-block", inp.checked);
+        if (hint) hint.textContent = inp.checked ? "Bloqueado — fica turvo na casa" : "Livre neste plano";
+      };
+      inp.addEventListener("change", sync);
+      sync();
+    });
+  },
+
+  resumoMenusPlano(p) {
+    const livres = new Set(p.menus || []);
+    const bloqueados = Logic.menusCasaCatalogo()
+      .filter((m) => !m.fixo && !livres.has(m.id))
+      .map((m) => m.nome);
+    if (!bloqueados.length) return `<span class="tiny muted">Nenhum menu bloqueado</span>`;
+    return `<strong>Bloqueados:</strong> ${this.esc(bloqueados.join(", "))}`;
   },
 
   planos() {
@@ -813,7 +845,7 @@ const AdminApp = {
       </div>
       <div class="field" style="margin-top:10px"><span>Descrição</span><textarea id="npn-desc" rows="2" placeholder="O que a casa ganha neste plano"></textarea></div>
       <label class="toggle-row" style="margin:12px 0"><span>À mostra para os estabelecimentos</span><input type="checkbox" id="npn-mostra" checked/></label>
-      <p class="tiny muted" style="margin-bottom:8px">Menus que a casa vê neste plano</p>
+      <p class="tiny muted" style="margin-bottom:8px">Marque só os menus que a casa <strong>não</strong> usa neste plano. Eles continuam no menu, mas o conteúdo fica turvo.</p>
       ${this.checksMenus(Logic.menusCasaCatalogo().map((m) => m.id))}
       <button class="btn btn-gold" style="margin-top:12px" data-act="pln-criar">Cadastrar plano</button>`;
     return `${this.formNovo("pln", "Cadastrar novo plano", form)}
@@ -826,10 +858,10 @@ const AdminApp = {
     <section class="panel">
       <p class="muted small" style="margin-bottom:12px">O plano define quais menus a casa usa livremente. Os outros continuam no menu, turvos. Se estiver à mostra, o estabelecimento vê e pode escolher. Visão Geral, Configurações e Planos ficam sempre livres.</p>
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Plano</th><th>Menus</th><th>À mostra</th><th>Casas</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Plano</th><th>Menus bloqueados</th><th>À mostra</th><th>Casas</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((p) => `<tr>
           <td><strong>${this.esc(p.nome)}</strong><p class="tiny muted">${this.esc(p.descricao || "")}${p.preco != null ? " · R$ " + Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}</p></td>
-          <td>${(p.menus || []).map((id) => this.esc(Logic.labelMenuCasa(id))).join(", ")}</td>
+          <td>${this.resumoMenusPlano(p)}</td>
           <td>${p.aMostra ? `<span class="badge badge-gold">À mostra</span>` : `<span class="badge badge-ghost">Só admin</span>`}</td>
           <td>${this.n(p.casas ?? Store.all("estabelecimentos").filter((e) => e.planoId === p.id).length)}</td>
           <td>${this.badge(p.status)}</td>
@@ -1066,6 +1098,7 @@ const AdminApp = {
       </div>`;
     const m = UI.modal({ html });
     this.ligarCep(m.el, "[name=cep], #ed-cep", { rua: "[name=logradouro]", bairro: "[name=bairro]", cidade: "[name=cidade]", uf: "[name=uf]" });
+    this.ligarMenusPlano(m.el);
     m.el.querySelector("#modal-ok")?.addEventListener("click", async () => {
       const ok = await onOk(m.el);
       if (ok !== false) m.close();
@@ -1074,6 +1107,7 @@ const AdminApp = {
 
   bind() {
     UI.fixButtons(this.root);
+    this.ligarMenusPlano(this.root);
     const keep = (id, key) => {
       this.root.querySelector(id)?.addEventListener("input", (e) => {
         this.q[key] = e.target.value;
@@ -1212,7 +1246,7 @@ const AdminApp = {
         preco: this.val("#npn-preco"),
         aMostra: this.root.querySelector("#npn-mostra")?.checked,
         menus: this.menusDoForm(),
-      }, "Plano cadastrado.");
+      }, "Plano cadastrado. Atribua na ficha da casa para valer.");
       if (data) {
         this.novo.pln = false;
         this.render();
@@ -1227,7 +1261,7 @@ const AdminApp = {
         <div class="field"><span>Preço</span><input name="preco" type="number" min="0" step="0.01" value="${p.preco != null ? p.preco : ""}"/></div>
         <div class="field"><span>Descrição</span><textarea name="descricao" rows="2">${this.esc(p.descricao || "")}</textarea></div>
         <label class="toggle-row"><span>À mostra para os estabelecimentos</span><input type="checkbox" name="aMostra" ${p.aMostra ? "checked" : ""}/></label>
-        <p class="tiny muted" style="margin:10px 0 6px">Menus da casa</p>
+        <p class="tiny muted" style="margin:10px 0 6px">Marque os menus que a casa <strong>não</strong> usa. Visão Geral, Configurações e Planos ficam sempre livres.</p>
         ${this.checksMenus(p.menus)}
       `, async (box) => {
         const g = (n) => box.querySelector(`[name="${n}"]`)?.value;

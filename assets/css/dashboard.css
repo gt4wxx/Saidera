@@ -120,7 +120,12 @@ body.dash {
   border-color: #F5B800;
   outline: 2px solid #F5B800;
 }
-.check-list { display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.check-list { display: grid; gap: 8px; max-height: 360px; overflow: auto; grid-column: 1 / -1; }
+.check-list label.is-block {
+  border: 1px solid rgba(245, 184, 0, 0.45);
+  background: #1c1810;
+}
+.check-list label.is-fixo { opacity: 0.72; }
 .plano-lock {
   position: relative;
   min-height: min(68vh, 640px);
