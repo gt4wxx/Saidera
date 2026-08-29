@@ -156,14 +156,17 @@ function rota(string $method, string $path): void
 
     if ($path === 'estabelecimentos' && $method === 'POST') {
         auth_require(['admin']);
+        $nome = trim($in['nome'] ?? '');
+        if (strlen($nome) < 2) fail('Informe o nome da casa.');
+        if (empty($in['email']) || empty($in['senha'])) fail('Informe e-mail e senha do gestor.');
         db()->prepare('INSERT INTO estabelecimentos (nome, tipo, bairro, endereco, horario, meta_padrao) VALUES (?,?,?,?,?,?)')
             ->execute([
-                trim($in['nome'] ?? ''),
-                $in['tipo'] ?? 'bar',
-                $in['bairro'] ?? null,
-                $in['endereco'] ?? null,
-                $in['horario'] ?? null,
-                (int) ($in['metaPadrao'] ?? 10),
+                $nome,
+                in_array($in['tipo'] ?? '', ['bar', 'restaurante'], true) ? $in['tipo'] : 'bar',
+                $in['bairro'] ?: null,
+                $in['endereco'] ?: null,
+                $in['horario'] ?: null,
+                max(1, (int) ($in['metaPadrao'] ?? 10)),
             ]);
         $eid = (int) db()->lastInsertId();
         foreach (['Heineken', 'Budweiser', 'Brahma', 'Coca-Cola'] as $nomeBeb) {
@@ -179,26 +182,33 @@ function rota(string $method, string $path): void
             db()->prepare('INSERT IGNORE INTO estabelecimento_bebidas (estabelecimento_id, bebida_id, regra) VALUES (?, ?, ?)')
                 ->execute([$eid, $bid, 'padrao']);
         }
-        if (!empty($in['email']) && !empty($in['senha'])) {
-            $uid = auth_criar($in['email'], $in['senha'], 'estabelecimento');
-            db()->prepare('INSERT INTO estabelecimento_gestores (usuario_id, estabelecimento_id) VALUES (?,?)')->execute([$uid, $eid]);
-        }
-        auditar('Novo estabelecimento', $in['nome'] ?? '');
+        $uid = auth_criar($in['email'], $in['senha'], 'estabelecimento');
+        db()->prepare('INSERT INTO estabelecimento_gestores (usuario_id, estabelecimento_id) VALUES (?,?)')->execute([$uid, $eid]);
+        auditar('Novo estabelecimento', $nome);
         ok(['id' => pub('est', $eid), 'store' => bootstrap_store(auth_user())], 201);
     }
 
     if ($path === 'estabelecimentos/salvar' && $method === 'POST') {
         $u = auth_require(['estabelecimento', 'admin']);
         $eid = nid('est', $in['id'] ?? '') ?: gestor_est_id((int) $u['id']);
-        db()->prepare('UPDATE estabelecimentos SET nome = ?, bairro = ?, meta_padrao = ?, horario = ?, endereco = ? WHERE id = ?')
+        $cur = db()->prepare('SELECT * FROM estabelecimentos WHERE id = ?');
+        $cur->execute([$eid]);
+        $row = $cur->fetch();
+        if (!$row) fail('Estabelecimento não encontrado.');
+        $tipo = in_array($in['tipo'] ?? '', ['bar', 'restaurante'], true) ? $in['tipo'] : $row['tipo'];
+        $status = isset($in['status']) ? (($in['status'] === 'inativo') ? 'inativo' : 'ativo') : $row['status'];
+        db()->prepare('UPDATE estabelecimentos SET nome = ?, tipo = ?, bairro = ?, meta_padrao = ?, horario = ?, endereco = ?, status = ? WHERE id = ?')
             ->execute([
-                trim($in['nome'] ?? ''),
-                $in['bairro'] ?? null,
-                (int) ($in['metaPadrao'] ?? 10),
-                $in['horario'] ?? null,
-                $in['endereco'] ?? null,
+                trim($in['nome'] ?? $row['nome']),
+                $tipo,
+                array_key_exists('bairro', $in) ? ($in['bairro'] ?: null) : $row['bairro'],
+                max(1, (int) ($in['metaPadrao'] ?? $row['meta_padrao'])),
+                array_key_exists('horario', $in) ? ($in['horario'] ?: null) : $row['horario'],
+                array_key_exists('endereco', $in) ? ($in['endereco'] ?: null) : $row['endereco'],
+                $status,
                 $eid,
             ]);
+        auditar('Estabelecimento atualizado', $in['nome'] ?? $row['nome']);
         ok(['store' => bootstrap_store($u)]);
     }
 
@@ -216,6 +226,8 @@ function rota(string $method, string $path): void
     if ($path === 'funcionarios' && $method === 'POST') {
         $u = auth_require(['estabelecimento', 'admin']);
         $eid = nid('est', $in['estabelecimentoId'] ?? '') ?: gestor_est_id((int) $u['id']);
+        if (!$eid) fail('Informe o estabelecimento.');
+        if (strlen(trim($in['nome'] ?? '')) < 2) fail('Informe o nome do funcionário.');
         $uid = auth_criar($in['email'] ?? '', $in['senha'] ?? '', 'funcionario');
         db()->prepare('INSERT INTO funcionarios (usuario_id, estabelecimento_id, nome, cargo) VALUES (?,?,?,?)')
             ->execute([$uid, $eid, trim($in['nome'] ?? ''), $in['cargo'] ?? 'Garçom']);
@@ -225,6 +237,7 @@ function rota(string $method, string $path): void
 
     if ($path === 'parceiros' && $method === 'POST') {
         auth_require(['admin']);
+        if (strlen(trim($in['nome'] ?? '')) < 2) fail('Informe o nome do parceiro.');
         $uid = null;
         if (!empty($in['email']) && !empty($in['senha'])) {
             $uid = auth_criar($in['email'], $in['senha'], 'parceiro');
@@ -237,6 +250,9 @@ function rota(string $method, string $path): void
     if ($path === 'campanhas' && $method === 'POST') {
         $u = auth_require(['estabelecimento', 'parceiro', 'admin']);
         $origem = $u['papel'] === 'parceiro' ? 'parceiro' : 'estabelecimento';
+        if ($u['papel'] === 'admin') {
+            $origem = !empty($in['parceiroId']) ? 'parceiro' : 'estabelecimento';
+        }
         $eid = nid('est', $in['estabelecimentoId'] ?? '') ?: ($u['papel'] === 'estabelecimento' ? gestor_est_id((int) $u['id']) : null);
         $pid = nid('par', $in['parceiroId'] ?? '') ?: (parceiro_por_usuario((int) $u['id'])['id'] ?? null);
         db()->prepare('INSERT INTO campanhas (titulo, origem, estabelecimento_id, parceiro_id, status, tipo, publico, mensagem, meta_tampas, altera_meta, bebida_id, periodo_inicio, periodo_fim, canal, cliente_ids_json, limite) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -272,18 +288,25 @@ function rota(string $method, string $path): void
     if ($path === 'campanhas/ativar' && $method === 'POST') {
         auth_require(['admin']);
         $cid = nid('cam', $in['id'] ?? '');
-        db()->prepare("UPDATE campanhas SET status = 'ativa', disparada = 1 WHERE id = ?")->execute([$cid]);
-        auditar('Campanha ativada', (string) $cid);
-        ok(['store' => bootstrap_store(auth_user())]);
+        if (!$cid) fail('Campanha não encontrada.');
+        $n = disparar_campanha($cid, $in['canal'] ?? null);
+        ok(['enviados' => $n, 'store' => bootstrap_store(auth_user())]);
     }
 
     if ($path === 'config' && $method === 'POST') {
-        auth_require(['admin']);
-        if (isset($in['cidade'])) cfg_set('cidade', $in['cidade']);
-        if (isset($in['metaPadraoRede'])) cfg_set('meta_padrao_rede', (string) (int) $in['metaPadraoRede']);
+        $u = auth_require(['admin']);
+        if (isset($in['cidade'])) cfg_set('cidade', trim($in['cidade']));
+        if (isset($in['metaPadraoRede'])) cfg_set('meta_padrao_rede', (string) max(1, (int) $in['metaPadraoRede']));
+        if (isset($in['validadeSaideraDias'])) cfg_set('validade_saidera_dias', (string) max(1, (int) $in['validadeSaideraDias']));
+        if (!empty($in['novaSenha'])) {
+            if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
+            db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);
+        }
         auditar('Configurações', $in['cidade'] ?? '');
         ok(['store' => bootstrap_store(auth_user())]);
     }
+
+    if (admin_rota($method, $path, $in)) return;
 
     fail('Rota não encontrada.', 404);
 }

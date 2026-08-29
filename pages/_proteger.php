@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/api/lib/app.php';
 
 function saidera_v(): string
 {
-    return '3';
+    return '4';
 }
 
 function saidera_proteger(string $papel): void

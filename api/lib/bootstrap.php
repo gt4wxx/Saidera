@@ -28,7 +28,9 @@ function row_cliente(array $c): array
         'clienteDesde' => br_date($c['cliente_desde']),
         'ultimaVisita' => $c['ultima_visita'] ? br_date($c['ultima_visita']) : '',
         'ultimaVisitaIso' => iso($c['ultima_visita']),
-        'status' => 'ativo',
+        'status' => (isset($c['ativo']) && !(int) $c['ativo']) ? 'inativo' : 'ativo',
+        'tampasTotal' => isset($c['tampas_total']) ? (int) $c['tampas_total'] : null,
+        'saiderasTotal' => isset($c['saideras_total']) ? (int) $c['saideras_total'] : null,
         'bebidaFavoritaId' => $c['bebida_favorita_id'] ? pub('beb', $c['bebida_favorita_id']) : null,
         'prefs' => $prefs ?: [
             'push' => true, 'email' => true, 'whatsapp' => false, 'perfilPublico' => true,
@@ -57,6 +59,11 @@ function row_est(array $e, bool $comBebidas = true): array
         'horario' => $e['horario'],
         'metaPadrao' => (int) $e['meta_padrao'],
         'promocao' => $e['promocao'],
+        'gestorEmail' => $e['gestor_email'] ?? '',
+        'qtdClientes' => isset($e['qtd_clientes']) ? (int) $e['qtd_clientes'] : null,
+        'qtdTampas' => isset($e['qtd_tampas']) ? (int) $e['qtd_tampas'] : null,
+        'qtdSaideras' => isset($e['qtd_saideras']) ? (int) $e['qtd_saideras'] : null,
+        'qtdFuncionarios' => isset($e['qtd_funcionarios']) ? (int) $e['qtd_funcionarios'] : null,
         'bebidas' => [],
     ];
     if ($comBebidas) {
@@ -141,6 +148,7 @@ function bootstrap_store(array $u): array
     $meta = [
         'cidade' => cfg('cidade', 'Aracaju/SE'),
         'metaPadraoRede' => (int) cfg('meta_padrao_rede', 10),
+        'validadeSaideraDias' => (int) cfg('validade_saidera_dias', 15),
         'demo' => [
             'clienteId' => null,
             'estabelecimentoId' => null,
@@ -317,15 +325,47 @@ function bootstrap_store(array $u): array
     }
 
     // admin
-    $empty['estabelecimentos'] = array_map(fn($e) => row_est($e), db()->query('SELECT * FROM estabelecimentos ORDER BY nome')->fetchAll());
-    $empty['clientes'] = array_map('row_cliente', db()->query('SELECT c.*, u.email FROM clientes c JOIN usuarios u ON u.id = c.usuario_id ORDER BY c.nome LIMIT 200')->fetchAll());
-    $empty['parceiros'] = array_map(fn($p) => [
-        'id' => pub('par', $p['id']), 'nome' => $p['nome'], 'categoria' => $p['categoria'],
-        'selo' => $p['selo'], 'status' => $p['status'], 'logoCor' => $p['logo_cor'],
-    ], db()->query('SELECT * FROM parceiros')->fetchAll());
+    $empty['meta']['contagens'] = admin_contagens();
+    $empty['meta']['semana'] = admin_semana();
+    $empty['meta']['bairros'] = admin_bairros();
+    $stats = admin_mapa_est();
+    $ests = db()->query('SELECT e.*, (
+        SELECT u.email FROM estabelecimento_gestores g JOIN usuarios u ON u.id = g.usuario_id
+        WHERE g.estabelecimento_id = e.id LIMIT 1
+    ) gestor_email FROM estabelecimentos e ORDER BY e.nome')->fetchAll();
+    $empty['estabelecimentos'] = array_map(function ($e) use ($stats) {
+        $id = (int) $e['id'];
+        $e['qtd_clientes'] = $stats[$id]['clientes'] ?? 0;
+        $e['qtd_tampas'] = $stats[$id]['tampas'] ?? 0;
+        $e['qtd_saideras'] = $stats[$id]['saideras'] ?? 0;
+        $e['qtd_funcionarios'] = $stats[$id]['funcionarios'] ?? 0;
+        return row_est($e);
+    }, $ests);
+    $empty['clientes'] = array_map('row_cliente', db()->query('SELECT c.*, u.email, u.ativo,
+        (SELECT COALESCE(SUM(atual),0) FROM progresso_tampas t WHERE t.cliente_id = c.id) tampas_total,
+        (SELECT COUNT(*) FROM saideras s WHERE s.cliente_id = c.id) saideras_total
+        FROM clientes c JOIN usuarios u ON u.id = c.usuario_id ORDER BY c.nome LIMIT 500')->fetchAll());
+    $empty['parceiros'] = array_map(function ($p) {
+        return [
+            'id' => pub('par', $p['id']),
+            'nome' => $p['nome'],
+            'categoria' => $p['categoria'],
+            'selo' => $p['selo'],
+            'status' => $p['status'],
+            'logoCor' => $p['logo_cor'],
+            'email' => $p['email'] ?? '',
+            'campanhasAtivas' => (int) $p['campanhas_ativas'],
+            'campanhas' => (int) $p['campanhas_total'],
+            'estabelecimentos' => (int) $p['casas'],
+        ];
+    }, db()->query("SELECT p.*, u.email,
+        (SELECT COUNT(*) FROM campanhas c WHERE c.parceiro_id = p.id) campanhas_total,
+        (SELECT COUNT(*) FROM campanhas c WHERE c.parceiro_id = p.id AND c.status = 'ativa' AND c.disparada = 1) campanhas_ativas,
+        (SELECT COUNT(DISTINCT ce.estabelecimento_id) FROM campanha_estabelecimentos ce JOIN campanhas c ON c.id = ce.campanha_id WHERE c.parceiro_id = p.id) casas
+        FROM parceiros p LEFT JOIN usuarios u ON u.id = p.usuario_id")->fetchAll());
     $empty['campanhas'] = array_map('row_campanha', db()->query('SELECT * FROM campanhas ORDER BY solicitada_em DESC')->fetchAll());
-    $empty['saideras'] = array_map('row_saidera', db()->query('SELECT * FROM saideras ORDER BY conquistada_em DESC LIMIT 80')->fetchAll());
-    $empty['tampas'] = array_map('row_tampa', db()->query('SELECT * FROM progresso_tampas LIMIT 200')->fetchAll());
+    $empty['saideras'] = array_map('row_saidera', db()->query('SELECT * FROM saideras ORDER BY conquistada_em DESC LIMIT 250')->fetchAll());
+    $empty['tampas'] = array_map('row_tampa', db()->query('SELECT * FROM progresso_tampas ORDER BY atualizado_em DESC LIMIT 400')->fetchAll());
     $empty['consumos'] = array_map(fn($c) => [
         'id' => pub('con', $c['id']),
         'clienteId' => pub('cli', $c['cliente_id']),
@@ -333,20 +373,21 @@ function bootstrap_store(array $u): array
         'bebidaId' => pub('beb', $c['bebida_id']),
         'quantidade' => (int) $c['quantidade'],
         'criadoEm' => iso($c['criado_em']),
-    ], db()->query('SELECT * FROM consumos ORDER BY criado_em DESC LIMIT 80')->fetchAll());
+    ], db()->query('SELECT * FROM consumos ORDER BY criado_em DESC LIMIT 200')->fetchAll());
     $empty['auditoria'] = array_map(fn($a) => [
         'em' => iso($a['em']), 'acao' => $a['acao'], 'detalhe' => $a['detalhe'],
-    ], db()->query('SELECT * FROM auditoria ORDER BY em DESC LIMIT 80')->fetchAll());
+    ], db()->query('SELECT * FROM auditoria ORDER BY em DESC LIMIT 120')->fetchAll());
     $empty['funcionarios'] = array_map(fn($f) => [
         'id' => pub('fun', $f['id']),
         'nome' => $f['nome'],
         'cargo' => $f['cargo'],
+        'email' => $f['email'] ?? '',
         'estabelecimentoId' => pub('est', $f['estabelecimento_id']),
         'status' => $f['status'],
         'avatar' => $f['avatar'] ?: 'assets/brand/icon-192.png',
         'tampasHoje' => (int) $f['tampas_hoje'],
         'saiderasEntregues' => (int) $f['saideras_entregues'],
-    ], db()->query('SELECT * FROM funcionarios')->fetchAll());
+    ], db()->query('SELECT f.*, u.email FROM funcionarios f JOIN usuarios u ON u.id = f.usuario_id ORDER BY f.nome')->fetchAll());
     return $empty;
 }
 

@@ -93,16 +93,7 @@ const Logic = {
   },
 
   logsAuditoria() {
-    const vivos = Store.all("auditoria");
-    const seed = Store.all("consumos")
-      .filter((c) => String(c.id || "").startsWith("con-") && !String(c.id).includes("live"))
-      .slice(0, 10)
-      .map((c) => ({
-        em: c.criadoEm,
-        acao: "Registro de consumo",
-        detalhe: `${this.est(c.estabelecimentoId)?.nome || ""} · ${this.cliente(c.clienteId)?.primeiroNome || ""} · ${this.bebida(c.bebidaId)?.nome || ""}`,
-      }));
-    return [...vivos, ...seed].slice(0, 40);
+    return Store.all("auditoria");
   },
 
   resumoRede() {
@@ -389,9 +380,7 @@ const Logic = {
   },
 
   estimarPublicoCasa(estId, publico) {
-    const n = this.publicoCampanha({ estabelecimentoId: estId, estabelecimentos: [estId], publico }).length;
-    const demo = { todos: 486, aniversario: 36, inativos: 127, quase: 47 };
-    return Math.max(n, demo[publico] || n);
+    return this.publicoCampanha({ estabelecimentoId: estId, estabelecimentos: [estId], publico }).length;
   },
 
   async solicitarCampanhaCasa(payload) {
@@ -867,17 +856,32 @@ const Logic = {
       const day = (i + 4) % 7;
       return cons.filter((c) => new Date(c.criadoEm).getDay() === day).reduce((a, c) => a + (c.quantidade || 0), 0);
     });
-    if (estId && values.every((v) => v === 0)) return { labels, values: [18, 26, 41, 38, 22, 19, 28] };
     return { labels, values };
   },
 
   audienciasEstimar({ bairros, bebidaId, periodoDias, estabelecimentos }) {
-    let n = 620;
-    n += (bairros?.length || 0) * 480;
-    n += (estabelecimentos?.length || 0) * 210;
-    if (bebidaId === "beb-001") n += 900;
-    n += Math.round((periodoDias || 90) * 8.4);
-    return Math.min(n, 12430);
+    const corte = Date.now() - (Number(periodoDias) || 90) * 86400000;
+    const estSet = new Set(estabelecimentos || []);
+    const bairroSet = new Set((bairros || []).filter(Boolean));
+    const ids = new Set();
+    const cons = Store.all("consumos");
+    cons.forEach((c) => {
+      if (estSet.size && !estSet.has(c.estabelecimentoId)) return;
+      if (bebidaId && c.bebidaId !== bebidaId) return;
+      if (c.criadoEm && new Date(c.criadoEm).getTime() < corte) return;
+      const cli = this.cliente(c.clienteId);
+      if (!cli || cli.status === "inativo") return;
+      if (bairroSet.size && !bairroSet.has(cli.bairro)) return;
+      ids.add(c.clienteId);
+    });
+    if (!cons.length) {
+      Store.all("clientes").forEach((cli) => {
+        if (cli.status === "inativo") return;
+        if (bairroSet.size && !bairroSet.has(cli.bairro)) return;
+        ids.add(cli.id);
+      });
+    }
+    return ids.size;
   },
 
   ofertarCampanhaCliente(campanha) {

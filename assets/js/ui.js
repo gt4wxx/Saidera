@@ -101,8 +101,9 @@ const UI = {
 
   lineChart(values, labels = []) {
     const w = 560, h = 160, p = 18;
-    const max = Math.max(...values) * 1.08;
-    const min = Math.min(...values) * 0.82;
+    if (!values.length) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
+    const max = Math.max(1, ...values) * 1.08;
+    const min = Math.min(0, ...values) * 0.82;
     const pts = values.map((v, i) => {
       const x = p + (i / (values.length - 1)) * (w - p * 2);
       const y = h - p - ((v - min) / (max - min || 1)) * (h - p * 2);

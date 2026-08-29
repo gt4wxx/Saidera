@@ -239,10 +239,13 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
 .modal-bg.center { place-items: center; }
 .modal {
   width: min(460px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
   background: #1c1c1c; border-radius: 28px 28px 22px 22px;
   padding: 22px; box-shadow: var(--shadow-d);
   animation: sheet .32s cubic-bezier(.2,.8,.2,1);
 }
+.modal:has(.form-grid) { width: min(640px, 100%); }
 .modal-bg.center .modal { border-radius: 28px; }
 
 @keyframes slideDown { from { transform: translateY(-12px); opacity: 0; } }
