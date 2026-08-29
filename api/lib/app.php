@@ -51,6 +51,11 @@ function saidera_migrar(): void
           bebida_id BIGINT UNSIGNED NOT NULL,
           PRIMARY KEY (parceiro_id, bebida_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        db()->exec('CREATE TABLE IF NOT EXISTS campanha_adesoes (
+          campanha_id BIGINT UNSIGNED NOT NULL,
+          cliente_id BIGINT UNSIGNED NOT NULL,
+          PRIMARY KEY (campanha_id, cliente_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     } catch (Throwable $e) {
         /* instalação antiga sem permissão de ALTER — o cadastro novo ainda grava o endereço composto */
     }

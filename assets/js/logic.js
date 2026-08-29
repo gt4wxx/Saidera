@@ -3,7 +3,9 @@ const Logic = {
     return new Date();
   },
 
-  validadeDias: 15,
+  diasValidade() {
+    return Number(Store.data?.meta?.validadeSaideraDias) || 15;
+  },
 
   suporte() {
     const m = Store.data?.meta || {};
@@ -33,7 +35,7 @@ const Logic = {
     Store.all("saideras").forEach((s) => {
       if (!s.expiraEm && s.conquistadaEm) {
         const d = new Date(s.conquistadaEm);
-        d.setDate(d.getDate() + this.validadeDias);
+        d.setDate(d.getDate() + this.diasValidade());
         s.expiraEm = d.toISOString();
         mudou = true;
       }
@@ -46,7 +48,7 @@ const Logic = {
   },
 
   diasRestantesSaidera(s) {
-    if (!s?.expiraEm) return this.validadeDias;
+    if (!s?.expiraEm) return this.diasValidade();
     return Math.ceil((new Date(s.expiraEm) - this.hoje()) / 86400000);
   },
 
@@ -190,8 +192,36 @@ const Logic = {
   },
 
   fmtKm(km) {
+    if (km == null || Number.isNaN(km)) return "";
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(1).replace(".", ",")} km`;
+  },
+
+  haversine(lat1, lng1, lat2, lng2) {
+    if (lat2 == null || lng2 == null || lat1 == null || lng1 == null) return null;
+    const R = 6371;
+    const toRad = (n) => (n * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  },
+
+  aplicarDistancias(geo) {
+    if (!geo) return;
+    Store.all("estabelecimentos").forEach((e) => {
+      const km = this.haversine(geo.lat, geo.lng, e.lat, e.lng);
+      e.distanciaKm = km == null ? 0 : Math.round(km * 10) / 10;
+      e.temDistancia = km != null;
+    });
+  },
+
+  idsCasasDoCliente(clienteId) {
+    const ids = new Set();
+    Store.all("tampas").filter((t) => t.clienteId === clienteId).forEach((t) => ids.add(t.estabelecimentoId));
+    Store.all("consumos").filter((c) => c.clienteId === clienteId).forEach((c) => ids.add(c.estabelecimentoId));
+    Store.all("saideras").filter((s) => s.clienteId === clienteId).forEach((s) => ids.add(s.estabelecimentoId));
+    return ids;
   },
 
   fmtDate(iso) {
@@ -211,7 +241,7 @@ const Logic = {
       const found = Store.find("bebidas", id);
       if (found) return found;
     }
-    return Store.all("bebidas")[0] || { id: id || "", nome: "Bebida" };
+    return { id: id || "", nome: "Bebida" };
   },
 
   primeiraBebida(est) {
@@ -318,9 +348,11 @@ const Logic = {
   },
 
   campanhasPatrocinio(clienteId) {
+    const prefs = clienteId ? this.prefsCliente(clienteId) : {};
     return Store.all("campanhas").filter((c) => {
       if (c.status !== "ativa" || !c.disparada) return false;
       if (clienteId && !this.clienteNoPublico(clienteId, c)) return false;
+      if (clienteId && prefs.perfilPublico === false && c.origem === "parceiro") return false;
       return true;
     });
   },
@@ -575,8 +607,15 @@ const Logic = {
 
   ofertaConsumida(clienteId, campanhaId, estId, bebidaId) {
     const cli = this.cliente(clienteId);
-    return (cli?.ofertasConsumidas || []).some(
+    if ((cli?.ofertasConsumidas || []).some(
       (x) => x.campanhaId === campanhaId && x.estabelecimentoId === estId && x.bebidaId === bebidaId
+    )) return true;
+    return Store.all("saideras").some(
+      (s) =>
+        s.clienteId === clienteId &&
+        s.campanhaId === campanhaId &&
+        (!estId || s.estabelecimentoId === estId) &&
+        (!bebidaId || s.bebidaId === bebidaId)
     );
   },
 
@@ -597,10 +636,7 @@ const Logic = {
     const cam = this.patrocinioEm(estId, bebidaId, clienteId);
     if (!cam || !clienteId) return null;
     if (this.ofertaConsumida(clienteId, cam.id, estId, bebidaId)) return null;
-    const cli = this.cliente(clienteId);
-    const aderiu = (cli?.ofertas || []).includes(cam.id);
-    if (aderiu || cam.patrocinioBar) return cam;
-    return null;
+    return cam;
   },
 
   metaDe(est, bebidaId, clienteId) {
@@ -620,23 +656,19 @@ const Logic = {
     return (this.cliente(clienteId)?.ofertas || []).includes(campanhaId);
   },
 
-  aderirCampanha(clienteId, campanhaId) {
+  async aderirCampanha(clienteId, campanhaId) {
     const cam = Store.find("campanhas", campanhaId);
     const cli = this.cliente(clienteId);
     if (!cam || !cli) return null;
     cli.ofertas = cli.ofertas || [];
-    let mudou = false;
-    if (!cli.ofertas.includes(cam.id)) {
-      cli.ofertas.push(cam.id);
-      cam.participantes = (cam.participantes || 0) + 1;
-      mudou = true;
+    if (!cli.ofertas.includes(cam.id)) cli.ofertas.push(cam.id);
+    try {
+      const data = await API.post("campanhas/aderir", { campanhaId });
+      if (data?.store) Store.replace(data.store);
+    } catch (e) {
+      /* a adesão local vale até o próximo bootstrap */
     }
-    const antes = Store.data.tampas.length;
-    (cam.estabelecimentos || []).forEach((estId) => {
-      this.garantirProgresso(clienteId, estId, cam.bebidaId);
-    });
-    if (mudou || Store.data.tampas.length !== antes) Store.save();
-    return cam;
+    return Store.find("campanhas", campanhaId) || cam;
   },
 
   novaSaidera({ clienteId, estabelecimentoId, bebidaId, campanhaId }) {
@@ -652,7 +684,7 @@ const Logic = {
       campanhaId: campanhaId || null,
     };
     const exp = this.hoje();
-    exp.setDate(exp.getDate() + this.validadeDias);
+    exp.setDate(exp.getDate() + this.diasValidade());
     rec.expiraEm = exp.toISOString();
     Store.data.saideras.unshift(rec);
     this.auditar("Saidera conquistada", `${this.cliente(clienteId)?.primeiroNome || ""} · ${this.bebida(bebidaId)?.nome || ""}`);
@@ -900,17 +932,17 @@ const Logic = {
   },
 
   metricasCliente(clienteId) {
-    const tampas = Store.all("tampas").filter((t) => t.clienteId === clienteId);
     const sais = this.saiderasDe(clienteId);
     const ests = new Set(Store.all("consumos").filter((c) => c.clienteId === clienteId).map((c) => c.estabelecimentoId));
     const prefs = this.preferencias(clienteId);
     return {
-      tampas: tampas.reduce((a, t) => a + t.atual, 0) + sais.length * 8,
+      tampas: Store.all("consumos").filter((c) => c.clienteId === clienteId).reduce((a, c) => a + (c.quantidade || 0), 0),
       saideras: sais.length,
       usadas: sais.filter((s) => s.status === "utilizada").length,
       disponiveis: sais.filter((s) => s.status === "disponivel").length,
       estabelecimentos: ests.size,
       favorita: prefs[0] ? this.bebida(prefs[0].id) : null,
+      tampasPedidas: prefs.reduce((a, p) => a + p.qtd, 0),
     };
   },
 

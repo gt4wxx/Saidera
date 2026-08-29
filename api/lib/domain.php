@@ -208,6 +208,103 @@ function meta_bar(int $estId, int $bebidaId): int
     return $padrao;
 }
 
+function casa_aberta(?string $horario): ?bool
+{
+    $horario = trim((string) $horario);
+    if ($horario === '') return null;
+    if (!preg_match_all('/(\d{1,2})/', $horario, $m) || count($m[1]) < 2) return null;
+    $ini = (int) $m[1][0];
+    $fim = (int) $m[1][1];
+    if ($ini > 23 || $fim > 23) return null;
+    $h = (int) (new DateTimeImmutable('now'))->format('G');
+    if ($ini === $fim) return true;
+    if ($ini < $fim) return $h >= $ini && $h < $fim;
+    return $h >= $ini || $h < $fim;
+}
+
+function br_para_sql(?string $br): ?string
+{
+    $br = trim((string) $br);
+    if ($br === '') return null;
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $br)) return $br;
+    if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $br, $m)) return $m[3] . '-' . $m[2] . '-' . $m[1];
+    return null;
+}
+
+function cliente_elegivel_campanha(int $cliId, array $cam, int $estId): bool
+{
+    $ids = $cam['cliente_ids_json'] ? (json_decode($cam['cliente_ids_json'], true) ?: []) : [];
+    if ($ids) {
+        foreach ($ids as $id) {
+            $n = is_numeric($id) ? (int) $id : nid('cli', (string) $id);
+            if ($n && (int) $n === $cliId) return true;
+        }
+        return false;
+    }
+    $st = db()->prepare('SELECT 1 FROM campanha_adesoes WHERE campanha_id = ? AND cliente_id = ?');
+    $st->execute([(int) $cam['id'], $cliId]);
+    if ($st->fetch()) return true;
+    if (($cam['origem'] ?? '') === 'parceiro') return true;
+    $publico = $cam['publico'] ?? 'todos';
+    if ($publico === 'todos') return true;
+    $cli = db()->prepare('SELECT nascimento, ultima_visita FROM clientes WHERE id = ?');
+    $cli->execute([$cliId]);
+    $c = $cli->fetch();
+    if (!$c) return false;
+    if ($publico === 'aniversario') {
+        return $c['nascimento'] && (int) date('n', strtotime($c['nascimento'])) === (int) date('n');
+    }
+    if ($publico === 'inativos') {
+        if (!$c['ultima_visita']) return true;
+        return strtotime($c['ultima_visita']) < time() - 30 * 86400;
+    }
+    if ($publico === 'quase') {
+        $q = db()->prepare('SELECT 1 FROM progresso_tampas WHERE cliente_id = ? AND estabelecimento_id = ? AND atual > 0 AND (meta - atual) <= 2');
+        $q->execute([$cliId, $estId]);
+        return (bool) $q->fetch();
+    }
+    return false;
+}
+
+function campanha_oferta_ativa(int $cliId, int $estId, int $bebidaId): ?array
+{
+    $hoje = date('Y-m-d');
+    $st = db()->prepare(
+        'SELECT c.* FROM campanhas c
+         JOIN campanha_estabelecimentos ce ON ce.campanha_id = c.id
+         WHERE c.status = "ativa" AND c.disparada = 1 AND c.altera_meta = 1
+           AND c.meta_tampas IS NOT NULL AND c.meta_tampas > 0
+           AND (c.bebida_id IS NULL OR c.bebida_id = ?)
+           AND ce.estabelecimento_id = ?
+           AND (c.periodo_inicio IS NULL OR c.periodo_inicio <= ?)
+           AND (c.periodo_fim IS NULL OR c.periodo_fim >= ?)
+         ORDER BY c.meta_tampas ASC'
+    );
+    $st->execute([$bebidaId, $estId, $hoje, $hoje]);
+    foreach ($st->fetchAll() as $cam) {
+        $usou = db()->prepare('SELECT 1 FROM saideras WHERE cliente_id = ? AND estabelecimento_id = ? AND bebida_id = ? AND campanha_id = ? LIMIT 1');
+        $usou->execute([$cliId, $estId, $bebidaId, $cam['id']]);
+        if ($usou->fetch()) continue;
+        if (!cliente_elegivel_campanha($cliId, $cam, $estId)) continue;
+        return $cam;
+    }
+    return null;
+}
+
+function hidratar_cliente_ofertas(array &$row, int $cliId): void
+{
+    $st = db()->prepare('SELECT campanha_id FROM campanha_adesoes WHERE cliente_id = ?');
+    $st->execute([$cliId]);
+    $row['ofertas'] = array_map(fn($r) => pub('cam', $r['campanha_id']), $st->fetchAll());
+    $st = db()->prepare('SELECT campanha_id, estabelecimento_id, bebida_id FROM saideras WHERE cliente_id = ? AND campanha_id IS NOT NULL');
+    $st->execute([$cliId]);
+    $row['ofertasConsumidas'] = array_map(fn($r) => [
+        'campanhaId' => pub('cam', $r['campanha_id']),
+        'estabelecimentoId' => pub('est', $r['estabelecimento_id']),
+        'bebidaId' => pub('beb', $r['bebida_id']),
+    ], $st->fetchAll());
+}
+
 function garantir_progresso(int $cliId, int $estId, int $bebidaId): array
 {
     $st = db()->prepare('SELECT * FROM progresso_tampas WHERE cliente_id = ? AND estabelecimento_id = ? AND bebida_id = ?');
@@ -244,16 +341,30 @@ function registrar_consumo(int $cliId, int $estId, int $bebidaId, int $qtd, ?int
     $qtd = max(1, min(40, $qtd));
     $p = garantir_progresso($cliId, $estId, $bebidaId);
     $metaBar = meta_bar($estId, $bebidaId);
+    $oferta = campanha_oferta_ativa($cliId, $estId, $bebidaId);
+    $metaOferta = $oferta ? (int) $oferta['meta_tampas'] : 0;
+    $camId = $oferta ? (int) $oferta['id'] : null;
     $antes = (int) $p['atual'];
     $total = $antes + $qtd;
-    $ganhas = intdiv($total, $metaBar);
-    $depois = $total % $metaBar;
     $novas = [];
-    for ($i = 0; $i < $ganhas; $i++) {
-        $novas[] = nova_saidera($cliId, $estId, $bebidaId);
+    $ganhas = 0;
+    $ofertaConcluida = false;
+    if ($camId && $metaOferta > 0 && $total >= $metaOferta) {
+        $novas[] = nova_saidera($cliId, $estId, $bebidaId, $camId);
+        $ganhas++;
+        $total -= $metaOferta;
+        $ofertaConcluida = true;
+        $camId = null;
     }
+    $extra = intdiv($total, $metaBar);
+    for ($i = 0; $i < $extra; $i++) {
+        $novas[] = nova_saidera($cliId, $estId, $bebidaId);
+        $ganhas++;
+    }
+    $depois = $total % $metaBar;
+    $metaDepois = $ofertaConcluida ? $metaBar : ($metaOferta ?: $metaBar);
     db()->prepare('UPDATE progresso_tampas SET atual = ?, meta = ?, atualizado_em = NOW() WHERE id = ?')
-        ->execute([$depois, $metaBar, $p['id']]);
+        ->execute([$depois, $metaDepois, $p['id']]);
     db()->prepare('INSERT INTO consumos (cliente_id, estabelecimento_id, bebida_id, quantidade, funcionario_id) VALUES (?,?,?,?,?)')
         ->execute([$cliId, $estId, $bebidaId, $qtd, $funId]);
     db()->prepare('UPDATE clientes SET ultima_visita = NOW() WHERE id = ?')->execute([$cliId]);
@@ -268,17 +379,17 @@ function registrar_consumo(int $cliId, int $estId, int $bebidaId, int $qtd, ?int
         $titulo = $ganhas ? 'Você ganhou uma Saidera!' : ($qtd . ' Tampa' . ($qtd > 1 ? 's' : '') . ' registrada' . ($qtd > 1 ? 's' : ''));
         $texto = $ganhas
             ? "{$bn} no {$en}. Informe o ID da Saidera à casa para retirar."
-            : "{$bn} no {$en}: {$depois}/{$metaBar}.";
+            : "{$bn} no {$en}: {$depois}/{$metaDepois}.";
         notificar($cliId, $titulo, $texto, $ganhas ? 'saidera' : 'progresso');
         auditar('Registro de consumo', "{$en} · {$bn} ×{$qtd}");
     }
     return [
         'antes' => $antes,
         'depois' => $depois,
-        'meta' => $metaBar,
+        'meta' => $metaDepois,
         'ganhas' => $ganhas,
         'novas' => $novas,
-        'ofertaConcluida' => false,
+        'ofertaConcluida' => $ofertaConcluida,
         'metaBar' => $metaBar,
     ];
 }

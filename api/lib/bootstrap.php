@@ -61,7 +61,7 @@ function row_est(array $e, bool $comBebidas = true): array
         'imagem' => $e['imagem'],
         'cartaz' => $e['cartaz'],
         'status' => $e['status'],
-        'aberto' => true,
+        'aberto' => casa_aberta($e['horario'] ?? null) !== false,
         'horario' => $e['horario'],
         'metaPadrao' => (int) $e['meta_padrao'],
         'promocao' => $e['promocao'],
@@ -187,6 +187,7 @@ function bootstrap_store(array $u): array
         $cli['email'] = $u['email'];
         $empty['meta']['demo']['clienteId'] = pub('cli', $cli['id']);
         $empty['clientes'] = [row_cliente($cli)];
+        hidratar_cliente_ofertas($empty['clientes'][0], (int) $cli['id']);
         $empty['estabelecimentos'] = array_map(fn($e) => row_est($e), db()->query("SELECT * FROM estabelecimentos WHERE status = 'ativo' ORDER BY nome")->fetchAll());
         $st = db()->prepare('SELECT * FROM progresso_tampas WHERE cliente_id = ?');
         $st->execute([$cli['id']]);

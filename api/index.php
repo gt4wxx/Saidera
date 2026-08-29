@@ -147,10 +147,66 @@ function rota(string $method, string $path): void
         $u = auth_require(['cliente']);
         $cli = cliente_por_usuario((int) $u['id']);
         $prefs = $cli['prefs_json'] ? json_decode($cli['prefs_json'], true) : [];
-        $prefs = array_merge($prefs ?: [], $in);
-        $fav = nid('beb', $in['bebidaFavoritaId'] ?? '');
-        db()->prepare('UPDATE clientes SET prefs_json = ?, bebida_favorita_id = COALESCE(?, bebida_favorita_id) WHERE id = ?')
-            ->execute([json_encode($prefs), $fav, $cli['id']]);
+        $prefs = is_array($prefs) ? $prefs : [];
+        foreach (['push', 'email', 'whatsapp', 'perfilPublico'] as $k) {
+            if (array_key_exists($k, $in)) $prefs[$k] = filter_var($in[$k], FILTER_VALIDATE_BOOLEAN);
+        }
+        $fav = array_key_exists('bebidaFavoritaId', $in) ? nid('beb', $in['bebidaFavoritaId'] ?? '') : false;
+        if ($fav) $prefs['bebidaFavoritaId'] = pub('beb', $fav);
+        if ($fav === null || $fav === 0) unset($prefs['bebidaFavoritaId']);
+        $favSql = $fav ? $fav : (array_key_exists('bebidaFavoritaId', $in) ? null : false);
+        if ($favSql === false) {
+            db()->prepare('UPDATE clientes SET prefs_json = ? WHERE id = ?')->execute([json_encode($prefs), $cli['id']]);
+        } else {
+            db()->prepare('UPDATE clientes SET prefs_json = ?, bebida_favorita_id = ? WHERE id = ?')
+                ->execute([json_encode($prefs), $favSql, $cli['id']]);
+        }
+        ok(['store' => bootstrap_store($u)]);
+    }
+
+    if ($path === 'perfil' && $method === 'POST') {
+        $u = auth_require(['cliente']);
+        $cli = cliente_por_usuario((int) $u['id']);
+        $nome = trim($in['nome'] ?? '');
+        if (strlen($nome) < 2) fail('Informe o seu nome.');
+        $partes = preg_split('/\s+/', $nome);
+        $primeiro = $partes[0] ?: $nome;
+        $nasc = br_para_sql($in['nascimento'] ?? '');
+        db()->prepare('UPDATE clientes SET nome = ?, primeiro_nome = ?, telefone = ?, nascimento = ?, cidade = ?, bairro = ? WHERE id = ?')
+            ->execute([
+                $nome,
+                $primeiro,
+                trim($in['telefone'] ?? '') ?: null,
+                $nasc,
+                trim($in['cidade'] ?? '') ?: $cli['cidade'],
+                trim($in['bairro'] ?? '') ?: $cli['bairro'],
+                $cli['id'],
+            ]);
+        if (!empty($in['novaSenha'])) {
+            if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
+            if (empty($in['senhaAtual']) || !password_verify($in['senhaAtual'], $u['senha_hash'])) {
+                fail('A senha atual não confere.');
+            }
+            db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')
+                ->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);
+        }
+        auditar('Cliente atualizou o perfil', $nome);
+        ok(['store' => bootstrap_store($u)]);
+    }
+
+    if ($path === 'campanhas/aderir' && $method === 'POST') {
+        $u = auth_require(['cliente']);
+        $cli = cliente_por_usuario((int) $u['id']);
+        $camId = nid('cam', $in['campanhaId'] ?? '');
+        $st = db()->prepare('SELECT * FROM campanhas WHERE id = ? AND status = "ativa" AND disparada = 1');
+        $st->execute([$camId]);
+        $cam = $st->fetch();
+        if (!$cam) fail('Esta oferta não está ativa.');
+        $ins = db()->prepare('INSERT IGNORE INTO campanha_adesoes (campanha_id, cliente_id) VALUES (?, ?)');
+        $ins->execute([$camId, $cli['id']]);
+        if ($ins->rowCount()) {
+            db()->prepare('UPDATE campanhas SET participantes = participantes + 1 WHERE id = ?')->execute([$camId]);
+        }
         ok(['store' => bootstrap_store($u)]);
     }
 

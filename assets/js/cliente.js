@@ -8,12 +8,20 @@ const ClienteApp = {
   homePage: 1,
   homeQuery: "",
   homePerPage: 10,
+  geo: (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("saidera_geo") || "null");
+    } catch {
+      return null;
+    }
+  })(),
 
   async boot() {
     const ok = await Store.init({ papel: "cliente" });
     if (!ok) return;
     UI.bindGlobal();
     this.root = document.getElementById("app");
+    if (this.geo) Logic.aplicarDistancias(this.geo);
     Store.on(() => this.render());
     window.addEventListener("hashchange", () => this.route());
     this.route();
@@ -25,6 +33,52 @@ const ClienteApp = {
 
   badgeFreq(f) {
     return `<span class="badge freq-${f || "baixa"}">${Logic.freqLabel(f)}</span>`;
+  },
+
+  esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+  },
+
+  vazio(titulo, texto, cta, href) {
+    return `<div class="card pad empty-cli">
+      <h3>${this.esc(titulo)}</h3>
+      <p class="muted small">${this.esc(texto)}</p>
+      ${cta ? `<button class="btn btn-gold btn-block" style="margin-top:12px" data-go="${href}">${this.esc(cta)}</button>` : ""}
+    </div>`;
+  },
+
+  async copiar(texto, msg) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      UI.toast(msg || "Copiado.");
+    } catch {
+      UI.toast("Anote este código: " + texto);
+    }
+  },
+
+  pedirOndeEstou() {
+    if (!navigator.geolocation) {
+      UI.toast("Este aparelho não informa a localização.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        try {
+          sessionStorage.setItem("saidera_geo", JSON.stringify(this.geo));
+        } catch {
+          /* sessão sem storage */
+        }
+        Logic.aplicarDistancias(this.geo);
+        this.render();
+        UI.toast("Lista ordenada pelo que está perto de você.");
+      },
+      () => UI.toast("Não deu para ver onde você está. Busque pelo nome ou bairro."),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
   },
 
   cardRitmo(compacto = false) {
@@ -88,6 +142,7 @@ const ClienteApp = {
       historico: () => this.historico(),
       preferencias: () => this.preferencias(),
       privacidade: () => this.privacidade(),
+      conta: () => this.conta(),
     }[this.view] || (() => this.home());
     this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell">
       <div class="phone-body">${html()}</div>
@@ -208,8 +263,8 @@ const ClienteApp = {
     return `<article class="est-card" ${pin ? `data-pin="${e.id}"` : `data-go="#/est/${e.id}"`}>
       <div class="thumb photo"><img src="${Logic.imagemEst(e)}" alt="${e.nome}" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(e)}'"/></div>
       <div class="body">
-        <h3>${e.nome}</h3>
-        <p class="small muted">📍 ${Logic.tipoEst(e)} · ${Logic.enderecoLinha(e)}</p>
+        <h3>${this.esc(e.nome)}</h3>
+        <p class="small muted">📍 ${Logic.tipoEst(e)} · ${this.esc(e.bairro || Logic.enderecoLinha(e))}${e.temDistancia ? " · " + Logic.fmtKm(e.distanciaKm) : ""} ${e.aberto === false ? "· Fechado" : "· Aberto"}</p>
         <div class="chips">${drinks}<span class="chip">Padrão — ${e.metaPadrao}</span></div>
         ${camBar ? `<p class="tiny gold">${Logic.bebida(camBar.bebidaId)?.nome} · ${camBar.metaTampas} Tampas no patrocínio</p>` : e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
         <button type="button" class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
@@ -226,13 +281,20 @@ const ClienteApp = {
 
   listaEstabelecimentos() {
     const q = this.norm(this.homeQuery.trim());
+    const minhas = Logic.idsCasasDoCliente(this.me().id);
     return Store.all("estabelecimentos")
       .filter((e) => e.status === "ativo")
       .filter((e) => {
         if (!q) return true;
         return [e.nome, e.bairro, e.endereco, e.promocao, Logic.tipoEst(e)].some((v) => this.norm(v).includes(q));
       })
-      .sort((a, b) => a.distanciaKm - b.distanciaKm);
+      .sort((a, b) => {
+        if (a.temDistancia || b.temDistancia) return (a.distanciaKm || 99) - (b.distanciaKm || 99);
+        const am = minhas.has(a.id) ? 0 : 1;
+        const bm = minhas.has(b.id) ? 0 : 1;
+        if (am !== bm) return am - bm;
+        return String(a.nome).localeCompare(String(b.nome), "pt-BR");
+      });
   },
 
   pager(page, pages) {
@@ -270,12 +332,15 @@ const ClienteApp = {
     const slice = list.slice(start, start + per);
     const from = list.length ? start + 1 : 0;
     const to = start + slice.length;
-    const titulo = this.homeQuery.trim() ? "Resultados" : "Próximos de você";
+    const titulo = this.homeQuery.trim() ? "Resultados" : this.geo ? "Perto de você" : "Casas da rede";
     const busca = this.homeQuery.trim()
-      ? `<p class="tiny muted">${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.homeQuery.trim()}”</p>`
+      ? `<p class="tiny muted">${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.esc(this.homeQuery.trim())}”</p>`
       : `<p class="tiny muted">${from}–${to} de ${list.length}</p>`;
+    const minhas = [...Logic.idsCasasDoCliente(me.id)].map((id) => Logic.est(id)).filter(Boolean).slice(0, 4);
+    const cidade = Store.data?.meta?.cidade || "Aracaju/SE";
+    const semTampas = !Store.all("tampas").some((t) => t.clienteId === me.id);
     return `${this.top()}
-      <p class="muted small">Aracaju</p>
+      <p class="muted small">${this.esc(cidade)}</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
       <div class="row" style="gap:8px;margin-bottom:14px">
@@ -284,11 +349,16 @@ const ClienteApp = {
       </div>
       ${Brand.banner("secundario", "brand-banner")}
       <div class="row" style="margin:14px 0 8px">
-        <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.homeQuery.replace(/"/g, "&quot;")}"/></div>
-        <button class="icon-btn gold" data-go="#/mapa">${Icons.pin()}</button>
+        <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.esc(this.homeQuery)}"/></div>
+        <button class="icon-btn gold" data-go="#/mapa" title="Mapa">${Icons.pin()}</button>
       </div>
+      <div class="row" style="gap:8px;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm grow" data-geo>${this.geo ? "Atualizar minha localização" : "Mostrar o que está perto"}</button>
+      </div>
+      ${semTampas ? this.vazio("Comece pela mesa", "Peça o cupom QR à casa e leia com o celular. As Tampas entram neste aparelho, no bar certo.", "Ler QR da casa", "#/ler") : ""}
       ${this.heroCard()}
       ${this.cardRitmo(true)}
+      ${!this.homeQuery.trim() && minhas.length ? `<div style="margin:16px 0 10px"><h2>Onde você já vai</h2></div><div class="stack est-list" style="margin-bottom:16px">${minhas.map((e) => this.estMini(e)).join("")}</div>` : ""}
       <div class="row between" style="margin-bottom:10px" id="lista-bares">
         <div>
           <h2>${titulo}</h2>
@@ -399,7 +469,7 @@ const ClienteApp = {
     const me = this.me();
     const drinks = e.bebidas
       .map((b) => {
-        const cam = Logic.patrocinioEm(e.id, b.id);
+        const cam = Logic.patrocinioEm(e.id, b.id, me.id);
         const meta = Logic.metaDe(e, b.id, me.id);
         const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, b.id);
         const regra = usada
@@ -418,28 +488,26 @@ const ClienteApp = {
     const mineDrinks = e.bebidas
       .map((b) => {
         const existing = Logic.progresso(me.id, e.id, b.id);
-        const cam = Logic.patrocinioEm(e.id, b.id);
+        const cam = Logic.patrocinioEm(e.id, b.id, me.id);
         if (!existing && !cam) return null;
-        return Logic.garantirProgresso(me.id, e.id, b.id);
+        const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, b.id);
+        const meta = usada ? Logic.metaOriginal(e, b.id) : Logic.metaDe(e, b.id, me.id);
+        return { b, cam, usada, meta, atual: existing?.atual || 0, disp: Logic.saiderasDisponiveis(me.id, e.id, b.id).length };
       })
       .filter(Boolean);
     const prog = mineDrinks
-      .map((t) => {
-        const beb = Logic.bebida(t.bebidaId);
-        const cam = Logic.patrocinioEm(e.id, t.bebidaId);
-        const disp = Logic.saiderasDisponiveis(me.id, e.id, t.bebidaId).length;
-        const usada = cam && Logic.ofertaConsumida(me.id, cam.id, e.id, t.bebidaId);
+      .map(({ b, cam, usada, meta, atual, disp }) => {
         const nota = usada
-          ? `Oferta concluída neste bar. Meta da casa: ${Logic.metaOriginal(e, t.bebidaId)} Tampas`
+          ? `Oferta concluída neste bar. Meta da casa: ${Logic.metaOriginal(e, b.id)} Tampas`
           : cam
             ? `Oferta (uso único): ${cam.metaTampas} Tampas`
             : "";
         return `<div class="card pad" style="margin-bottom:10px">
-          <div class="row between"><strong>${beb.nome}</strong><span>${t.atual} / ${t.meta}</span></div>
+          <div class="row between"><strong>${this.esc(b.nome)}</strong><span>${atual} / ${meta}</span></div>
           ${nota ? `<p class="tiny ${usada ? "muted" : "gold"}">${nota}</p>` : ""}
-          <div style="margin:8px 0">${UI.tampas(disp ? t.meta : t.atual, t.meta)}</div>
-          ${UI.barra(disp ? t.meta : t.atual, t.meta)}
-          ${disp ? `<span class="badge badge-green" style="margin-top:8px">SAIDERA DISPONÍVEL</span>` : `<p class="small muted" style="margin-top:8px">Faltam ${t.meta - t.atual}</p>`}
+          <div style="margin:8px 0">${UI.tampas(disp ? meta : atual, meta)}</div>
+          ${UI.barra(disp ? meta : atual, meta)}
+          ${disp ? `<span class="badge badge-green" style="margin-top:8px">SAIDERA DISPONÍVEL</span>` : `<p class="small muted" style="margin-top:8px">Faltam ${Math.max(0, meta - atual)}</p>`}
         </div>`;
       })
       .join("");
@@ -449,17 +517,19 @@ const ClienteApp = {
         <div class="overlay"></div>
         <div style="position:absolute;bottom:12px;left:14px">
           <h1>${e.nome}</h1>
-          <p class="small">${Logic.tipoEst(e)} · ${e.bairro || ""} · ${e.aberto ? "Aberto agora" : "Fechado"}</p>
+          <p class="small">${Logic.tipoEst(e)} · ${this.esc(e.bairro || "")} · ${e.aberto === false ? "Fechado agora" : "Aberto agora"}</p>
         </div>
       </div>
           <div class="row wrap" style="margin-bottom:14px">
         <span class="badge badge-gold">${Logic.tipoEst(e)}</span>
         ${Logic.patrocinioEm(e.id) ? `<span class="badge badge-navy">Patrocínio ativo</span>` : `<span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>`}
-        <span class="badge badge-ghost">★ ${e.avaliacao}</span>
+        <span class="badge badge-ghost">★ ${e.avaliacao || "—"}</span>
+        ${e.horario ? `<span class="badge badge-ghost">${this.esc(e.horario)}</span>` : ""}
       </div>
       <div class="card pad" style="margin-bottom:16px">
         <p class="tiny muted">Endereço</p>
-        <p style="margin:4px 0 10px">${Logic.enderecoLinha(e)}</p>
+        <p style="margin:4px 0 10px">${this.esc(Logic.enderecoLinha(e))}</p>
+        ${e.temDistancia ? `<p class="tiny muted" style="margin-bottom:10px">${Logic.fmtKm(e.distanciaKm)} de você</p>` : ""}
         <div class="map-google" style="height:220px;min-height:200px">
           <iframe title="Google Maps" src="${Logic.mapsEmbed(e)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
@@ -514,11 +584,12 @@ const ClienteApp = {
         <button class="${filtro === "quase" ? "on" : ""}" data-go="#/tampas/quase">Quase lá</button>
         <button class="${filtro === "disp" ? "on" : ""}" data-go="#/tampas/disp">Saidera disponível</button>
       </div>
-      <div class="stack">${cards
+      <div class="stack">${cards.length
+        ? cards
         .map(
           ({ t, e, b, disp, showAtual, falta }) => `<article class="card pad">
-            <p class="tiny muted">${e.nome} · ${e.bairro}</p>
-            <div class="row between"><h3>${b.nome}</h3><strong>${showAtual} / ${t.meta}</strong></div>
+            <p class="tiny muted">${this.esc(e?.nome || "Casa")} · ${this.esc(e?.bairro || "")}</p>
+            <div class="row between"><h3>${this.esc(b?.nome || "Bebida")}</h3><strong>${showAtual} / ${t.meta}</strong></div>
             <div style="margin:10px 0">${UI.tampas(showAtual, t.meta)}</div>
             ${UI.barra(showAtual, t.meta)}
             <div class="row between" style="margin-top:10px">
@@ -530,7 +601,13 @@ const ClienteApp = {
             </div>
           </article>`
         )
-        .join("")}</div>`;
+        .join("")
+        : this.vazio(
+            filtro === "todos" ? "Nenhuma Tampa ainda" : "Nada neste filtro",
+            filtro === "todos" ? "Leia o QR da casa quando pedir. O progresso aparece aqui, por bar e por bebida." : "Quando uma cartela chegar perto ou liberar Saidera, ela entra nesta aba.",
+            "Ler QR da casa",
+            "#/ler"
+          )}</div>`;
   },
 
   saideras() {
@@ -538,7 +615,7 @@ const ClienteApp = {
     const tab = this.params.id || "disponiveis";
     const filtro = tab === "utilizadas" ? "utilizada" : tab === "expiradas" ? "expirada" : "disponivel";
     const list = Logic.saiderasDe(me.id, filtro);
-    return `${this.top(`<h1>Minhas Saideras</h1><p class="tiny muted">Cada Saidera vale ${Logic.validadeDias} dias depois de conquistada.</p>`)}
+    return `${this.top(`<h1>Minhas Saideras</h1><p class="tiny muted">Cada Saidera vale ${Logic.diasValidade()} dias depois de conquistada.</p>`)}
       <div class="pill-tabs" style="margin:12px 0">
         <button class="${tab === "disponiveis" ? "on" : ""}" data-go="#/saideras/disponiveis">Disponíveis</button>
         <button class="${tab === "utilizadas" ? "on" : ""}" data-go="#/saideras/utilizadas">Utilizadas</button>
@@ -558,13 +635,23 @@ const ClienteApp = {
                   <p class="small" style="margin:8px 0">Conquistada em: ${Logic.fmtDate(s.conquistadaEm)}</p>
                   <p class="small ${urgente ? "gold" : "muted"}">${Logic.validadeLabel(s)}${s.expiraEm ? " · " + Logic.fmtDate(s.expiraEm) : ""}</p>
                   <p class="saidera-id">ID da Saidera</p>
-                  <p class="saidera-code">${s.codigo}</p>
-                  ${s.status === "disponivel" ? `<p class="small muted" style="margin-top:8px">Informe este ID à casa para retirar. Se pedirem, mostre também o seu QR.</p>
-                  <button class="btn btn-dark btn-block" style="margin-top:12px" data-go="#/qr">Mostrar meu QR</button>` : ""}
+                  <p class="saidera-code">${this.esc(s.codigo)}</p>
+                  ${s.status === "disponivel" ? `<p class="small muted" style="margin-top:8px">Mostre este ID à casa para retirar. Se pedirem, mostre também o seu QR.</p>
+                  <div class="row" style="gap:8px;margin-top:12px">
+                    <button class="btn btn-ghost grow" data-copiar="${this.esc(s.codigo)}">Copiar ID</button>
+                    <button class="btn btn-dark grow" data-go="#/qr">Meu QR</button>
+                  </div>` : ""}
                 </article>`;
               })
               .join("")
-          : `<p class="muted">Nenhuma Saidera nesta lista ainda.</p>`
+          : this.vazio(
+              tab === "disponiveis" ? "Nenhuma Saidera pronta" : "Nada nesta aba",
+              tab === "disponiveis"
+                ? "Complete as Tampas no bar. Quando bater a meta, o ID da Saidera aparece aqui para você retirar."
+                : "Quando você retirar ou uma Saidera vencer, o registro fica nesta lista.",
+              "Ver minhas Tampas",
+              "#/tampas"
+            )
       }`;
   },
 
@@ -585,7 +672,7 @@ const ClienteApp = {
           const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
           const ests = (c.estabelecimentos || []).slice(0, 3).map((id) => Logic.est(id)?.nome).filter(Boolean);
           const img = Logic.imagemEst(casa) || Logic.imagemEst(c.estabelecimentos?.[0]) || Logic.imagemEst(Store.all("estabelecimentos")[i + 1]);
-          const selo = c.origem === "estabelecimento" ? casa?.nome || "Sua casa" : par?.selo || "Marca demonstrativa";
+          const selo = c.origem === "estabelecimento" ? casa?.nome || "Sua casa" : par?.selo || par?.nome || "Marca";
           return `<article class="offer-banner photo" data-go="#/ofertas/${c.id}">
             <img src="${img}" alt="" onerror="this.style.display='none'"/>
             <div class="overlay"></div>
@@ -600,7 +687,7 @@ const ClienteApp = {
           </article>`;
         })
         .join("")}
-      ${extra.length ? `<p class="notice">Nova oferta recebida nesta demonstração.</p>` : ""}`;
+      ${extra.length ? `<p class="notice">Você tem oferta nova na caixa de notificações.</p>` : ""}`;
   },
 
   ofertaDetalhe() {
@@ -610,7 +697,7 @@ const ClienteApp = {
         <p class="muted">Esta oferta ainda não foi ativada pelo Admin Saidera.</p>
         <button class="btn btn-gold" data-go="#/ofertas">Ver ofertas</button>`;
     }
-    Logic.aderirCampanha(this.me().id, c.id);
+    if (!Logic.clienteNaOferta(this.me().id, c.id)) Logic.aderirCampanha(this.me().id, c.id);
     const par = Store.find("parceiros", c.parceiroId);
     const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
     const ests = (c.estabelecimentos || []).map((id) => Logic.est(id)).filter(Boolean);
@@ -640,14 +727,16 @@ const ClienteApp = {
             <p class="tiny gold" style="margin-top:8px">Mostre o QR no salão para consumo e retirada da Saidera.</p>
           </article>`;
           }
-          const p = Logic.garantirProgresso(me.id, e.id, c.bebidaId);
+          const p = Logic.progresso(me.id, e.id, c.bebidaId);
           const usada = Logic.ofertaConsumida(me.id, c.id, e.id, c.bebidaId);
           const regraCasa = Logic.metaOriginal(e, c.bebidaId);
+          const meta = usada ? regraCasa : c.metaTampas || regraCasa;
+          const atual = p?.atual || 0;
           return `<article class="card pad" data-go="#/est/${e.id}" style="cursor:pointer">
             <p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p>
-            <div class="row between"><h3>${e.nome}</h3><strong>${p.atual}/${p.meta}</strong></div>
-            <div style="margin:8px 0">${UI.tampas(p.atual, p.meta)}</div>
-            ${UI.barra(p.atual, p.meta)}
+            <div class="row between"><h3>${e.nome}</h3><strong>${atual}/${meta}</strong></div>
+            <div style="margin:8px 0">${UI.tampas(atual, meta)}</div>
+            ${UI.barra(atual, meta)}
             <p class="tiny ${usada ? "muted" : "gold"}" style="margin-top:8px">${
               usada
                 ? `Oferta usada · voltou à regra da casa (${regraCasa} Tampas)`
@@ -673,6 +762,7 @@ const ClienteApp = {
         <div class="row" style="gap:8px;justify-content:center;margin-top:10px">
           <button class="btn btn-gold btn-sm" data-go="#/ler">Ler QR da casa</button>
           <button class="btn btn-dark btn-sm" data-go="#/qr">Meu QR</button>
+          <button class="btn btn-ghost btn-sm" data-go="#/conta">Editar dados</button>
         </div>
       </div>
       <div class="grid-3" style="margin-bottom:16px">
@@ -686,10 +776,10 @@ const ClienteApp = {
         ${r?.favorita ? `<p class="small muted" style="margin-top:6px">${r.favorita.qtd} tampas · ${r.bebidas[0]?.pct || 0}% do que você pede</p>` : `<p class="small muted" style="margin-top:6px">Leia o QR da casa para começar a montar o seu retrato.</p>`}
       </div>
       ${this.cardRitmo()}
-      ${["Histórico", "Preferências", "Privacidade", "Notificações"]
+      ${["Meus dados", "Histórico", "Preferências", "Privacidade", "Notificações"]
         .map(
           (l, i) =>
-            `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${["#/historico", "#/preferencias", "#/privacidade", "#/notificacoes"][i]}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
+            `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${["#/conta", "#/historico", "#/preferencias", "#/privacidade", "#/notificacoes"][i]}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
         )
         .join("")}
       ${(() => {
@@ -704,6 +794,22 @@ const ClienteApp = {
       })()}
       ${UI.pwaBox()}
       <button class="btn btn-ghost btn-block" id="sair-app" style="margin-top:8px">${Icons.logout()} Sair</button>`;
+  },
+
+  conta() {
+    const me = this.me();
+    return `${this.back("Meus dados")}
+      <p class="muted" style="margin-bottom:14px">Isso aparece para as casas quando você pede e quando elas baixam a sua Saidera.</p>
+      <div class="field"><span>Nome</span><input id="conta-nome" value="${this.esc(me.nome)}"/></div>
+      <div class="field"><span>Telefone</span><input id="conta-tel" type="tel" value="${this.esc(me.telefone)}"/></div>
+      <div class="field"><span>Nascimento</span><input id="conta-nasc" placeholder="dd/mm/aaaa" value="${this.esc(me.nascimento)}"/></div>
+      <div class="field"><span>Cidade</span><input id="conta-cidade" value="${this.esc(me.cidade)}"/></div>
+      <div class="field"><span>Bairro</span><input id="conta-bairro" value="${this.esc(me.bairro)}"/></div>
+      <p class="tiny muted" style="margin:16px 0 8px">Trocar senha (opcional)</p>
+      <div class="field"><span>Senha atual</span><input id="conta-senha" type="password" autocomplete="current-password"/></div>
+      <div class="field"><span>Nova senha</span><input id="conta-nova" type="password" minlength="6" autocomplete="new-password"/></div>
+      <button class="btn btn-gold btn-block" style="margin-top:16px" id="conta-salvar">Salvar</button>
+      <p class="tiny muted" style="margin-top:10px">E-mail da conta: ${this.esc(me.email)} · ID ${this.esc(me.codigo)}</p>`;
   },
 
   historico() {
@@ -814,27 +920,31 @@ const ClienteApp = {
         ${Brand.simbolo(72)}
         ${UI.qrSvg(me.codigo)}
         <h2 style="margin-top:8px">${me.primeiroNome}</h2>
-        <p class="muted">ID: ${me.codigo}</p>
+        <p class="muted">ID: ${this.esc(me.codigo)}</p>
         <p style="margin-top:12px">Mostre este QR ao garçom se ele precisar abrir a sua comanda. É o seu ID — pode usar sempre.</p>
         <p class="tiny muted" style="margin-top:10px">O caminho principal continua sendo ler o cupom impresso da casa. Este QR fica aqui se precisar.</p>
-        <button class="btn btn-gold btn-block" style="margin-top:16px" data-go="#/ler">Ler QR da casa</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:16px" data-copiar="${this.esc(me.codigo)}">Copiar meu ID</button>
+        <button class="btn btn-gold btn-block" style="margin-top:8px" data-go="#/ler">Ler QR da casa</button>
       </div>`;
   },
 
   preferencias() {
     const me = this.me();
     const prefs = Logic.prefsCliente(me.id);
+    const retrato = Logic.retratoCliente(me.id);
+    const favId = prefs.bebidaFavoritaId || retrato?.favorita?.id || "";
     return `${this.back("Preferências")}
-      <p class="muted" style="margin-bottom:14px">Vale para esta demonstração neste aparelho.</p>
-      <div class="field"><span>Bebida favorita</span>
+      <p class="muted" style="margin-bottom:14px">A favorita que você escolhe ajuda o bar a te reconhecer. O app também calcula a que você mais pede de verdade.</p>
+      ${retrato?.favorita ? `<div class="card pad" style="margin-bottom:14px"><p class="tiny muted">A que você mais pede</p><h3>${this.esc(retrato.favorita.nome)}</h3></div>` : ""}
+      <div class="field"><span>Bebida que eu prefiro</span>
         <select id="pref-bebida">
+          <option value="">Deixar o app decidir pelo que eu peço</option>
           ${Store.all("bebidas")
-            .slice(0, 12)
-            .map((b) => `<option value="${b.id}" ${b.id === prefs.bebidaFavoritaId ? "selected" : ""}>${b.nome}</option>`)
+            .map((b) => `<option value="${b.id}" ${b.id === favId ? "selected" : ""}>${this.esc(b.nome)}</option>`)
             .join("")}
         </select>
       </div>
-      <p class="tiny muted" style="margin-top:12px">Isso aparece no seu perfil e ajuda o bar a te reconhecer.</p>`;
+      <p class="tiny muted" style="margin-top:12px">Salvo na sua conta. As casas que você frequenta veem isso na ficha.</p>`;
   },
 
   privacidade() {
@@ -842,37 +952,33 @@ const ClienteApp = {
     const prefs = Logic.prefsCliente(me.id);
     return `${this.back("Privacidade")}
       <label class="toggle-row">
-        <span>Casas da rede podem ver que eu frequento o app</span>
-        <input type="checkbox" data-pref="perfilPublico" ${prefs.perfilPublico ? "checked" : ""}/>
+        <span>Receber ofertas de marcas da rede</span>
+        <input type="checkbox" data-pref="perfilPublico" ${prefs.perfilPublico !== false ? "checked" : ""}/>
       </label>
-      <p class="muted small" style="margin-top:12px">Na demo não há envio a servidores. O dado fica só neste navegador (localStorage).</p>`;
+      <p class="muted small" style="margin-top:12px">As casas onde você pede continuam vendo o seu progresso — é assim que as Tampas e a Saidera funcionam. Se desligar, as campanhas de marca deixam de aparecer para você.</p>`;
   },
 
   notificacoes() {
     const me = this.me();
     const prefs = Logic.prefsCliente(me.id);
     const list = Store.all("notificacoes").filter((n) => n.clienteId === me.id);
-    list.filter((n) => !n.lida).forEach((n) => {
-      n.lida = true;
-    });
-    if (list.some((n) => n.lida)) Store.save(false);
     return `${this.back("Notificações")}
-      <label class="toggle-row"><span>Alertas no app</span><input type="checkbox" data-pref="push" ${prefs.push ? "checked" : ""}/></label>
-      <label class="toggle-row"><span>E-mail</span><input type="checkbox" data-pref="email" ${prefs.email ? "checked" : ""}/></label>
-      <label class="toggle-row"><span>WhatsApp</span><input type="checkbox" data-pref="whatsapp" ${prefs.whatsapp ? "checked" : ""}/></label>
-      <p class="tiny muted" style="margin:16px 0 10px">Caixa da demonstração</p>
+      <label class="toggle-row"><span>Alertas no app</span><input type="checkbox" data-pref="push" ${prefs.push !== false ? "checked" : ""}/></label>
+      <label class="toggle-row"><span>Avisos por e-mail quando o admin disparar</span><input type="checkbox" data-pref="email" ${prefs.email !== false ? "checked" : ""}/></label>
+      <label class="toggle-row"><span>Avisos por WhatsApp quando o admin disparar</span><input type="checkbox" data-pref="whatsapp" ${prefs.whatsapp ? "checked" : ""}/></label>
+      <p class="tiny muted" style="margin:16px 0 10px">Sua caixa</p>
       ${
         list.length
           ? list
               .map(
                 (n) => `<article class="card pad" style="margin-bottom:8px" ${n.campanhaId ? `data-go="#/ofertas/${n.campanhaId}"` : ""}>
-            <strong>${n.titulo}</strong>
-            <p class="small muted">${n.texto}</p>
-            <p class="tiny muted">${Logic.fmtDate(n.criadoEm)}</p>
+            <strong>${this.esc(n.titulo)}</strong>
+            <p class="small muted">${this.esc(n.texto)}</p>
+            <p class="tiny muted">${Logic.fmtDate(n.criadoEm)}${n.lida ? "" : " · nova"}</p>
           </article>`
               )
               .join("")
-          : `<p class="muted">Nenhuma notificação ainda.</p>`
+          : this.vazio("Caixa vazia", "Quando você ganhar Tampas, Saidera ou uma oferta, o aviso cai aqui.", "Ver ofertas", "#/ofertas")
       }`;
   },
 
@@ -930,7 +1036,47 @@ const ClienteApp = {
     this.root.querySelector("#tkt-manual")?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.aplicarTicket(e.target.value);
     });
+    this.root.querySelector("[data-geo]")?.addEventListener("click", () => this.pedirOndeEstou());
+    this.root.querySelectorAll("[data-copiar]").forEach((el) =>
+      el.addEventListener("click", () => this.copiar(el.getAttribute("data-copiar"), "Código copiado."))
+    );
+    this.root.querySelector("#conta-salvar")?.addEventListener("click", () => this.salvarConta());
     if (this.view === "ler") this.iniciarScanCliente();
+    if (this.view === "notificacoes") this.marcarLidas();
+  },
+
+  async marcarLidas() {
+    if (this._lidas) return;
+    const me = this.me();
+    if (!Store.all("notificacoes").some((n) => n.clienteId === me.id && !n.lida)) return;
+    this._lidas = true;
+    try {
+      const data = await API.post("notificacoes/ler");
+      if (data?.store) Store.replace(data.store);
+    } catch {
+      /* a caixa continua visível mesmo se o servidor falhar */
+    }
+    this._lidas = false;
+  },
+
+  async salvarConta() {
+    const body = {
+      nome: this.root.querySelector("#conta-nome")?.value,
+      telefone: this.root.querySelector("#conta-tel")?.value,
+      nascimento: this.root.querySelector("#conta-nasc")?.value,
+      cidade: this.root.querySelector("#conta-cidade")?.value,
+      bairro: this.root.querySelector("#conta-bairro")?.value,
+      senhaAtual: this.root.querySelector("#conta-senha")?.value,
+      novaSenha: this.root.querySelector("#conta-nova")?.value,
+    };
+    try {
+      const data = await API.post("perfil", body);
+      if (data?.store) Store.replace(data.store);
+      UI.toast("Seus dados foram salvos.");
+      this.go("#/perfil");
+    } catch (e) {
+      UI.toast(e.message || "Não deu para salvar.");
+    }
   },
 };
 
