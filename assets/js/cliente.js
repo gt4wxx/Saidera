@@ -116,7 +116,7 @@ const ClienteApp = {
           <span class="badge badge-gold">VOCÊ GANHOU</span>
           <h2>Você ganhou uma Saidera! 🍺</h2>
           <p>${beb.nome} · ${est.nome}</p>
-          <div class="cta-row"><button class="btn btn-gold btn-sm">Ver Saidera</button></div>
+          <div class="cta-row"><button type="button" class="btn btn-gold btn-sm">Ver Saidera</button></div>
         </div>
       </article>`;
     }
@@ -177,7 +177,7 @@ const ClienteApp = {
         <p class="small muted">📍 ${Logic.tipoEst(e)} · ${Logic.enderecoLinha(e)}</p>
         <div class="chips">${drinks}<span class="chip">Padrão — ${e.metaPadrao}</span></div>
         ${camBar ? `<p class="tiny gold">${Logic.bebida(camBar.bebidaId)?.nome} · ${camBar.metaTampas} Tampas no patrocínio</p>` : e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
-        <button class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
+        <button type="button" class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
       </div>
     </article>`;
   },
@@ -542,7 +542,7 @@ const ClienteApp = {
               <p>${c.mensagem}</p>
               ${c.metaTampas ? `<p class="gold" style="font-weight:800;margin:8px 0">${c.metaTampas} Tampas</p>` : `<p class="gold" style="font-weight:800;margin:8px 0">Compareça e mostre o QR</p>`}
               <p class="small">${ests.join(" · ")}${(c.estabelecimentos || []).length > 3 ? " · +" + (c.estabelecimentos.length - 3) : ""}</p>
-              <button class="btn btn-gold btn-sm" style="margin-top:10px">${c.metaTampas ? "Entrar na oferta" : "Ver convite"}</button>
+              <button type="button" class="btn btn-gold btn-sm" style="margin-top:10px">${c.metaTampas ? "Entrar na oferta" : "Ver convite"}</button>
             </div>
           </article>`;
         })
@@ -644,7 +644,7 @@ const ClienteApp = {
     return `${this.back("Histórico")}
       ${cons
         .map((c) => `<div class="card pad" style="margin-bottom:8px">
-          <div class="row between"><strong>+${c.quantidade} ${Logic.bebida(c.bebidaId).nome}</strong><span class="small muted">${Logic.fmtDateShort(c.criadoEm)}</span></div>
+          <div class="row between"><strong>+${c.quantidade} ${Logic.bebida(c.bebidaId)?.nome || "Bebida"}</strong><span class="small muted">${Logic.fmtDateShort(c.criadoEm)}</span></div>
           <p class="small muted">${Logic.est(c.estabelecimentoId).nome}</p>
         </div>`)
         .join("")}`;
@@ -779,31 +779,7 @@ const ClienteApp = {
   },
 
   bind() {
-    this.root.querySelectorAll("[data-go]").forEach((el) =>
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.go(el.getAttribute("data-go"));
-      })
-    );
-    this.root.querySelector("[data-back]")?.addEventListener("click", () => history.back());
-    this.root.querySelectorAll("[data-pin]").forEach((el) =>
-      el.addEventListener("click", () => {
-        this.mapSel = el.getAttribute("data-pin");
-        const est = Logic.est(this.mapSel);
-        if (est?.bairro) this.mapBairro = est.bairro;
-        this.render();
-      })
-    );
-    this.root.querySelectorAll("[data-map-bairro]").forEach((el) =>
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const nome = el.getAttribute("data-map-bairro") || "";
-        this.mapBairro = nome || null;
-        this.mapSel = null;
-        this.mapPage = 1;
-        this.render();
-      })
-    );
+    UI.fixButtons(this.root);
     const search = this.root.querySelector("[data-search-home]");
     search?.addEventListener("input", (e) => {
       this.homeQuery = e.target.value;
@@ -860,4 +836,5 @@ const ClienteApp = {
   },
 };
 
+window.ClienteApp = ClienteApp;
 document.addEventListener("DOMContentLoaded", () => ClienteApp.boot());

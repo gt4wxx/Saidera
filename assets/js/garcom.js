@@ -3,7 +3,7 @@ const GarcomApp = {
   funId: null,
   estId: null,
   clienteId: null,
-  drinkId: "beb-001",
+  drinkId: null,
   qty: 1,
   mode: "home",
   torchOn: false,
@@ -17,6 +17,8 @@ const GarcomApp = {
     this.estId = Store.demo().estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
+    this.drinkId = Logic.primeiraBebida(this.est())?.id || null;
+    this.root.addEventListener("click", (e) => this.onClick(e));
     const saved = sessionStorage.getItem("saidera_comanda");
     if (saved && Logic.cliente(saved)) {
       this.clienteId = saved;
@@ -47,7 +49,7 @@ const GarcomApp = {
   abrir(clienteId) {
     this.clienteId = clienteId;
     this.qty = 1;
-    this.drinkId = "beb-001";
+    this.drinkId = Logic.primeiraBebida(this.est())?.id || this.drinkId;
     this.sessao = [];
     this.mode = "comanda";
     this.torchOn = false;
@@ -191,12 +193,12 @@ const GarcomApp = {
           ? `<article class="saidera-alert">
               <span class="badge badge-green">SAIDERA DISPONÍVEL</span>
               <p style="margin:8px 0 12px">${todasDisp
-                .map((s) => `${Logic.bebida(s.bebidaId).nome} · <strong>${s.codigo}</strong> · ${Logic.validadeLabel(s)}`)
+                .map((s) => `${Logic.bebida(s.bebidaId)?.nome || "Bebida"} · <strong>${s.codigo}</strong> · ${Logic.validadeLabel(s)}`)
                 .join("<br/>")}</p>
               ${todasDisp
                 .map(
                   (s) =>
-                    `<button class="btn btn-gold btn-block btn-sm" style="margin-bottom:8px" data-entregar="${s.id}">Entregar ${Logic.bebida(s.bebidaId).nome}</button>`
+                    `<button type="button" class="btn btn-gold btn-block btn-sm" style="margin-bottom:8px" data-entregar="${s.id}">Entregar ${Logic.bebida(s.bebidaId)?.nome || "Saidera"}</button>`
                 )
                 .join("")}
             </article>`
@@ -227,7 +229,7 @@ const GarcomApp = {
       <div class="card pad" style="margin:16px 0">
         <div class="row between">
           <div>
-            <p class="tiny muted">${Logic.bebida(this.drinkId).nome}</p>
+            <p class="tiny muted">${Logic.bebida(this.drinkId)?.nome || "Bebida"}</p>
             <strong>${dispDrink.length && p.atual === 0 ? p.meta : p.atual} / ${p.meta}</strong>
           </div>
           <span class="muted small">${dispDrink.length ? "Saidera nesta bebida" : falta === 1 ? "Falta 1" : "Faltam " + falta}</span>
@@ -377,79 +379,93 @@ const GarcomApp = {
     });
   },
 
-  bind() {
-    this.root.querySelector("#start-scan")?.addEventListener("click", () => this.ir("scan-cli"));
-    this.root.querySelector("#start-sai")?.addEventListener("click", () => this.ir("scan-sai"));
-    this.root.querySelector("#cancel-scan")?.addEventListener("click", () => {
+  onClick(e) {
+    const t = e.target.closest("button, [data-open], [data-drink], [data-entregar]");
+    if (!t || t.disabled) return;
+    if (t.closest("[data-close-modal]")) return;
+    const id = t.id;
+    if (t.hasAttribute("data-open")) {
+      this.abrir(t.getAttribute("data-open"));
+      return;
+    }
+    if (t.hasAttribute("data-drink")) {
+      this.drinkId = t.getAttribute("data-drink");
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-entregar")) {
+      this.entregarBtn(t.getAttribute("data-entregar"));
+      return;
+    }
+    if (id === "start-scan") return void this.ir("scan-cli");
+    if (id === "start-sai") return void this.ir("scan-sai");
+    if (id === "cancel-scan") {
       QR.stopScan();
       this.ir(this.clienteId ? "comanda" : "home");
-    });
-    this.root.querySelector("#scan-again")?.addEventListener("click", () => this.ir("scan-cli"));
-    this.root.querySelector("#torch-btn")?.addEventListener("click", () => this.ligarLanterna());
+      return;
+    }
+    if (id === "scan-again") return void this.ir("scan-cli");
+    if (id === "torch-btn") return void this.ligarLanterna();
+    if (id === "sai-ok-home") return void this.baixarSaidera(this.root.querySelector("#sai-id-home")?.value);
+    if (id === "sai-ok-scan") return void this.baixarSaidera(this.root.querySelector("#sai-id-scan")?.value);
+    if (id === "sai-ok-comanda") return void this.baixarSaidera(this.root.querySelector("#sai-id-comanda")?.value);
+    if (id === "fechar-comanda") return void this.fechar();
+    if (id === "qty-minus") {
+      this.qty = Math.max(1, this.qty - 1);
+      this.render();
+      return;
+    }
+    if (id === "qty-plus") {
+      this.qty = Math.min(12, this.qty + 1);
+      this.render();
+      return;
+    }
+    if (id === "do-reg") return void this.doReg();
+  },
+
+  async doReg() {
+    if (!this.drinkId) {
+      UI.toast("Cadastre uma bebida no cardápio da casa.");
+      return;
+    }
+    const c = Logic.cliente(this.clienteId);
+    const b = Logic.bebida(this.drinkId);
+    this.sessao.unshift({ nome: b?.nome || "Bebida", qtd: this.qty });
+    try {
+      const res = await Logic.registrarConsumo({
+        clienteId: this.clienteId,
+        estabelecimentoId: this.estId,
+        bebidaId: this.drinkId,
+        quantidade: this.qty,
+        funcionarioId: this.funId,
+      });
+      this.afterRegister(res, c, b);
+    } catch (err) {
+      UI.toast(err.message);
+    }
+  },
+
+  async entregarBtn(sid) {
+    const s = await Logic.entregarSaidera(sid, this.funId);
+    if (s) {
+      UI.modal({
+        center: true,
+        html: `${UI.celebrate("Saidera entregue", `${Logic.bebida(s.bebidaId)?.nome || "Bebida"} · ${s.codigo} baixada para ${Logic.cliente(this.clienteId).primeiroNome}.`)}
+          <p class="tiny muted">A comanda continua aberta para marcar novas Tampas.</p>
+          <button type="button" class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
+      });
+    } else {
+      UI.toast("Esta Saidera não está mais disponível.");
+    }
+  },
+
+  bind() {
+    UI.fixButtons(this.root);
     this.ligarBusca("#busca-id", (v) => this.abrirPorLeitura(v));
     this.ligarBusca("#busca-id-scan", (v) => this.abrirPorLeitura(v));
     this.ligarBusca("#sai-id-home", (v) => this.baixarSaidera(v));
     this.ligarBusca("#sai-id-scan", (v) => this.baixarSaidera(v));
     this.ligarBusca("#sai-id-comanda", (v) => this.baixarSaidera(v));
-    this.root.querySelector("#sai-ok-home")?.addEventListener("click", () => {
-      this.baixarSaidera(this.root.querySelector("#sai-id-home")?.value);
-    });
-    this.root.querySelector("#sai-ok-scan")?.addEventListener("click", () => {
-      this.baixarSaidera(this.root.querySelector("#sai-id-scan")?.value);
-    });
-    this.root.querySelector("#sai-ok-comanda")?.addEventListener("click", () => {
-      this.baixarSaidera(this.root.querySelector("#sai-id-comanda")?.value);
-    });
-    this.root.querySelectorAll("[data-open]").forEach((b) =>
-      b.addEventListener("click", () => this.abrir(b.getAttribute("data-open")))
-    );
-    this.root.querySelector("#fechar-comanda")?.addEventListener("click", () => this.fechar());
-    this.root.querySelectorAll("[data-drink]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.drinkId = b.getAttribute("data-drink");
-        this.render();
-      })
-    );
-    this.root.querySelector("#qty-minus")?.addEventListener("click", () => {
-      this.qty = Math.max(1, this.qty - 1);
-      this.render();
-    });
-    this.root.querySelector("#qty-plus")?.addEventListener("click", () => {
-      this.qty = Math.min(12, this.qty + 1);
-      this.render();
-    });
-    this.root.querySelector("#do-reg")?.addEventListener("click", async () => {
-      const c = Logic.cliente(this.clienteId);
-      const b = Logic.bebida(this.drinkId);
-      this.sessao.unshift({ nome: b.nome, qtd: this.qty });
-      try {
-        const res = await Logic.registrarConsumo({
-          clienteId: this.clienteId,
-          estabelecimentoId: this.estId,
-          bebidaId: this.drinkId,
-          quantidade: this.qty,
-          funcionarioId: this.funId,
-        });
-        this.afterRegister(res, c, b);
-      } catch (e) {
-        UI.toast(e.message);
-      }
-    });
-    this.root.querySelectorAll("[data-entregar]").forEach((btn) =>
-      btn.addEventListener("click", async () => {
-        const s = await Logic.entregarSaidera(btn.getAttribute("data-entregar"), this.funId);
-        if (s) {
-          UI.modal({
-            center: true,
-            html: `${UI.celebrate("Saidera entregue", `${Logic.bebida(s.bebidaId).nome} · ${s.codigo} baixada para ${Logic.cliente(this.clienteId).primeiroNome}.`)}
-              <p class="tiny muted">A comanda continua aberta para marcar novas Tampas.</p>
-              <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
-          });
-        } else {
-          UI.toast("Esta Saidera não está mais disponível.");
-        }
-      })
-    );
     if (this.mode === "scan-cli") this.ligarCamera("cliente");
     if (this.mode === "scan-sai") this.ligarCamera("saidera");
   },

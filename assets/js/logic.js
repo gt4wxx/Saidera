@@ -70,7 +70,7 @@ const Logic = {
         email: true,
         whatsapp: false,
         perfilPublico: true,
-        bebidaFavoritaId: c.bebidaFavoritaId || "beb-001",
+        bebidaFavoritaId: c.bebidaFavoritaId || this.primeiraBebida()?.id || "",
       };
     }
     return c.prefs;
@@ -197,7 +197,17 @@ const Logic = {
   },
 
   bebida(id) {
-    return Store.find("bebidas", id);
+    if (id) {
+      const found = Store.find("bebidas", id);
+      if (found) return found;
+    }
+    return Store.all("bebidas")[0] || { id: id || "", nome: "Bebida" };
+  },
+
+  primeiraBebida(est) {
+    if (typeof est === "string") est = this.est(est);
+    if (est?.bebidas?.[0]) return est.bebidas[0];
+    return Store.all("bebidas")[0] || null;
   },
 
   est(id) {
@@ -476,7 +486,7 @@ const Logic = {
       if (!marca || marca === "casa") return false;
       return key.includes(marca) || key.includes(marca.split(" ")[0]);
     });
-    return list.length ? list : [this.bebida("beb-001")].filter(Boolean);
+    return list.length ? list : Store.all("bebidas").slice(0, 1);
   },
 
   vendeBebida(est, bebidaId) {
@@ -850,7 +860,7 @@ const Logic = {
       usadas: sais.filter((s) => s.status === "utilizada").length,
       disponiveis: sais.filter((s) => s.status === "disponivel").length,
       estabelecimentos: ests.size,
-      favorita: prefs[0] ? this.bebida(prefs[0].id) : this.bebida("beb-001"),
+      favorita: prefs[0] ? this.bebida(prefs[0].id) : this.primeiraBebida(),
     };
   },
 

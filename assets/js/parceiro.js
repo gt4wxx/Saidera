@@ -13,6 +13,7 @@ const ParceiroApp = {
     this.parId = Store.demo().parceiroId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
+    this.root.addEventListener("click", (e) => this.onClick(e));
     Store.on(() => this.render());
     window.addEventListener("hashchange", () => this.route());
     this.route();
@@ -27,7 +28,7 @@ const ParceiroApp = {
     const per = Logic.periodoCampanha();
     if (!this.sol) {
       this.sol = {
-        bebidaId: drinks[0]?.id || "beb-001",
+        bebidaId: drinks[0]?.id || Logic.primeiraBebida()?.id || null,
         meta: 6,
         obj: "Acelerar Saidera",
         msg: "Essa semana sua Saidera chega mais rápido.",
@@ -38,7 +39,7 @@ const ParceiroApp = {
         selected: [],
       };
     }
-    if (!drinks.some((b) => b.id === this.sol.bebidaId)) this.sol.bebidaId = drinks[0]?.id || "beb-001";
+    if (!drinks.some((b) => b.id === this.sol.bebidaId)) this.sol.bebidaId = drinks[0]?.id || Logic.primeiraBebida()?.id || null;
     return this.sol;
   },
 
@@ -279,18 +280,72 @@ const ParceiroApp = {
     </section>`;
   },
 
+  onClick(e) {
+    const t = e.target.closest("button, [data-page]");
+    if (!t || t.disabled) return;
+    if (t.closest("[data-menu], [data-close-menu], [data-close-modal]")) return;
+    if (t.hasAttribute("data-page")) {
+      const n = Number(t.getAttribute("data-page"));
+      const key = this.view === "campanhas" ? "camPage" : this.view === "estabelecimentos" ? "estPage" : null;
+      if (!key || !n || n === this[key]) return;
+      this[key] = n;
+      this.render();
+      this.root.querySelector(".dash-main .panel")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
+    if (t.id === "sel-visiveis") {
+      this.syncSol();
+      const visiveis = [...this.root.querySelectorAll("#est-list input")].map((i) => i.value);
+      this.sol.selected = [...new Set([...this.sol.selected, ...visiveis])];
+      this.render();
+      return;
+    }
+    if (t.id === "limpar-sel") {
+      this.syncSol();
+      this.sol.selected = [];
+      this.render();
+      return;
+    }
+    if (t.id === "enviar-sol") return void this.enviarSol();
+  },
+
+  async enviarSol() {
+    this.syncSol();
+    const s = this.sol;
+    const selected = (s.selected || []).filter((id) => Logic.vendeBebida(id, s.bebidaId));
+    if (selected.length < 1) {
+      UI.toast("Escolha pelo menos uma casa que vende esta bebida.");
+      return;
+    }
+    const inicio = s.inicio || Logic.periodoCampanha().inicio;
+    const fim = s.umDia ? inicio : s.fim || inicio;
+    try {
+      const data = await API.post("campanhas", {
+        titulo: `${s.obj} · ${Logic.bebida(s.bebidaId)?.nome || "Marca"}`,
+        parceiroId: this.parId,
+        mensagem: s.msg,
+        metaTampas: s.meta,
+        alteraMeta: true,
+        bebidaId: s.bebidaId,
+        estabelecimentos: selected,
+        periodoInicio: inicio,
+        periodoFim: fim,
+      });
+      if (data.store) Store.replace(data.store);
+      this.sol.selected = [];
+      UI.modal({
+        center: true,
+        html: `<h2>Solicitação enviada para análise.</h2>
+          <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas. O Admin Saidera ainda precisa ativar o disparo.</p>
+          <button type="button" class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
+      });
+    } catch (err) {
+      UI.toast(err.message);
+    }
+  },
+
   bind() {
-    this.root.querySelector("[data-menu]")?.addEventListener("click", () => this.root.querySelector("#sidebar")?.classList.toggle("open"));
-    this.root.querySelectorAll("[data-page]").forEach((el) =>
-      el.addEventListener("click", () => {
-        const n = Number(el.getAttribute("data-page"));
-        const key = this.view === "campanhas" ? "camPage" : this.view === "estabelecimentos" ? "estPage" : null;
-        if (!key || !n || el.disabled || n === this[key]) return;
-        this[key] = n;
-        this.render();
-        this.root.querySelector(".dash-main .panel")?.scrollIntoView({ block: "start", behavior: "smooth" });
-      })
-    );
+    UI.fixButtons(this.root);
     this.root.querySelector("#bebida")?.addEventListener("change", () => {
       this.syncSol();
       this.sol.selected = this.sol.selected.filter((id) => Logic.vendeBebida(id, this.sol.bebidaId));
@@ -309,51 +364,6 @@ const ParceiroApp = {
         again.focus();
         const len = again.value.length;
         again.setSelectionRange(len, len);
-      }
-    });
-    this.root.querySelector("#sel-visiveis")?.addEventListener("click", () => {
-      this.syncSol();
-      const visiveis = [...this.root.querySelectorAll("#est-list input")].map((i) => i.value);
-      this.sol.selected = [...new Set([...this.sol.selected, ...visiveis])];
-      this.render();
-    });
-    this.root.querySelector("#limpar-sel")?.addEventListener("click", () => {
-      this.syncSol();
-      this.sol.selected = [];
-      this.render();
-    });
-    this.root.querySelector("#enviar-sol")?.addEventListener("click", async () => {
-      this.syncSol();
-      const s = this.sol;
-      const selected = (s.selected || []).filter((id) => Logic.vendeBebida(id, s.bebidaId));
-      if (selected.length < 1) {
-        UI.toast("Escolha pelo menos uma casa que vende esta bebida.");
-        return;
-      }
-      const inicio = s.inicio || Logic.periodoCampanha().inicio;
-      const fim = s.umDia ? inicio : s.fim || inicio;
-      try {
-        const data = await API.post("campanhas", {
-          titulo: `${s.obj} · ${Logic.bebida(s.bebidaId)?.nome || "Marca"}`,
-          parceiroId: this.parId,
-          mensagem: s.msg,
-          metaTampas: s.meta,
-          alteraMeta: true,
-          bebidaId: s.bebidaId,
-          estabelecimentos: selected,
-          periodoInicio: inicio,
-          periodoFim: fim,
-        });
-        if (data.store) Store.replace(data.store);
-        this.sol.selected = [];
-        UI.modal({
-          center: true,
-          html: `<h2>Solicitação enviada para análise.</h2>
-            <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas. O Admin Saidera ainda precisa ativar o disparo.</p>
-            <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
-        });
-      } catch (e) {
-        UI.toast(e.message);
       }
     });
   },

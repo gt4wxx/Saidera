@@ -128,11 +128,17 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
 .logo-row span { font-size: 1.15rem; }
 .logo-row .brand-h { flex: 0 1 auto; min-width: 0; }
 
+.btn, .icon-btn, .chip, .pill-tabs button, .tipo-card, .waiter-action {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 0 18px; border-radius: 16px;
   font-weight: 700; transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
 }
+.btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
 .btn:active { transform: scale(0.98); }
 .btn-gold {
   background: linear-gradient(180deg, #ffd24a, var(--gold));
@@ -302,6 +308,7 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
 .photo .overlay {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.78));
+  pointer-events: none;
 }
 
 .demo-fab {

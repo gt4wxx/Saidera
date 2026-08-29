@@ -77,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Saidera</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=5"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=5"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=6"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=6"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
   <link rel="manifest" href="manifest.webmanifest"/>
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field"><span>E-mail</span><input name="email" type="email" required autocomplete="username"/></div>
         <div class="field" style="margin-top:10px"><span>Senha</span><input name="senha" type="password" required autocomplete="current-password"/></div>
         <p class="tiny" id="login-erro" style="color:#f87171;margin-top:8px"><?= h($erroLogin) ?></p>
-        <button class="btn btn-gold btn-block" style="margin-top:12px">Entrar</button>
+        <button type="submit" class="btn btn-gold btn-block" style="margin-top:12px">Entrar</button>
       </form>
     </section>
     <section class="card pad" style="max-width:440px;margin:0 auto 24px">
@@ -123,12 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field" style="margin-top:10px"><span>Nascimento</span><input name="nascimento" type="date"/></div>
         <div class="field" style="margin-top:10px"><span>Bairro</span><input name="bairro"/></div>
         <p class="tiny" id="cad-erro" style="color:#f87171;margin-top:8px"><?= h($erroCad) ?></p>
-        <button class="btn btn-navy btn-block" style="margin-top:12px">Cadastrar</button>
+        <button type="submit" class="btn btn-navy btn-block" style="margin-top:12px">Cadastrar</button>
       </form>
     </section>
   </main>
-  <script src="assets/js/icons.js?v=5"></script>
-  <script src="assets/js/ui.js?v=5"></script>
+  <script src="assets/js/icons.js?v=6"></script>
+  <script src="assets/js/ui.js?v=6"></script>
   <script>
     document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Saidera</span>`;
   </script>

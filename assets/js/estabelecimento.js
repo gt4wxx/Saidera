@@ -4,11 +4,11 @@ const EstApp = {
   params: {},
   estId: null,
   qty: 1,
-  drinkId: "beb-001",
+  drinkId: null,
   clienteSel: null,
   ticketQtys: null,
   ticketGeradoId: null,
-  campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
+  campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: null, canal: "push" },
   volta: { qtd: 10, ids: [], mensagem: "" },
   cliPage: 1,
   cliPerPage: 10,
@@ -20,6 +20,8 @@ const EstApp = {
     this.estId = Store.demo().estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
+    this.syncDrink();
+    this.root.addEventListener("click", (e) => this.onClick(e));
     Store.on(() => this.render());
     window.addEventListener("hashchange", () => this.route());
     this.route();
@@ -27,6 +29,13 @@ const EstApp = {
 
   est() {
     return Logic.est(this.estId);
+  },
+
+  syncDrink() {
+    const id = Logic.primeiraBebida(this.est())?.id || null;
+    const drinks = this.est()?.bebidas || [];
+    if (!this.drinkId || !drinks.some((d) => d.id === this.drinkId)) this.drinkId = id;
+    if (!this.campForm.bebidaId || !drinks.some((d) => d.id === this.campForm.bebidaId)) this.campForm.bebidaId = id;
   },
 
   aplicarQtdVolta(qtd) {
@@ -42,7 +51,7 @@ const EstApp = {
     this.campForm.publico = publico || modelo.publico;
     this.campForm.mensagem = modelo.mensagem;
     this.campForm.meta = modelo.metaTampas || 6;
-    this.campForm.bebidaId = this.est()?.bebidas?.[0]?.id || "beb-001";
+    this.campForm.bebidaId = Logic.primeiraBebida(this.est())?.id || null;
   },
 
   syncCampForm() {
@@ -64,6 +73,7 @@ const EstApp = {
   },
 
   render() {
+    this.syncDrink();
     const map = {
       dashboard: () => this.dashboard(),
       clientes: () => this.clientes(),
@@ -342,7 +352,7 @@ const EstApp = {
         ${hist
           .map(
             (h) =>
-              `<div class="row between" style="padding:8px 0;border-top:1px solid #2a2a2a"><span>${Logic.fmtDateShort(h.criadoEm)}</span><strong>+${h.quantidade} ${Logic.bebida(h.bebidaId).nome}</strong></div>`
+              `<div class="row between" style="padding:8px 0;border-top:1px solid #2a2a2a"><span>${Logic.fmtDateShort(h.criadoEm)}</span><strong>+${h.quantidade} ${Logic.bebida(h.bebidaId)?.nome || "Bebida"}</strong></div>`
           )
           .join("")}
       </section>
@@ -489,7 +499,7 @@ const EstApp = {
             <div class="row between" style="margin:18px 0">
               <div>
                 <p class="tiny muted">Progresso atual</p>
-                <strong>${Logic.bebida(this.drinkId).nome} · ${p.atual}/${p.meta}</strong>
+                <strong>${Logic.bebida(this.drinkId)?.nome || "Bebida"} · ${p.atual}/${p.meta}</strong>
                 <div style="margin-top:8px">${UI.tampas(p.atual, p.meta)}</div>
               </div>
               <div class="qty">
@@ -618,7 +628,7 @@ const EstApp = {
         ${quase
           .map((t) => {
             const c = Logic.cliente(t.clienteId);
-            return `<div class="row between" style="padding:8px 0"><div><strong>${c?.primeiroNome}</strong><p class="tiny muted">${Logic.bebida(t.bebidaId).nome} ${t.atual}/${t.meta}</p></div><button class="btn btn-gold btn-sm" data-solicitar="quase">Acelerar</button></div>`;
+            return `<div class="row between" style="padding:8px 0"><div><strong>${c?.primeiroNome}</strong><p class="tiny muted">${Logic.bebida(t.bebidaId)?.nome || "Bebida"} ${t.atual}/${t.meta}</p></div><button type="button" class="btn btn-gold btn-sm" data-solicitar="quase">Acelerar</button></div>`;
           })
           .join("")}
       </section>
@@ -635,7 +645,7 @@ const EstApp = {
           .map((c) => {
             const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
             return `<div class="row between" style="padding:8px 0">
-              <div><strong>${c.nome}</strong><p class="tiny muted">${Logic.bebida(t?.bebidaId || "beb-001").nome} · ${t ? t.atual + "/" + t.meta : "—"} · última visita há 37 dias</p></div>
+              <div><strong>${c.nome}</strong><p class="tiny muted">${Logic.bebida(t?.bebidaId)?.nome || "Saidera"} · ${t ? t.atual + "/" + t.meta : "—"} · última visita há 37 dias</p></div>
             </div>`;
           })
           .join("")}
@@ -674,7 +684,7 @@ const EstApp = {
               <input type="checkbox" value="${c.id}" ${sel.has(c.id) ? "checked" : ""}/>
               <div>
                 <strong>${c.nome}</strong>
-                <p class="tiny muted">${Logic.bebida(t?.bebidaId || "beb-001")?.nome || "Saidera"} · última visita há ${dias} dias</p>
+                <p class="tiny muted">${Logic.bebida(t?.bebidaId)?.nome || "Saidera"} · última visita há ${dias} dias</p>
               </div>
             </label>`;
           })
@@ -848,18 +858,394 @@ const EstApp = {
     }
   },
 
+  onClick(e) {
+    const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico]");
+    if (!t || t.disabled) return;
+    if (t.closest("[data-menu], [data-close-menu], [data-close-modal], [data-href]")) return;
+    const id = t.id;
+    if (t.hasAttribute("data-page")) {
+      const n = Number(t.getAttribute("data-page"));
+      if (!n || n === this.cliPage) return;
+      this.cliPage = n;
+      this.render();
+      this.root.querySelector(".table-wrap")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
+    if (t.hasAttribute("data-tkt-qty")) {
+      this.ensureTicketQtys();
+      const kid = t.getAttribute("data-tkt-qty");
+      const dir = Number(t.getAttribute("data-dir")) || 0;
+      const atual = Number(this.ticketQtys[kid]) || 0;
+      this.ticketQtys[kid] = Math.max(0, Math.min(20, atual + dir));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-ver-ticket")) {
+      this.ticketGeradoId = t.getAttribute("data-ver-ticket");
+      this.render();
+      this.root.querySelector("#ticket-print")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      return;
+    }
+    if (t.hasAttribute("data-pick")) {
+      this.clienteSel = t.getAttribute("data-pick");
+      location.hash = `#/atender/${this.clienteSel}`;
+      return;
+    }
+    if (t.hasAttribute("data-drink")) {
+      this.drinkId = t.getAttribute("data-drink");
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-solicitar")) {
+      const preset = t.getAttribute("data-solicitar") || "comparecer";
+      if (preset === "inativos") {
+        this.aplicarQtdVolta(this.volta.qtd || 10);
+        location.hash = "#/chamar";
+        return;
+      }
+      const map = { aniversario: ["aniversario", "aniversario"], quase: ["tampas", "quase"], comparecer: ["comparecer", "todos"] };
+      const [tipo, publico] = map[preset] || ["comparecer", "todos"];
+      this.aplicarModeloCamp(tipo, publico);
+      location.hash = "#/campanhas";
+      return;
+    }
+    if (t.hasAttribute("data-volta-qtd")) {
+      this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
+      this.aplicarQtdVolta(t.getAttribute("data-volta-qtd"));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-camp-tipo")) {
+      this.syncCampForm();
+      this.aplicarModeloCamp(t.getAttribute("data-camp-tipo"));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-camp-publico")) {
+      this.syncCampForm();
+      this.campForm.publico = t.getAttribute("data-camp-publico");
+      this.render();
+      return;
+    }
+    if (id === "gerar-ticket") return void this.gerarTicket();
+    if (id === "print-ticket") return void window.print();
+    if (id === "novo-ticket") {
+      this.ticketGeradoId = null;
+      this.render();
+      return;
+    }
+    if (id === "entregar-sai") return void this.entregarSai();
+    if (id === "qty-minus") {
+      this.qty = Math.max(1, this.qty - 1);
+      this.render();
+      return;
+    }
+    if (id === "qty-plus") {
+      this.qty = Math.min(12, this.qty + 1);
+      this.render();
+      return;
+    }
+    if (id === "do-reg") return void this.doReg();
+    if (id === "scan-qr") return void this.abrirScanQr();
+    if (id === "scan-nota") return void this.abrirScanNota();
+    if (id === "add-drink") return void this.abrirAddDrink();
+    if (id === "edit-meta") return void this.abrirEditMeta();
+    if (id === "nf-ok") return void this.cadastrarFun();
+    if (id === "save-cfg") return void this.salvarCfg();
+    if (id === "pick-cartaz") return void this.root.querySelector("#cfg-cartaz")?.click();
+    if (id === "reset-cartaz") {
+      this.est().cartaz = null;
+      Store.save();
+      UI.toast("Voltamos à imagem padrão.");
+      return;
+    }
+    if (id === "pedir-volta") return void this.pedirVolta();
+    if (id === "enviar-camp-casa") return void this.enviarCamp();
+  },
+
+  async gerarTicket() {
+    const itens = this.ticketItens();
+    if (!itens.length) {
+      UI.toast("Escolha pelo menos uma bebida.");
+      return;
+    }
+    try {
+      const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
+      if (!t) {
+        UI.toast("Não foi possível gerar o QR.");
+        return;
+      }
+      this.ticketGeradoId = t.id;
+      this.render();
+      UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
+    } catch (e) {
+      UI.toast(e.message);
+    }
+  },
+
+  async entregarSai() {
+    const codigo = this.root.querySelector("#sai-codigo")?.value || "";
+    const res = await Logic.entregarSaideraPorCodigo(codigo, this.estId);
+    if (!res.ok) {
+      UI.toast(res.erro);
+      return;
+    }
+    UI.toast(`Saidera ${res.saidera.codigo} entregue.`);
+    const inp = this.root.querySelector("#sai-codigo");
+    if (inp) inp.value = "";
+  },
+
+  async doReg() {
+    const cid = this.params.id || this.clienteSel;
+    const c = Logic.cliente(cid);
+    const b = Logic.bebida(this.drinkId);
+    if (!c) {
+      UI.toast("Escolha um cliente.");
+      return;
+    }
+    if (!this.drinkId) {
+      UI.toast("Cadastre uma bebida no cardápio.");
+      return;
+    }
+    try {
+      const res = await Logic.registrarConsumo({
+        clienteId: cid,
+        estabelecimentoId: this.estId,
+        bebidaId: this.drinkId,
+        quantidade: this.qty,
+      });
+      this.afterRegister(res, c, b);
+    } catch (e) {
+      UI.toast(e.message);
+    }
+  },
+
+  abrirScanQr() {
+    const m = UI.modal({
+      center: true,
+      onClose: () => QR.stopScan(),
+      html: `<h2>QR do cliente</h2>
+        <div class="scan-stage" style="margin:16px 0">
+          <div class="scan-frame live" style="margin:0 auto">
+            <video id="scan-video-est" playsinline muted autoplay></video>
+            <i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR pessoal do cliente</p>
+        <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
+        <div class="row wrap" style="margin-top:12px;gap:8px">
+          <button type="button" class="btn btn-ghost btn-sm" data-close-modal>Cancelar</button>
+        </div>`,
+    });
+    const abrir = (id) => {
+      QR.stopScan();
+      m.close();
+      this.clienteSel = id;
+      location.hash = `#/atender/${id}`;
+    };
+    m.el.querySelector("#busca-qr-modal")?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const d = QR.decode(e.target.value);
+      if (d.tipo === "ticket") {
+        UI.toast("Este é um cupom da casa. O cliente lê no app dele.");
+        return;
+      }
+      const c = Logic.clientePorCodigo(d.codigo);
+      if (c) abrir(c.id);
+      else UI.toast("Cliente não encontrado.");
+    });
+    const video = m.el.querySelector("#scan-video-est");
+    QR.startScan({
+      video,
+      onCode: (_codigo, raw) => {
+        const d = QR.decode(raw || _codigo);
+        if (d.tipo === "ticket") {
+          UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
+          return;
+        }
+        const c = Logic.clientePorCodigo(d.codigo);
+        if (c) abrir(c.id);
+        else UI.toast("QR do cliente não reconhecido.");
+      },
+      onError: (msg) => {
+        const h = m.el.querySelector("#scan-hint-est");
+        if (h) h.textContent = msg;
+      },
+    });
+  },
+
+  abrirScanNota() {
+    const m = UI.modal({
+      center: true,
+      html: `<h2>Analisando nota...</h2><p class="muted">Lendo os itens da nota fiscal.</p><div class="skel" style="height:10px;margin-top:16px"></div>`,
+    });
+    setTimeout(() => {
+      const nomes = ["Heineken", "Budweiser", "Stella Artois", "Brahma", "Corona", "Coca-Cola"];
+      m.el.querySelector(".modal").innerHTML = `<h2>Encontramos ${nomes.length} bebidas</h2>
+        <p class="muted" style="margin:8px 0 12px">Selecione para adicionar ao cardápio.</p>
+        ${nomes.map((n) => `<label class="row" style="padding:8px 0"><input type="checkbox" class="nf-beb" value="${n}" checked/> ${n}</label>`).join("")}
+        <button type="button" class="btn btn-gold btn-block" id="nf-add-ok" style="margin-top:12px">Adicionar selecionadas</button>`;
+      m.el.querySelector("#nf-add-ok")?.addEventListener("click", async () => {
+        const sel = [...m.el.querySelectorAll(".nf-beb:checked")].map((i) => i.value);
+        if (!sel.length) {
+          UI.toast("Selecione pelo menos uma bebida.");
+          return;
+        }
+        try {
+          const ja = new Set((this.est()?.bebidas || []).map((b) => (b.nome || "").toLowerCase()));
+          for (const nome of sel) {
+            if (ja.has(nome.toLowerCase())) continue;
+            const data = await API.post("bebidas", { estabelecimentoId: this.estId, nome });
+            if (data.store) Store.replace(data.store);
+            ja.add(nome.toLowerCase());
+          }
+          m.close();
+          UI.toast("Bebidas adicionadas ao cardápio.");
+        } catch (err) {
+          UI.toast(err.message);
+        }
+      });
+    }, 400);
+  },
+
+  abrirAddDrink() {
+    UI.modal({
+      center: true,
+      html: `<h2>Nova bebida</h2><div class="field" style="margin:12px 0"><span>Nome</span><input id="nd-nome" placeholder="Ex.: Chopp IPA"/></div>
+        <div class="field"><span>Meta (vazio = padrão)</span><input id="nd-meta" type="number" placeholder="10"/></div>
+        <button type="button" class="btn btn-gold btn-block" style="margin-top:12px" id="nd-ok">Adicionar</button>`,
+    });
+    document.getElementById("nd-ok")?.addEventListener("click", async () => {
+      const nome = document.getElementById("nd-nome").value || "Nova bebida";
+      const meta = Number(document.getElementById("nd-meta").value) || null;
+      try {
+        const data = await API.post("bebidas", { estabelecimentoId: this.estId, nome, meta });
+        if (data.store) Store.replace(data.store);
+        document.querySelector(".modal-bg")?.remove();
+        UI.toast("Bebida adicionada.");
+      } catch (err) {
+        UI.toast(err.message);
+      }
+    });
+  },
+
+  abrirEditMeta() {
+    const est = this.est();
+    UI.modal({
+      center: true,
+      html: `<h2>Saidera padrão</h2><div class="field" style="margin:12px 0"><span>Tampas</span><input id="meta-pad" type="number" value="${est.metaPadrao}"/></div>
+        <button type="button" class="btn btn-gold btn-block" id="meta-ok">Salvar</button>`,
+    });
+    document.getElementById("meta-ok")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("estabelecimentos/salvar", {
+          id: this.estId,
+          metaPadrao: document.getElementById("meta-pad").value,
+        });
+        if (data.store) Store.replace(data.store);
+        document.querySelector(".modal-bg")?.remove();
+        UI.toast("Meta padrão salva.");
+      } catch (err) {
+        UI.toast(err.message);
+      }
+    });
+  },
+
+  async cadastrarFun() {
+    try {
+      const data = await API.post("funcionarios", {
+        estabelecimentoId: this.estId,
+        nome: this.root.querySelector("#nf-nome")?.value,
+        email: this.root.querySelector("#nf-email")?.value,
+        senha: this.root.querySelector("#nf-senha")?.value,
+        cargo: this.root.querySelector("#nf-cargo")?.value || "Garçom",
+      });
+      if (data.store) Store.replace(data.store);
+      UI.toast("Garçom cadastrado. Ele entra pelo app do garçom.");
+    } catch (err) {
+      UI.toast(err.message);
+    }
+  },
+
+  async salvarCfg() {
+    try {
+      const data = await API.post("estabelecimentos/salvar", {
+        id: this.estId,
+        nome: this.root.querySelector("#cfg-nome")?.value,
+        cep: this.root.querySelector("#cfg-cep")?.value,
+        logradouro: this.root.querySelector("#cfg-rua")?.value,
+        numero: this.root.querySelector("#cfg-num")?.value,
+        complemento: this.root.querySelector("#cfg-comp")?.value,
+        bairro: this.root.querySelector("#cfg-bairro")?.value,
+        cidade: this.root.querySelector("#cfg-cidade")?.value,
+        uf: this.root.querySelector("#cfg-uf")?.value,
+        metaPadrao: this.root.querySelector("#cfg-meta")?.value,
+      });
+      if (data.store) Store.replace(data.store);
+      UI.toast("Configurações salvas.");
+    } catch (err) {
+      UI.toast(err.message);
+    }
+  },
+
+  async pedirVolta() {
+    this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
+    this.volta.ids = [...this.root.querySelectorAll(".volta-list input:checked")].map((i) => i.value);
+    if (!this.volta.ids.length) {
+      UI.toast("Selecione pelo menos um cliente.");
+      return;
+    }
+    const modelo = Logic.modelosCampanhaCasa(this.est()).chamar;
+    const cam = await Logic.solicitarCampanhaCasa({
+      estabelecimentoId: this.estId,
+      tipo: "chamar",
+      publico: "inativos",
+      titulo: modelo.titulo,
+      mensagem: this.volta.mensagem || modelo.mensagem,
+      canal: "push",
+      clienteIds: this.volta.ids,
+      limite: this.volta.ids.length,
+    });
+    UI.modal({
+      center: true,
+      html: `<h2>Pedido de disparo enviado</h2>
+        <p class="muted" style="margin:10px 0">Chamar de volta para <strong>${cam.limite} cliente${cam.limite === 1 ? "" : "s"}</strong>.</p>
+        <p class="notice">O Admin Saidera valida e ativa o disparo. Nada entra no app até lá.</p>
+        <button type="button" class="btn btn-gold btn-block" style="margin-top:12px" data-close-modal>Ok</button>`,
+    });
+  },
+
+  async enviarCamp() {
+    this.syncCampForm();
+    if (!this.campForm.tipo) {
+      UI.toast("Escolha o tipo da campanha.");
+      return;
+    }
+    const modelo = Logic.modelosCampanhaCasa(this.est())[this.campForm.tipo];
+    const payload = {
+      estabelecimentoId: this.estId,
+      tipo: this.campForm.tipo,
+      publico: this.campForm.publico,
+      titulo: modelo.titulo,
+      mensagem: this.campForm.mensagem || modelo.mensagem,
+      bebidaId: this.campForm.bebidaId,
+      metaTampas: this.campForm.meta,
+      canal: this.campForm.canal,
+    };
+    this.campForm.tipo = null;
+    const cam = await Logic.solicitarCampanhaCasa(payload);
+    UI.modal({
+      center: true,
+      html: `<h2>Pedido enviado ao Admin Saidera</h2>
+        <p class="muted" style="margin:10px 0 6px">${cam.titulo}</p>
+        <p class="small muted">${Logic.publicoCampanhaLabel(cam.publico)} · ${cam.publicoPotencial.toLocaleString("pt-BR")} destinatários · canal ${cam.canal}.</p>
+        <p class="notice" style="margin:12px 0">Nada entra no app até o Admin validar e ativar o disparo.</p>
+        <button type="button" class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
+    });
+  },
+
   bind() {
-    this.root.querySelector("[data-menu]")?.addEventListener("click", () => this.root.querySelector("#sidebar")?.classList.toggle("open"));
-    this.root.querySelectorAll("[data-href]").forEach((tr) => tr.addEventListener("click", () => (location.hash = tr.getAttribute("data-href"))));
-    this.root.querySelectorAll("[data-page]").forEach((el) =>
-      el.addEventListener("click", () => {
-        const n = Number(el.getAttribute("data-page"));
-        if (!n || el.disabled || n === this.cliPage) return;
-        this.cliPage = n;
-        this.render();
-        this.root.querySelector(".table-wrap")?.scrollIntoView({ block: "start", behavior: "smooth" });
-      })
-    );
+    UI.fixButtons(this.root);
     const buscaHead = this.root.querySelector("[data-jump-search]");
     buscaHead?.addEventListener("input", (e) => {
       if (this.view !== "clientes") return;
@@ -880,93 +1266,8 @@ const EstApp = {
       if (c) location.hash = `#/cliente/${c.id}`;
       else UI.toast("Cliente não encontrado na demonstração.");
     });
-    this.root.querySelectorAll("[data-tkt-qty]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        this.ensureTicketQtys();
-        const id = btn.getAttribute("data-tkt-qty");
-        const dir = Number(btn.getAttribute("data-dir")) || 0;
-        const atual = Number(this.ticketQtys[id]) || 0;
-        this.ticketQtys[id] = Math.max(0, Math.min(20, atual + dir));
-        this.render();
-      })
-    );
-    this.root.querySelector("#gerar-ticket")?.addEventListener("click", async () => {
-      const itens = this.ticketItens();
-      if (!itens.length) {
-        UI.toast("Escolha pelo menos uma bebida.");
-        return;
-      }
-      try {
-        const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
-        if (!t) {
-          UI.toast("Não foi possível gerar o QR.");
-          return;
-        }
-        this.ticketGeradoId = t.id;
-        this.render();
-        UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
-      } catch (e) {
-        UI.toast(e.message);
-      }
-    });
-    this.root.querySelector("#print-ticket")?.addEventListener("click", () => window.print());
-    this.root.querySelector("#novo-ticket")?.addEventListener("click", () => {
-      this.ticketGeradoId = null;
-      this.render();
-    });
-    this.root.querySelectorAll("[data-ver-ticket]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        this.ticketGeradoId = btn.getAttribute("data-ver-ticket");
-        this.render();
-        this.root.querySelector("#ticket-print")?.scrollIntoView({ block: "start", behavior: "smooth" });
-      })
-    );
-    this.root.querySelector("#entregar-sai")?.addEventListener("click", async () => {
-      const codigo = this.root.querySelector("#sai-codigo")?.value || "";
-      const res = await Logic.entregarSaideraPorCodigo(codigo, this.estId);
-      if (!res.ok) {
-        UI.toast(res.erro);
-        return;
-      }
-      UI.toast(`Saidera ${res.saidera.codigo} entregue.`);
-      this.root.querySelector("#sai-codigo").value = "";
-    });
     this.root.querySelector("#sai-codigo")?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this.root.querySelector("#entregar-sai")?.click();
-    });
-    this.root.querySelectorAll("[data-pick]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.clienteSel = b.getAttribute("data-pick");
-        location.hash = `#/atender/${this.clienteSel}`;
-        this.route();
-      })
-    );
-    this.root.querySelectorAll("[data-drink]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.drinkId = b.getAttribute("data-drink");
-        this.render();
-      })
-    );
-    this.root.querySelector("#qty-minus")?.addEventListener("click", () => {
-      this.qty = Math.max(1, this.qty - 1);
-      this.render();
-    });
-    this.root.querySelector("#qty-plus")?.addEventListener("click", () => {
-      this.qty = Math.min(12, this.qty + 1);
-      this.render();
-    });
-    this.root.querySelector("#do-reg")?.addEventListener("click", async () => {
-      const cid = this.params.id || this.clienteSel;
-      const c = Logic.cliente(cid);
-      const b = Logic.bebida(this.drinkId);
-      if (!c) return;
-      const res = await Logic.registrarConsumo({
-        clienteId: cid,
-        estabelecimentoId: this.estId,
-        bebidaId: this.drinkId,
-        quantidade: this.qty,
-      });
-      this.afterRegister(res, c, b);
+      if (e.key === "Enter") this.entregarSai();
     });
     this.root.querySelector("#busca-cli")?.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
@@ -981,120 +1282,6 @@ const EstApp = {
         location.hash = `#/atender/${c.id}`;
         this.route();
       } else UI.toast("Cliente não encontrado.");
-    });
-    this.root.querySelector("#scan-qr")?.addEventListener("click", () => {
-      const m = UI.modal({
-        center: true,
-        onClose: () => QR.stopScan(),
-        html: `<h2>QR do cliente</h2>
-          <div class="scan-stage" style="margin:16px 0">
-            <div class="scan-frame live" style="margin:0 auto">
-              <video id="scan-video-est" playsinline muted autoplay></video>
-              <i></i><i></i><i></i><i></i>
-            </div>
-          </div>
-          <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR pessoal do cliente</p>
-          <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
-          <div class="row wrap" style="margin-top:12px;gap:8px">
-            <button class="btn btn-ghost btn-sm" data-close-modal>Cancelar</button>
-          </div>`,
-      });
-      const abrir = (id) => {
-        QR.stopScan();
-        m.close();
-        this.clienteSel = id;
-        location.hash = `#/atender/${id}`;
-      };
-      m.el.querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => abrir(b.getAttribute("data-use"))));
-      m.el.querySelector("#busca-qr-modal")?.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter") return;
-        const d = QR.decode(e.target.value);
-        if (d.tipo === "ticket") {
-          UI.toast("Este é um cupom da casa. O cliente lê no app dele.");
-          return;
-        }
-        const c = Logic.clientePorCodigo(d.codigo);
-        if (c) abrir(c.id);
-        else UI.toast("Cliente não encontrado.");
-      });
-      const video = m.el.querySelector("#scan-video-est");
-      QR.startScan({
-        video,
-        onCode: (_codigo, raw) => {
-          const d = QR.decode(raw || _codigo);
-          if (d.tipo === "ticket") {
-            UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
-            return;
-          }
-          const c = Logic.clientePorCodigo(d.codigo);
-          if (c) abrir(c.id);
-          else UI.toast("QR do cliente não reconhecido.");
-        },
-        onError: (msg) => {
-          const h = m.el.querySelector("#scan-hint-est");
-          if (h) h.textContent = msg;
-        },
-      });
-    });
-    this.root.querySelector("#scan-nota")?.addEventListener("click", () => {
-      const m = UI.modal({
-        center: true,
-        html: `<h2>Analisando nota...</h2><p class="muted">Leitura demonstrativa.</p><div class="skel" style="height:10px;margin-top:16px"></div>`,
-      });
-      setTimeout(() => {
-        m.el.querySelector(".modal").innerHTML = `<h2>Encontramos 6 bebidas</h2>
-          <p class="muted" style="margin:8px 0 12px">Selecione para adicionar ao cardápio.</p>
-          ${["Heineken", "Budweiser", "Stella Artois", "Brahma", "Corona", "Coca-Cola"].map((n) => `<label class="row" style="padding:8px 0"><input type="checkbox" checked/> ${n}</label>`).join("")}
-          <button class="btn btn-gold btn-block" data-close-modal style="margin-top:12px">Adicionar selecionadas</button>`;
-      }, 1100);
-    });
-    this.root.querySelector("#add-drink")?.addEventListener("click", () => {
-      UI.modal({
-        center: true,
-        html: `<h2>Nova bebida</h2><div class="field" style="margin:12px 0"><span>Nome</span><input id="nd-nome" placeholder="Ex.: Chopp IPA"/></div>
-          <div class="field"><span>Meta (vazio = padrão)</span><input id="nd-meta" type="number" placeholder="10"/></div>
-          <button class="btn btn-gold btn-block" style="margin-top:12px" id="nd-ok">Adicionar</button>`,
-      });
-      document.getElementById("nd-ok")?.addEventListener("click", async () => {
-        const nome = document.getElementById("nd-nome").value || "Nova bebida";
-        const meta = Number(document.getElementById("nd-meta").value) || null;
-        try {
-          const data = await API.post("bebidas", { estabelecimentoId: this.estId, nome, meta });
-          if (data.store) Store.replace(data.store);
-          document.querySelector(".modal-bg")?.remove();
-          UI.toast("Bebida adicionada.");
-        } catch (e) {
-          UI.toast(e.message);
-        }
-      });
-    });
-    this.root.querySelector("#edit-meta")?.addEventListener("click", () => {
-      const est = this.est();
-      UI.modal({
-        center: true,
-        html: `<h2>Saidera padrão</h2><div class="field" style="margin:12px 0"><span>Tampas</span><input id="meta-pad" type="number" value="${est.metaPadrao}"/></div>
-          <button class="btn btn-gold btn-block" id="meta-ok">Salvar</button>`,
-      });
-      document.getElementById("meta-ok")?.addEventListener("click", () => {
-        est.metaPadrao = Number(document.getElementById("meta-pad").value) || 10;
-        Store.save();
-        document.querySelector(".modal-bg")?.remove();
-      });
-    });
-    this.root.querySelector("#nf-ok")?.addEventListener("click", async () => {
-      try {
-        const data = await API.post("funcionarios", {
-          estabelecimentoId: this.estId,
-          nome: this.root.querySelector("#nf-nome")?.value,
-          email: this.root.querySelector("#nf-email")?.value,
-          senha: this.root.querySelector("#nf-senha")?.value,
-          cargo: this.root.querySelector("#nf-cargo")?.value || "Garçom",
-        });
-        if (data.store) Store.replace(data.store);
-        UI.toast("Garçom cadastrado. Ele entra pelo app do garçom.");
-      } catch (e) {
-        UI.toast(e.message);
-      }
     });
     const cepEl = this.root.querySelector("#cfg-cep");
     cepEl?.addEventListener("input", () => {
@@ -1112,27 +1299,6 @@ const EstApp = {
       set("#cfg-cidade", d.cidade);
       set("#cfg-uf", d.uf);
     });
-    this.root.querySelector("#save-cfg")?.addEventListener("click", async () => {
-      try {
-        const data = await API.post("estabelecimentos/salvar", {
-          id: this.estId,
-          nome: this.root.querySelector("#cfg-nome")?.value,
-          cep: this.root.querySelector("#cfg-cep")?.value,
-          logradouro: this.root.querySelector("#cfg-rua")?.value,
-          numero: this.root.querySelector("#cfg-num")?.value,
-          complemento: this.root.querySelector("#cfg-comp")?.value,
-          bairro: this.root.querySelector("#cfg-bairro")?.value,
-          cidade: this.root.querySelector("#cfg-cidade")?.value,
-          uf: this.root.querySelector("#cfg-uf")?.value,
-          metaPadrao: this.root.querySelector("#cfg-meta")?.value,
-        });
-        if (data.store) Store.replace(data.store);
-        UI.toast("Configurações salvas.");
-      } catch (e) {
-        UI.toast(e.message);
-      }
-    });
-    this.root.querySelector("#pick-cartaz")?.addEventListener("click", () => this.root.querySelector("#cfg-cartaz")?.click());
     this.root.querySelector("#cfg-cartaz")?.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -1152,34 +1318,6 @@ const EstApp = {
         UI.toast(err.message || "Não foi possível usar esta imagem.");
       }
     });
-    this.root.querySelector("#reset-cartaz")?.addEventListener("click", () => {
-      this.est().cartaz = null;
-      Store.save();
-      UI.toast("Voltamos à imagem padrão.");
-    });
-    this.root.querySelectorAll("[data-solicitar]").forEach((b) =>
-      b.addEventListener("click", () => {
-        const preset = b.getAttribute("data-solicitar") || "comparecer";
-        if (preset === "inativos") {
-          this.aplicarQtdVolta(this.volta.qtd || 10);
-          location.hash = "#/chamar";
-          return;
-        }
-        const map = { aniversario: ["aniversario", "aniversario"], quase: ["tampas", "quase"], comparecer: ["comparecer", "todos"] };
-        const [tipo, publico] = map[preset] || ["comparecer", "todos"];
-        this.aplicarModeloCamp(tipo, publico);
-        location.hash = "#/campanhas";
-        this.view = "campanhas";
-        this.render();
-      })
-    );
-    this.root.querySelectorAll("[data-volta-qtd]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
-        this.aplicarQtdVolta(b.getAttribute("data-volta-qtd"));
-        this.render();
-      })
-    );
     this.root.querySelector("#volta-qtd")?.addEventListener("change", (e) => {
       this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
       this.aplicarQtdVolta(e.target.value);
@@ -1195,74 +1333,6 @@ const EstApp = {
         if (n) n.textContent = String(this.volta.ids.length);
       })
     );
-    this.root.querySelector("#pedir-volta")?.addEventListener("click", async () => {
-      this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
-      this.volta.ids = [...this.root.querySelectorAll(".volta-list input:checked")].map((i) => i.value);
-      if (!this.volta.ids.length) {
-        UI.toast("Selecione pelo menos um cliente.");
-        return;
-      }
-      const modelo = Logic.modelosCampanhaCasa(this.est()).chamar;
-      const cam = await Logic.solicitarCampanhaCasa({
-        estabelecimentoId: this.estId,
-        tipo: "chamar",
-        publico: "inativos",
-        titulo: modelo.titulo,
-        mensagem: this.volta.mensagem || modelo.mensagem,
-        canal: "push",
-        clienteIds: this.volta.ids,
-        limite: this.volta.ids.length,
-      });
-      UI.modal({
-        center: true,
-        html: `<h2>Pedido de disparo enviado</h2>
-          <p class="muted" style="margin:10px 0">Chamar de volta para <strong>${cam.limite} cliente${cam.limite === 1 ? "" : "s"}</strong>.</p>
-          <p class="notice">O Admin Saidera valida e ativa o disparo. Nada entra no app até lá.</p>
-          <button class="btn btn-gold btn-block" style="margin-top:12px" data-close-modal>Ok</button>`,
-      });
-    });
-    this.root.querySelectorAll("[data-camp-tipo]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.syncCampForm();
-        this.aplicarModeloCamp(b.getAttribute("data-camp-tipo"));
-        this.render();
-      })
-    );
-    this.root.querySelectorAll("[data-camp-publico]").forEach((b) =>
-      b.addEventListener("click", () => {
-        this.syncCampForm();
-        this.campForm.publico = b.getAttribute("data-camp-publico");
-        this.render();
-      })
-    );
-    this.root.querySelector("#enviar-camp-casa")?.addEventListener("click", async () => {
-      this.syncCampForm();
-      if (!this.campForm.tipo) {
-        UI.toast("Escolha o tipo da campanha.");
-        return;
-      }
-      const modelo = Logic.modelosCampanhaCasa(this.est())[this.campForm.tipo];
-      const payload = {
-        estabelecimentoId: this.estId,
-        tipo: this.campForm.tipo,
-        publico: this.campForm.publico,
-        titulo: modelo.titulo,
-        mensagem: this.campForm.mensagem || modelo.mensagem,
-        bebidaId: this.campForm.bebidaId,
-        metaTampas: this.campForm.meta,
-        canal: this.campForm.canal,
-      };
-      this.campForm.tipo = null;
-      const cam = await Logic.solicitarCampanhaCasa(payload);
-      UI.modal({
-        center: true,
-        html: `<h2>Pedido enviado ao Admin Saidera</h2>
-          <p class="muted" style="margin:10px 0 6px">${cam.titulo}</p>
-          <p class="small muted">${Logic.publicoCampanhaLabel(cam.publico)} · ${cam.publicoPotencial.toLocaleString("pt-BR")} destinatários · canal ${cam.canal}.</p>
-          <p class="notice" style="margin:12px 0">Nada entra no app até o Admin validar e ativar o disparo.</p>
-          <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
-      });
-    });
   },
 };
 

@@ -628,7 +628,7 @@ const AdminApp = {
   },
 
   bind() {
-    this.root.querySelector("[data-menu]")?.addEventListener("click", () => this.root.querySelector("#sidebar")?.classList.toggle("open"));
+    UI.fixButtons(this.root);
     const keep = (id, key) => {
       this.root.querySelector(id)?.addEventListener("input", (e) => {
         this.q[key] = e.target.value;
@@ -679,9 +679,6 @@ const AdminApp = {
         this.aud.canal = b.getAttribute("data-canal");
         this.render();
       })
-    );
-    this.root.querySelectorAll("[data-act]").forEach((btn) =>
-      btn.addEventListener("click", () => this.onAct(btn.getAttribute("data-act"), btn.getAttribute("data-id")))
     );
     this.ligarCep(this.root, "#ne-cep", { rua: "#ne-rua", bairro: "#ne-bairro", cidade: "#ne-cidade", uf: "#ne-uf" });
   },
@@ -966,4 +963,5 @@ const AdminApp = {
   },
 };
 
+window.AdminApp = AdminApp;
 document.addEventListener("DOMContentLoaded", () => AdminApp.boot());

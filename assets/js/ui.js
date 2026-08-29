@@ -169,23 +169,82 @@ const UI = {
     </div>`;
   },
 
+  fixButtons(root) {
+    (root || document).querySelectorAll("button:not([type])").forEach((b) => {
+      if (!b.closest("form")) b.setAttribute("type", "button");
+    });
+  },
+
   bindGlobal() {
+    if (this._bound) return;
+    this._bound = true;
     document.addEventListener("click", (e) => {
-      const reset = e.target.closest('[data-action="reset-demo"]');
-      if (reset) {
+      const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-close-modal], [data-close-menu], [data-pwa-install], [data-action]");
+      if (!el) return;
+      if (el.closest('[data-action="reset-demo"]')) {
         location.href = API?.home?.() || "../index.php";
         return;
       }
-      const close = e.target.closest("[data-close-modal]");
-      if (close) {
+      if (el.closest("[data-close-modal]")) {
+        e.preventDefault();
         QR?.stopScan();
-        close.closest(".modal-bg")?.remove();
+        el.closest(".modal-bg")?.remove();
+        return;
       }
-      if (e.target.closest("[data-close-menu]")) {
+      if (el.closest("[data-close-menu]")) {
         document.querySelector("#sidebar")?.classList.remove("open");
+        return;
       }
-      const install = e.target.closest("[data-pwa-install]");
-      if (install) this.pwaInstall();
+      if (el.closest("[data-menu]")) {
+        e.preventDefault();
+        document.querySelector("#sidebar")?.classList.toggle("open");
+        return;
+      }
+      if (el.closest("[data-pwa-install]")) {
+        e.preventDefault();
+        this.pwaInstall();
+        return;
+      }
+      const act = el.closest("[data-act]");
+      if (act && !act.disabled && window.AdminApp?.onAct) {
+        e.preventDefault();
+        window.AdminApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"));
+        return;
+      }
+      const href = el.closest("[data-href]");
+      if (href) {
+        e.preventDefault();
+        location.hash = href.getAttribute("data-href");
+        return;
+      }
+      const go = el.closest("[data-go]");
+      if (go && window.ClienteApp?.go) {
+        e.preventDefault();
+        window.ClienteApp.go(go.getAttribute("data-go"));
+        return;
+      }
+      if (el.closest("[data-back]") && window.ClienteApp) {
+        e.preventDefault();
+        history.back();
+        return;
+      }
+      const pin = el.closest("[data-pin]");
+      if (pin && window.ClienteApp) {
+        e.preventDefault();
+        window.ClienteApp.mapSel = pin.getAttribute("data-pin");
+        const est = window.Logic?.est?.(window.ClienteApp.mapSel);
+        if (est?.bairro) window.ClienteApp.mapBairro = est.bairro;
+        window.ClienteApp.render();
+        return;
+      }
+      const mb = el.closest("[data-map-bairro]");
+      if (mb && window.ClienteApp) {
+        e.preventDefault();
+        window.ClienteApp.mapBairro = mb.getAttribute("data-map-bairro") || null;
+        window.ClienteApp.mapSel = null;
+        window.ClienteApp.mapPage = 1;
+        window.ClienteApp.render();
+      }
     });
     this.pwaInit();
   },
