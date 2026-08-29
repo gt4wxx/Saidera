@@ -57,7 +57,7 @@ const AdminApp = {
         ${Brand.sideHead("Admin Master")}
         <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
         <div class="side-foot"><p class="tiny muted">Nenhuma marca aqui é parceria oficial.</p>
-          <a class="btn btn-ghost btn-sm btn-block" href="../index.html">Trocar perfil</a></div>
+          <a class="btn btn-ghost btn-sm btn-block" href="../index.php?sair=1">Sair</a></div>
       </aside>
       <main class="dash-main">
         <div class="dash-head">
@@ -72,7 +72,7 @@ const AdminApp = {
 
   dashboard() {
     const r = Logic.resumoRede();
-    return `${Brand.banner("principal", "brand-banner-hero")}<p class="tiny muted" style="margin-bottom:12px">Números desta base demonstrativa (localStorage), não projeção de mercado.</p><div class="kpis">
+    return `${Brand.banner("principal", "brand-banner-hero")}<p class="tiny muted" style="margin-bottom:12px">Números reais desta base.</p><div class="kpis">
       ${[
         ["Estabelecimentos", r.estabelecimentos],
         ["Usuários", r.usuarios],

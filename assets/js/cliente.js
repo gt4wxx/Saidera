@@ -869,8 +869,7 @@ const ClienteApp = {
       })
     );
     this.root.querySelector("#sair-app")?.addEventListener("click", async () => {
-      await API.post("auth/logout", {});
-      location.href = "../index.html";
+      await API.sair();
     });
     this.root.querySelectorAll("[data-pref]").forEach((el) =>
       el.addEventListener("change", () => {

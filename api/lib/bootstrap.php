@@ -359,13 +359,7 @@ function session_payload(array $u): array
         'estabelecimentoId' => null,
         'funcionarioId' => null,
         'parceiroId' => null,
-        'pagina' => [
-            'cliente' => 'pages/cliente.html',
-            'funcionario' => 'pages/garcom.html',
-            'estabelecimento' => 'pages/estabelecimento.html',
-            'parceiro' => 'pages/parceiro.html',
-            'admin' => 'pages/admin.html',
-        ][$u['papel']] ?? 'index.html',
+        'pagina' => saidera_pagina_papel($u['papel']),
     ];
     if ($u['papel'] === 'cliente') {
         $c = cliente_por_usuario((int) $u['id']);

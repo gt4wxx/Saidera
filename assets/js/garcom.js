@@ -97,7 +97,7 @@ const GarcomApp = {
           <p class="tiny muted">${f.nome} · ${e.nome}</p>
         </div>
       </div>
-      <a class="icon-btn" href="../index.html" title="Sair">${Icons.logout()}</a>
+      <a class="icon-btn" href="../index.php?sair=1" title="Sair">${Icons.logout()}</a>
     </div>`;
   },
 

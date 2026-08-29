@@ -8,20 +8,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$config = __DIR__ . '/config.php';
-if (!is_file($config)) {
+require_once __DIR__ . '/lib/app.php';
+
+$path = $_GET['r'] ?? '';
+if ($path === 'health') {
     header('Content-Type: application/json; charset=utf-8');
-    http_response_code(503);
-    echo json_encode(['ok' => false, 'erro' => 'Instale o Saidera em /instalar.php', 'instalar' => true]);
+    echo json_encode(['ok' => true, 'data' => [
+        'php' => PHP_VERSION,
+        'instalado' => saidera_instalado(),
+    ]], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-require $config;
-require __DIR__ . '/lib/http.php';
-require __DIR__ . '/lib/db.php';
-require __DIR__ . '/lib/auth.php';
-require __DIR__ . '/lib/domain.php';
-require __DIR__ . '/lib/bootstrap.php';
+if (!saidera_app()) {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(503);
+    echo json_encode(['ok' => false, 'erro' => 'Instale o Saidera em /instalar.php', 'instalar' => true], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 $path = $_GET['r'] ?? '';
 if (!$path) {
@@ -34,7 +38,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     rota($method, $path);
 } catch (Throwable $e) {
-    fail($e->getMessage(), 500);
+    $code = (int) $e->getCode();
+    if ($code < 400 || $code > 599) $code = 500;
+    fail($e->getMessage(), $code);
 }
 
 function rota(string $method, string $path): void

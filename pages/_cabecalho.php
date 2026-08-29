@@ -1,0 +1,32 @@
+<?php
+$v = saidera_v();
+$titulo = $titulo ?? 'Saidera';
+$css = $css ?? [];
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title><?= htmlspecialchars($titulo) ?></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../assets/css/app.css?v=<?= $v ?>"/>
+<?php foreach ($css as $href): ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>?v=<?= $v ?>"/>
+<?php endforeach; ?>
+  <link rel="icon" type="image/png" href="../assets/brand/icon-192.png"/>
+  <link rel="apple-touch-icon" href="../assets/brand/apple-touch.png"/>
+  <link rel="manifest" href="../manifest.webmanifest"/>
+  <meta name="theme-color" content="#171717"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Saidera"/>
+  <script>
+    (function () {
+      if (!("serviceWorker" in navigator)) return;
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+    })();
+  </script>
+</head>

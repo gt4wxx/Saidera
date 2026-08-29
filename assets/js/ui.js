@@ -172,10 +172,8 @@ const UI = {
     document.addEventListener("click", (e) => {
       const reset = e.target.closest('[data-action="reset-demo"]');
       if (reset) {
-        Store.reset();
-        sessionStorage.removeItem("saidera_comanda");
-        this.toast("Demonstração restaurada.");
-        setTimeout(() => location.reload(), 400);
+        location.href = API?.home?.() || "../index.php";
+        return;
       }
       const close = e.target.closest("[data-close-modal]");
       if (close) {
@@ -208,13 +206,15 @@ const UI = {
     }
     return `<div class="pwa-box" data-pwa-box>
       <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar o Saidera</button>
-      <p class="tiny muted" style="margin-top:8px">Chrome ou Edge. Abra pelo servidor (http://localhost:5173), não pelo arquivo HTML.</p>
+      <p class="tiny muted" style="margin-top:8px">Chrome ou Edge. Abra pelo site, não pelo arquivo HTML.</p>
     </div>`;
   },
 
   pwaInit() {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(`${location.origin}/sw.js`, { scope: "/" }).catch(() => {});
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((r) => r.unregister());
+      }).catch(() => {});
     }
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();

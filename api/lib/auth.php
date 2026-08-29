@@ -3,10 +3,15 @@
 function auth_start(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) return;
-    session_name(SESSION_NAME);
+    session_name(defined('SESSION_NAME') ? SESSION_NAME : 'saidera_sess');
+    $https = function_exists('saidera_https') ? saidera_https() : (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+    );
     session_set_cookie_params([
         'lifetime' => 60 * 60 * 24 * 14,
         'path' => '/',
+        'secure' => $https,
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
@@ -40,7 +45,7 @@ function auth_login(string $email, string $senha): array
     $st->execute([strtolower(trim($email))]);
     $u = $st->fetch();
     if (!$u || !password_verify($senha, $u['senha_hash'])) {
-        fail('E-mail ou senha inválidos.', 401);
+        throw new RuntimeException('E-mail ou senha inválidos.', 401);
     }
     auth_start();
     session_regenerate_id(true);
@@ -62,11 +67,17 @@ function auth_logout(): void
 function auth_criar(string $email, string $senha, string $papel): int
 {
     $email = strtolower(trim($email));
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('E-mail inválido.');
-    if (strlen($senha) < 6) fail('A senha precisa ter pelo menos 6 caracteres.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new RuntimeException('E-mail inválido.', 400);
+    }
+    if (strlen($senha) < 6) {
+        throw new RuntimeException('A senha precisa ter pelo menos 6 caracteres.', 400);
+    }
     $st = db()->prepare('SELECT id FROM usuarios WHERE email = ?');
     $st->execute([$email]);
-    if ($st->fetch()) fail('Este e-mail já está cadastrado.');
+    if ($st->fetch()) {
+        throw new RuntimeException('Este e-mail já está cadastrado.', 400);
+    }
     db()->prepare('INSERT INTO usuarios (email, senha_hash, papel) VALUES (?, ?, ?)')
         ->execute([$email, password_hash($senha, PASSWORD_DEFAULT), $papel]);
     return (int) db()->lastInsertId();

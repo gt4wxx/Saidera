@@ -1,12 +1,12 @@
 const API = {
   base() {
-    return /\/pages\//.test(location.pathname) ? "../api" : "api";
+    return /\/pages\//.test(location.pathname) ? "../api.php" : "api.php";
   },
   home() {
-    return /\/pages\//.test(location.pathname) ? "../index.html" : "index.html";
+    return /\/pages\//.test(location.pathname) ? "../index.php" : "index.php";
   },
   url(path, params) {
-    let u = `${this.base()}/index.php?r=${encodeURIComponent(String(path).replace(/^\//, ""))}`;
+    let u = `${this.base()}?r=${encodeURIComponent(String(path).replace(/^\//, ""))}`;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
         if (v != null) u += `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
@@ -15,23 +15,39 @@ const API = {
     return u;
   },
   async req(path, opts = {}) {
-    const res = await fetch(this.url(path, opts.params), {
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-      method: opts.method || "GET",
-      body: opts.body != null ? JSON.stringify(opts.body) : undefined,
-    });
+    let res;
+    try {
+      res = await fetch(this.url(path, opts.params), {
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+        method: opts.method || "GET",
+        body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+      });
+    } catch {
+      const err = new Error("Não foi possível conectar ao servidor. Confirme se os arquivos PHP foram enviados à Hostinger.");
+      err.status = 0;
+      throw err;
+    }
     let json = {};
     try {
       json = await res.json();
     } catch {
-      json = { ok: false, erro: "Resposta inválida do servidor." };
+      const err = new Error("O servidor não respondeu como esperado. Envie a pasta api/ e o arquivo api.php para a Hostinger.");
+      err.status = res.status;
+      throw err;
     }
     if (json.instalar) {
-      location.href = this.home().replace("index.html", "instalar.php");
-      throw new Error("Instalação pendente");
+      location.href = this.home().replace("index.php", "instalar.php");
+      const err = new Error("Instalação pendente");
+      err.instalar = true;
+      throw err;
     }
-    if (!json.ok) throw new Error(json.erro || "Não foi possível concluir.");
+    if (!json.ok) {
+      const err = new Error(json.erro || "Não foi possível concluir.");
+      err.status = res.status;
+      throw err;
+    }
     return json.data;
   },
   get(path, params) {
@@ -43,9 +59,18 @@ const API = {
   async me() {
     try {
       return await this.get("me");
-    } catch {
+    } catch (e) {
+      if (e.status && e.status !== 401) throw e;
       return null;
     }
+  },
+  async sair() {
+    try {
+      await this.post("auth/logout", {});
+    } catch {
+      /* ainda redireciona */
+    }
+    location.href = `${this.home()}?sair=1`;
   },
 };
 

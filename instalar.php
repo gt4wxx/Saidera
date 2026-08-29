@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <p>Use os dados do MySQL no hPanel da Hostinger (Bancos de dados). Isso cria as tabelas e o primeiro admin. Sem dados de demonstração.</p>
   <?php if ($erro): ?><p class="err"><?= h($erro) ?></p><?php endif; ?>
   <?php if (!empty($_GET['ok']) || ($ok && empty($erro))): ?>
-    <p class="ok">Pronto. <a href="index.html">Entrar no Saidera</a></p>
+    <p class="ok">Pronto. <a href="index.php">Entrar no Saidera</a></p>
   <?php endif; ?>
   <form method="post">
     <label>Host do banco</label>

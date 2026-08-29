@@ -1,4 +1,16 @@
+DirectoryIndex index.php index.html
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|htm|js|php|json|webmanifest)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^serve\.js$ - [F,L]
+  RewriteRule ^index\.html$ index.php [R=302,L]
+  RewriteRule ^pages/([a-z]+)\.html$ pages/$1.php [R=302,L]
   RewriteRule ^api/(?!index\.php).+$ api/index.php [QSA,L]
 </IfModule>

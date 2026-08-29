@@ -142,7 +142,7 @@ const EstApp = {
         .join("")}</nav>
       <div class="side-foot">
         <p class="tiny muted">Marcas e números fictícios para apresentação.</p>
-        <a class="btn btn-ghost btn-sm btn-block" href="../index.html">${Icons.logout()} Trocar perfil</a>
+        <a class="btn btn-ghost btn-sm btn-block" href="../index.php?sair=1">${Icons.logout()} Sair</a>
       </div>
     </aside>`;
   },

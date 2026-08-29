@@ -83,7 +83,7 @@ const ParceiroApp = {
         ${Brand.sideHead("Parceiro")}
         <div class="notice" style="margin:0 10px 10px">${this.par().nome}<br/>${this.par().selo}</div>
         <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
-        <div class="side-foot"><a class="btn btn-ghost btn-sm btn-block" href="../index.html">Trocar perfil</a></div>
+        <div class="side-foot"><a class="btn btn-ghost btn-sm btn-block" href="../index.php?sair=1">Sair</a></div>
       </aside>
       <main class="dash-main">
         <div class="dash-head">
