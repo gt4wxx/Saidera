@@ -99,11 +99,24 @@ body.dash {
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field span { font-size: 0.75rem; font-weight: 700; color: var(--gray-2); text-transform: uppercase; letter-spacing: 0.05em; }
 .field input, .field select, .field textarea {
-  background: #111; border: 1px solid #2a2a2a; border-radius: 14px;
-  padding: 12px 14px; outline: none;
+  background: #FFF9E8;
+  color: #171717;
+  border: 1px solid #d8c98a;
+  border-radius: 14px;
+  padding: 13px 14px;
+  outline: none;
+  font-weight: 650;
+  caret-color: #171717;
+  -webkit-text-fill-color: #171717;
+}
+.field input::placeholder, .field textarea::placeholder {
+  color: #8a7d4e;
+  opacity: 1;
+  -webkit-text-fill-color: #8a7d4e;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--gold);
+  border-color: #F5B800;
+  outline: 2px solid #F5B800;
 }
 .check-list { display: grid; gap: 8px; max-height: 220px; overflow: auto; }
 .check-list label {

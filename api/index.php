@@ -159,12 +159,21 @@ function rota(string $method, string $path): void
         $nome = trim($in['nome'] ?? '');
         if (strlen($nome) < 2) fail('Informe o nome da casa.');
         if (empty($in['email']) || empty($in['senha'])) fail('Informe e-mail e senha do gestor.');
-        db()->prepare('INSERT INTO estabelecimentos (nome, tipo, bairro, endereco, horario, meta_padrao) VALUES (?,?,?,?,?,?)')
+        $end = aplicar_endereco_casa($in, null, true);
+        db()->prepare('INSERT INTO estabelecimentos (nome, tipo, bairro, endereco, cep, logradouro, numero, complemento, cidade, uf, lat, lng, horario, meta_padrao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
             ->execute([
                 $nome,
                 in_array($in['tipo'] ?? '', ['bar', 'restaurante'], true) ? $in['tipo'] : 'bar',
-                $in['bairro'] ?: null,
-                $in['endereco'] ?: null,
+                $end['bairro'],
+                $end['endereco'],
+                $end['cep'],
+                $end['logradouro'],
+                $end['numero'],
+                $end['complemento'],
+                $end['cidade'],
+                $end['uf'],
+                $end['lat'],
+                $end['lng'],
                 $in['horario'] ?: null,
                 max(1, (int) ($in['metaPadrao'] ?? 10)),
             ]);
@@ -197,14 +206,23 @@ function rota(string $method, string $path): void
         if (!$row) fail('Estabelecimento não encontrado.');
         $tipo = in_array($in['tipo'] ?? '', ['bar', 'restaurante'], true) ? $in['tipo'] : $row['tipo'];
         $status = isset($in['status']) ? (($in['status'] === 'inativo') ? 'inativo' : 'ativo') : $row['status'];
-        db()->prepare('UPDATE estabelecimentos SET nome = ?, tipo = ?, bairro = ?, meta_padrao = ?, horario = ?, endereco = ?, status = ? WHERE id = ?')
+        $end = aplicar_endereco_casa($in, $row, false);
+        db()->prepare('UPDATE estabelecimentos SET nome = ?, tipo = ?, bairro = ?, meta_padrao = ?, horario = ?, endereco = ?, cep = ?, logradouro = ?, numero = ?, complemento = ?, cidade = ?, uf = ?, lat = ?, lng = ?, status = ? WHERE id = ?')
             ->execute([
                 trim($in['nome'] ?? $row['nome']),
                 $tipo,
-                array_key_exists('bairro', $in) ? ($in['bairro'] ?: null) : $row['bairro'],
+                $end['bairro'] ?: $row['bairro'],
                 max(1, (int) ($in['metaPadrao'] ?? $row['meta_padrao'])),
                 array_key_exists('horario', $in) ? ($in['horario'] ?: null) : $row['horario'],
-                array_key_exists('endereco', $in) ? ($in['endereco'] ?: null) : $row['endereco'],
+                $end['endereco'],
+                $end['cep'],
+                $end['logradouro'],
+                $end['numero'],
+                $end['complemento'],
+                $end['cidade'],
+                $end['uf'],
+                $end['lat'],
+                $end['lng'],
                 $status,
                 $eid,
             ]);

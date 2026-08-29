@@ -1,5 +1,112 @@
 <?php
 
+function formatar_cep(string $cep): string
+{
+    $n = preg_replace('/\D+/', '', $cep);
+    if (strlen($n) !== 8) {
+        throw new RuntimeException('Informe um CEP válido com 8 dígitos.', 400);
+    }
+    return substr($n, 0, 5) . '-' . substr($n, 5);
+}
+
+function montar_endereco(array $in): string
+{
+    $cep = '';
+    try {
+        $cep = formatar_cep((string) ($in['cep'] ?? ''));
+    } catch (Throwable $e) {
+        $cep = trim((string) ($in['cep'] ?? ''));
+    }
+    $rua = trim((string) ($in['logradouro'] ?? $in['rua'] ?? ''));
+    $num = trim((string) ($in['numero'] ?? ''));
+    $linha = $rua;
+    if ($num !== '') $linha = $rua ? "$rua, $num" : $num;
+    $partes = array_filter([
+        $linha,
+        trim((string) ($in['complemento'] ?? '')),
+        trim((string) ($in['bairro'] ?? '')),
+        trim((string) ($in['cidade'] ?? 'Aracaju') . ' - ' . strtoupper(trim((string) ($in['uf'] ?? 'SE')) ?: 'SE')),
+        $cep ? 'CEP ' . $cep : '',
+    ], fn($p) => $p !== '');
+    return implode(', ', $partes);
+}
+
+function http_get_url(string $url): string
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT => 'Saidera/1.0 (https://saideira.devpremium.site)',
+        ]);
+        $out = curl_exec($ch);
+        curl_close($ch);
+        return is_string($out) ? $out : '';
+    }
+    $ctx = stream_context_create(['http' => [
+        'timeout' => 8,
+        'header' => "User-Agent: Saidera/1.0\r\n",
+    ]]);
+    $out = @file_get_contents($url, false, $ctx);
+    return is_string($out) ? $out : '';
+}
+
+function geocodificar_endereco(string $endereco): array
+{
+    $q = trim($endereco);
+    if ($q === '') return [null, null];
+    $url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' . rawurlencode($q);
+    $raw = http_get_url($url);
+    $json = json_decode($raw, true);
+    if (!is_array($json) || empty($json[0]['lat'])) return [null, null];
+    return [(float) $json[0]['lat'], (float) $json[0]['lng']];
+}
+
+function aplicar_endereco_casa(array $in, ?array $atual = null, bool $obrigatorio = false): array
+{
+    $tem = $in['cep'] ?? $in['logradouro'] ?? $in['rua'] ?? $in['numero'] ?? null;
+    if (($tem === null || $tem === '') && $atual && !$obrigatorio) {
+        return [
+            'cep' => $atual['cep'] ?? null,
+            'logradouro' => $atual['logradouro'] ?? null,
+            'numero' => $atual['numero'] ?? null,
+            'complemento' => $atual['complemento'] ?? null,
+            'bairro' => $atual['bairro'] ?? null,
+            'cidade' => $atual['cidade'] ?? null,
+            'uf' => $atual['uf'] ?? 'SE',
+            'endereco' => $atual['endereco'] ?? null,
+            'lat' => $atual['lat'] ?? null,
+            'lng' => $atual['lng'] ?? null,
+        ];
+    }
+    $cep = formatar_cep((string) ($in['cep'] ?? ''));
+    $log = trim((string) ($in['logradouro'] ?? $in['rua'] ?? ''));
+    $num = trim((string) ($in['numero'] ?? ''));
+    $bairro = trim((string) ($in['bairro'] ?? ''));
+    if (strlen($log) < 3) throw new RuntimeException('Informe a rua ou avenida completa.', 400);
+    if ($num === '') throw new RuntimeException('Informe o número do endereço.', 400);
+    if ($bairro === '') throw new RuntimeException('Informe o bairro.', 400);
+    $comp = trim((string) ($in['complemento'] ?? ''));
+    $cidade = trim((string) ($in['cidade'] ?? 'Aracaju')) ?: 'Aracaju';
+    $uf = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', (string) ($in['uf'] ?? 'SE')) ?: 'SE', 0, 2));
+    $payload = [
+        'cep' => $cep,
+        'logradouro' => $log,
+        'numero' => $num,
+        'complemento' => $comp ?: null,
+        'bairro' => $bairro,
+        'cidade' => $cidade,
+        'uf' => $uf,
+    ];
+    $payload['endereco'] = montar_endereco($payload);
+    [$lat, $lng] = geocodificar_endereco($payload['endereco'] . ', Brasil');
+    $payload['lat'] = $lat;
+    $payload['lng'] = $lng;
+    return $payload;
+}
+
 function codigo_unico(string $prefixo, string $tabela, string $coluna = 'codigo'): string
 {
     do {

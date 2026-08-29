@@ -23,7 +23,32 @@ function saidera_app(): bool
     require_once __DIR__ . '/admin.php';
     require_once __DIR__ . '/admin_rotas.php';
     require_once __DIR__ . '/bootstrap.php';
+    saidera_migrar();
     return true;
+}
+
+function saidera_migrar(): void
+{
+    static $feito = false;
+    if ($feito) return;
+    $feito = true;
+    try {
+        $cols = db()->query('SHOW COLUMNS FROM estabelecimentos')->fetchAll(PDO::FETCH_COLUMN);
+        $add = [
+            'cep' => "ALTER TABLE estabelecimentos ADD COLUMN cep VARCHAR(12) DEFAULT NULL",
+            'logradouro' => "ALTER TABLE estabelecimentos ADD COLUMN logradouro VARCHAR(180) DEFAULT NULL",
+            'numero' => "ALTER TABLE estabelecimentos ADD COLUMN numero VARCHAR(20) DEFAULT NULL",
+            'complemento' => "ALTER TABLE estabelecimentos ADD COLUMN complemento VARCHAR(80) DEFAULT NULL",
+            'cidade' => "ALTER TABLE estabelecimentos ADD COLUMN cidade VARCHAR(80) DEFAULT NULL",
+            'uf' => "ALTER TABLE estabelecimentos ADD COLUMN uf CHAR(2) DEFAULT 'SE'",
+        ];
+        foreach ($add as $col => $sql) {
+            if (!in_array($col, $cols, true)) db()->exec($sql);
+        }
+        db()->exec('ALTER TABLE estabelecimentos MODIFY endereco VARCHAR(400) DEFAULT NULL');
+    } catch (Throwable $e) {
+        /* instalação antiga sem permissão de ALTER — o cadastro novo ainda grava o endereço composto */
+    }
 }
 
 function saidera_pagina_papel(string $papel): string

@@ -38,6 +38,7 @@ body {
 }
 img { max-width: 100%; display: block; }
 button, input, select, textarea { font: inherit; color: inherit; }
+.field input, .field select, .field textarea { color-scheme: light; }
 button { cursor: pointer; border: none; background: none; }
 a { color: inherit; text-decoration: none; }
 ul { list-style: none; }
@@ -384,7 +385,32 @@ table.data tr:hover td { background: rgba(255,255,255,0.03); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field span { font-size: 0.75rem; font-weight: 700; color: var(--gray-2); }
 .field input, .field select, .field textarea {
-  width: 100%; padding: 12px 14px; border-radius: 12px; border: 0; background: #1a1a1a; color: inherit;
+  width: 100%; padding: 13px 14px; border-radius: 12px;
+  border: 1px solid #d8c98a;
+  background: #FFF9E8;
+  color: #171717;
+  font-weight: 650;
+  caret-color: #171717;
+  -webkit-text-fill-color: #171717;
+}
+.field input::placeholder, .field textarea::placeholder {
+  color: #8a7d4e;
+  opacity: 1;
+  -webkit-text-fill-color: #8a7d4e;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: 2px solid #F5B800;
+  border-color: #F5B800;
+}
+.field input:-webkit-autofill,
+.field textarea:-webkit-autofill,
+.field select:-webkit-autofill {
+  -webkit-text-fill-color: #171717;
+  box-shadow: 0 0 0 1000px #FFF9E8 inset;
+  transition: background-color 9999s ease-out;
+}
+.field select {
+  color: #171717;
 }
 
 .notice {

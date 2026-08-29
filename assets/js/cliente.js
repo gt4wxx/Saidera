@@ -158,7 +158,7 @@ const ClienteApp = {
     </article>`;
   },
 
-  estMini(e, { campanha } = {}) {
+  estMini(e, { campanha, pin } = {}) {
     const me = this.me();
     const drinks = e.bebidas
       .slice(0, 3)
@@ -170,11 +170,11 @@ const ClienteApp = {
       })
       .join("");
     const camBar = campanha || Logic.patrocinioEm(e.id);
-    return `<article class="est-card" data-go="#/est/${e.id}">
+    return `<article class="est-card" ${pin ? `data-pin="${e.id}"` : `data-go="#/est/${e.id}"`}>
       <div class="thumb photo"><img src="${Logic.imagemEst(e)}" alt="${e.nome}" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(e)}'"/></div>
       <div class="body">
         <h3>${e.nome}</h3>
-        <p class="small muted">📍 ${Logic.tipoEst(e)} · ${e.bairro} · ${Logic.fmtKm(e.distanciaKm)} · ★ ${e.avaliacao}</p>
+        <p class="small muted">📍 ${Logic.tipoEst(e)} · ${Logic.enderecoLinha(e)}</p>
         <div class="chips">${drinks}<span class="chip">Padrão — ${e.metaPadrao}</span></div>
         ${camBar ? `<p class="tiny gold">${Logic.bebida(camBar.bebidaId)?.nome} · ${camBar.metaTampas} Tampas no patrocínio</p>` : e.promocao ? `<p class="tiny gold">${e.promocao}</p>` : ""}
         <button class="btn btn-dark btn-sm" style="margin-top:8px">Ver estabelecimento</button>
@@ -311,7 +311,6 @@ const ClienteApp = {
   },
 
   mapa() {
-    const zones = this.mapZones();
     const bairros = this.bairrosMapa();
     const bairro = this.mapBairro;
     const locais = this.estsDoBairro(bairro);
@@ -320,80 +319,42 @@ const ClienteApp = {
     if (this.mapPage > pages) this.mapPage = pages;
     if (this.mapPage < 1) this.mapPage = 1;
     const start = (this.mapPage - 1) * per;
-    const slice = bairro ? locais.slice(start, start + per) : [];
+    const slice = locais.slice(start, start + per);
     const sel = this.mapSel && locais.some((e) => e.id === this.mapSel) ? this.mapSel : locais[0]?.id;
     const escolhido = sel ? Logic.est(sel) : null;
+    const mapaAlvo = escolhido || { endereco: bairro ? `${bairro}, Aracaju - SE` : "Aracaju, SE" };
 
-    const pins = bairro
-      ? locais
-          .map((e, i) => {
-            const p = this.pinPos(e, i, locais.length);
-            const rest = e.tipo === "restaurante";
-            return `<button class="pin ${rest ? "rest" : ""} ${sel === e.id ? "on" : ""}" style="left:${p.left}%;top:${p.top}%" data-pin="${e.id}" title="${e.nome}"></button>`;
-          })
-          .join("")
-      : bairros
-          .map((nome) => {
-            const z = zones[nome] || { l: 50, t: 50 };
-            const n = this.estsDoBairro(nome).length;
-            return `<button class="pin-cluster" style="left:${z.l}%;top:${z.t}%" data-map-bairro="${nome}" title="${nome}">${n}</button>`;
-          })
-          .join("");
-
-    const zonaOn =
-      bairro && zones[bairro]
-        ? `<div class="map-zone" style="left:${zones[bairro].l}%;top:${zones[bairro].t}%"></div>`
-        : "";
-
-    const labels = Object.entries(zones)
-      .map(
-        ([nome, z]) =>
-          `<button class="map-label ${bairro === nome ? "on" : ""}" style="left:${Math.max(2, z.l - 8)}%;top:${Math.max(3, z.t - 8)}%" data-map-bairro="${nome}">${z.short}</button>`
-      )
-      .join("");
-
-    return `${this.back("Mapa de Aracaju")}
-      <p class="muted small" style="margin-bottom:10px">Toque em um bairro para ver todos os bares e restaurantes cadastrados.</p>
+    return `${this.back("Mapa")}
+      <p class="muted small" style="margin-bottom:10px">Endereço real no Google Maps. Toque numa casa da lista para ver o ponto.</p>
       <div class="pill-tabs" style="margin-bottom:12px">
         <button class="${!bairro ? "on" : ""}" data-map-bairro="">Todos</button>
-        ${bairros
-          .map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`)
-          .join("")}
+        ${bairros.map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`).join("")}
       </div>
-      <div class="map-art ${bairro ? "focused" : ""}">
-        <div class="map-water"></div>
-        ${zonaOn}
-        ${labels}
-        ${pins}
-        ${
-          escolhido && bairro
-            ? `<div class="map-pop">
-                <div class="row between">
-                  <div>
-                    <strong>${escolhido.nome}</strong>
-                    <p class="small muted">📍 ${Logic.tipoEst(escolhido)} · ${escolhido.bairro} · ${Logic.fmtKm(escolhido.distanciaKm)}</p>
-                  </div>
-                  <button class="btn btn-gold btn-sm" data-go="#/est/${escolhido.id}">Ver</button>
-                </div>
-              </div>`
-            : `<div class="map-pop">
-                <strong>${bairro ? bairro : "Aracaju"}</strong>
-                <p class="small muted">${locais.length} estabelecimento${locais.length === 1 ? "" : "s"} cadastrado${locais.length === 1 ? "" : "s"}</p>
-              </div>`
-        }
+      <div class="map-google">
+        <iframe title="Google Maps" src="${Logic.mapsEmbed(mapaAlvo)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
       </div>
       ${
-        bairro
-          ? `<div class="row between" style="margin:16px 0 10px" id="lista-mapa">
-              <div>
-                <h2>${bairro}</h2>
-                <p class="tiny muted">${locais.length} bar${locais.length === 1 ? "" : "es"} e restaurante${locais.length === 1 ? "" : "s"}</p>
+        escolhido
+          ? `<div class="card pad" style="margin-top:12px">
+              <div class="row between" style="align-items:flex-start;gap:10px">
+                <div>
+                  <strong>${escolhido.nome}</strong>
+                  <p class="small muted" style="margin-top:4px">${Logic.tipoEst(escolhido)} · ${Logic.enderecoLinha(escolhido)}</p>
+                </div>
+                <button class="btn btn-gold btn-sm" data-go="#/est/${escolhido.id}">Ver</button>
               </div>
-            </div>
-            <div class="stack est-list">${slice.map((e) => this.estMini(e)).join("")}</div>
-            ${this.pager(this.mapPage, pages)}`
-          : `<p class="notice" style="margin-top:14px">Escolha uma localidade no mapa ou na lista acima para ver todos os estabelecimentos da região.</p>`
-      }`;
+              <a class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" href="${Logic.mapsLink(escolhido)}" target="_blank" rel="noopener">Abrir no Google Maps</a>
+            </div>`
+          : `<p class="notice" style="margin-top:12px">Nenhuma casa cadastrada neste filtro.</p>`
+      }
+      <div class="row between" style="margin:16px 0 10px" id="lista-mapa">
+        <div>
+          <h2>${bairro || "Aracaju"}</h2>
+          <p class="tiny muted">${locais.length} estabelecimento${locais.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e, { pin: true })).join("") : `<p class="muted">Nenhum estabelecimento neste bairro.</p>`}</div>
+      ${this.pager(this.mapPage, pages)}`;
   },
 
   detalhe() {
@@ -452,13 +413,21 @@ const ClienteApp = {
         <div class="overlay"></div>
         <div style="position:absolute;bottom:12px;left:14px">
           <h1>${e.nome}</h1>
-          <p class="small">${Logic.tipoEst(e)} · ${e.bairro} · ${e.aberto ? "Aberto agora" : "Fechado"} · ${Logic.fmtKm(e.distanciaKm)}</p>
+          <p class="small">${Logic.tipoEst(e)} · ${e.bairro || ""} · ${e.aberto ? "Aberto agora" : "Fechado"}</p>
         </div>
       </div>
           <div class="row wrap" style="margin-bottom:14px">
         <span class="badge badge-gold">${Logic.tipoEst(e)}</span>
         ${Logic.patrocinioEm(e.id) ? `<span class="badge badge-navy">Patrocínio ativo</span>` : `<span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>`}
         <span class="badge badge-ghost">★ ${e.avaliacao}</span>
+      </div>
+      <div class="card pad" style="margin-bottom:16px">
+        <p class="tiny muted">Endereço</p>
+        <p style="margin:4px 0 10px">${Logic.enderecoLinha(e)}</p>
+        <div class="map-google" style="height:220px;min-height:200px">
+          <iframe title="Google Maps" src="${Logic.mapsEmbed(e)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        </div>
+        <a class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" href="${Logic.mapsLink(e)}" target="_blank" rel="noopener">Abrir no Google Maps</a>
       </div>
       <h2>Bebidas</h2>
       <div class="card" style="margin:10px 0 18px">${drinks}</div>

@@ -793,9 +793,18 @@ const EstApp = {
     const img = Logic.imagemEst(est);
     const custom = Boolean(est.cartaz);
     return `<section class="panel" style="max-width:560px">
-      <div class="field"><span>Nome</span><input id="cfg-nome" value="${est.nome}"/></div>
-      <div class="field" style="margin-top:10px"><span>Bairro</span><input id="cfg-bairro" value="${est.bairro}"/></div>
-      <div class="field" style="margin-top:10px"><span>Saidera padrão</span><input id="cfg-meta" type="number" value="${est.metaPadrao}"/></div>
+      <div class="field"><span>Nome</span><input id="cfg-nome" value="${est.nome || ""}"/></div>
+      <p class="tiny muted" style="margin:12px 0 8px">Endereço completo com CEP — aparece no Google Maps do cliente.</p>
+      <div class="form-grid">
+        <div class="field"><span>CEP</span><input id="cfg-cep" inputmode="numeric" maxlength="9" placeholder="49000-000" value="${est.cep || ""}"/></div>
+        <div class="field"><span>Rua / avenida</span><input id="cfg-rua" placeholder="Rua, avenida ou travessa" value="${est.logradouro || ""}"/></div>
+        <div class="field"><span>Número</span><input id="cfg-num" placeholder="123" value="${est.numero || ""}"/></div>
+        <div class="field"><span>Complemento</span><input id="cfg-comp" placeholder="Opcional" value="${est.complemento || ""}"/></div>
+        <div class="field"><span>Bairro</span><input id="cfg-bairro" value="${est.bairro || ""}"/></div>
+        <div class="field"><span>Cidade</span><input id="cfg-cidade" value="${est.cidade || "Aracaju"}"/></div>
+        <div class="field"><span>UF</span><input id="cfg-uf" maxlength="2" value="${est.uf || "SE"}"/></div>
+        <div class="field"><span>Saidera padrão</span><input id="cfg-meta" type="number" value="${est.metaPadrao}"/></div>
+      </div>
       <div class="field" style="margin-top:16px"><span>Cartaz da casa</span>
         <p class="tiny muted">Esta foto aparece no app do cliente (lista, perfil da casa e ofertas). Se você não enviar um cartaz, fica a imagem padrão.</p>
       </div>
@@ -1087,12 +1096,34 @@ const EstApp = {
         UI.toast(e.message);
       }
     });
+    const cepEl = this.root.querySelector("#cfg-cep");
+    cepEl?.addEventListener("input", () => {
+      cepEl.value = Logic.maskCep(cepEl.value);
+    });
+    cepEl?.addEventListener("blur", async () => {
+      const d = await Logic.viaCep(cepEl.value);
+      if (!d) return;
+      const set = (id, v) => {
+        const el = this.root.querySelector(id);
+        if (el && v) el.value = v;
+      };
+      set("#cfg-rua", d.logradouro);
+      set("#cfg-bairro", d.bairro);
+      set("#cfg-cidade", d.cidade);
+      set("#cfg-uf", d.uf);
+    });
     this.root.querySelector("#save-cfg")?.addEventListener("click", async () => {
       try {
         const data = await API.post("estabelecimentos/salvar", {
           id: this.estId,
           nome: this.root.querySelector("#cfg-nome")?.value,
+          cep: this.root.querySelector("#cfg-cep")?.value,
+          logradouro: this.root.querySelector("#cfg-rua")?.value,
+          numero: this.root.querySelector("#cfg-num")?.value,
+          complemento: this.root.querySelector("#cfg-comp")?.value,
           bairro: this.root.querySelector("#cfg-bairro")?.value,
+          cidade: this.root.querySelector("#cfg-cidade")?.value,
+          uf: this.root.querySelector("#cfg-uf")?.value,
           metaPadrao: this.root.querySelector("#cfg-meta")?.value,
         });
         if (data.store) Store.replace(data.store);

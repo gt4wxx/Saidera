@@ -200,14 +200,19 @@ const AdminApp = {
     const list = this.filtrar(Store.all("estabelecimentos"), q, ["nome", "bairro", "endereco", "gestorEmail"]);
     return `<section class="panel" style="margin-bottom:14px">
       <h3>Nova casa</h3>
-      <p class="tiny muted" style="margin:6px 0 10px">Cria o estabelecimento e o login do gestor.</p>
+      <p class="tiny muted" style="margin:6px 0 10px">Endereço completo com CEP. Ele aparece no Google Maps do app do cliente.</p>
       <div class="form-grid">
         <div class="field"><span>Nome</span><input id="ne-nome" placeholder="Nome da casa"/></div>
         <div class="field"><span>Tipo</span><select id="ne-tipo"><option value="bar">Bar</option><option value="restaurante">Restaurante</option></select></div>
-        <div class="field"><span>E-mail do gestor</span><input id="ne-email" type="email"/></div>
-        <div class="field"><span>Senha do gestor</span><input id="ne-senha" type="password"/></div>
-        <div class="field"><span>Bairro</span><input id="ne-bairro"/></div>
-        <div class="field"><span>Endereço</span><input id="ne-end"/></div>
+        <div class="field"><span>E-mail do gestor</span><input id="ne-email" type="email" placeholder="gestor@casa.com"/></div>
+        <div class="field"><span>Senha do gestor</span><input id="ne-senha" type="password" placeholder="Mínimo 6 caracteres"/></div>
+        <div class="field"><span>CEP</span><input id="ne-cep" inputmode="numeric" placeholder="49000-000" maxlength="9"/></div>
+        <div class="field"><span>Rua / avenida</span><input id="ne-rua" placeholder="Rua, avenida ou travessa"/></div>
+        <div class="field"><span>Número</span><input id="ne-num" placeholder="123"/></div>
+        <div class="field"><span>Complemento</span><input id="ne-comp" placeholder="Sala, loja, andar (opcional)"/></div>
+        <div class="field"><span>Bairro</span><input id="ne-bairro" placeholder="Bairro"/></div>
+        <div class="field"><span>Cidade</span><input id="ne-cidade" value="Aracaju"/></div>
+        <div class="field"><span>UF</span><input id="ne-uf" value="SE" maxlength="2"/></div>
         <div class="field"><span>Horário</span><input id="ne-hora" placeholder="18h às 2h"/></div>
         <div class="field"><span>Meta de Tampas</span><input id="ne-meta" type="number" min="1" value="${Store.data?.meta?.metaPadraoRede || 10}"/></div>
       </div>
@@ -218,7 +223,7 @@ const AdminApp = {
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Equipe</th><th>Meta</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((e) => `<tr>
-          <td><strong>${this.esc(e.nome)}</strong><p class="tiny muted">${this.esc(e.endereco || e.bairro || "—")}</p></td>
+          <td><strong>${this.esc(e.nome)}</strong><p class="tiny muted">${this.esc(Logic.enderecoLinha(e))}</p></td>
           <td>${this.esc(Logic.tipoEst(e))}</td>
           <td>${this.esc(e.gestorEmail || "—")}</td>
           <td>${this.n(e.qtdClientes)}</td>
@@ -615,6 +620,7 @@ const AdminApp = {
         <button class="btn btn-ghost" data-close-modal>Cancelar</button>
       </div>`;
     const m = UI.modal({ html });
+    this.ligarCep(m.el, "[name=cep], #ed-cep", { rua: "[name=logradouro]", bairro: "[name=bairro]", cidade: "[name=cidade]", uf: "[name=uf]" });
     m.el.querySelector("#modal-ok")?.addEventListener("click", async () => {
       const ok = await onOk(m.el);
       if (ok !== false) m.close();
@@ -677,6 +683,27 @@ const AdminApp = {
     this.root.querySelectorAll("[data-act]").forEach((btn) =>
       btn.addEventListener("click", () => this.onAct(btn.getAttribute("data-act"), btn.getAttribute("data-id")))
     );
+    this.ligarCep(this.root, "#ne-cep", { rua: "#ne-rua", bairro: "#ne-bairro", cidade: "#ne-cidade", uf: "#ne-uf" });
+  },
+
+  ligarCep(box, cepSel, campos) {
+    const cep = box.querySelector(cepSel);
+    if (!cep) return;
+    cep.addEventListener("input", () => {
+      cep.value = Logic.maskCep(cep.value);
+    });
+    cep.addEventListener("blur", async () => {
+      const d = await Logic.viaCep(cep.value);
+      if (!d) return;
+      const set = (sel, v) => {
+        const el = box.querySelector(sel);
+        if (el && v) el.value = v;
+      };
+      set(campos.rua, d.logradouro);
+      set(campos.bairro, d.bairro);
+      set(campos.cidade, d.cidade);
+      set(campos.uf, d.uf);
+    });
   },
 
   estsMarcadas(sel) {
@@ -691,7 +718,12 @@ const AdminApp = {
         email: this.val("#ne-email"),
         senha: this.val("#ne-senha"),
         bairro: this.val("#ne-bairro"),
-        endereco: this.val("#ne-end"),
+        cep: this.val("#ne-cep"),
+        logradouro: this.val("#ne-rua"),
+        numero: this.val("#ne-num"),
+        complemento: this.val("#ne-comp"),
+        cidade: this.val("#ne-cidade") || "Aracaju",
+        uf: this.val("#ne-uf") || "SE",
         horario: this.val("#ne-hora"),
         metaPadrao: this.val("#ne-meta"),
       }, "Casa e login do gestor criados.");
@@ -703,16 +735,22 @@ const AdminApp = {
       this.modalForm("Editar casa", `
         <div class="field"><span>Nome</span><input name="nome" value="${this.esc(e.nome)}"/></div>
         <div class="field"><span>Tipo</span><select name="tipo"><option value="bar" ${e.tipo === "bar" ? "selected" : ""}>Bar</option><option value="restaurante" ${e.tipo === "restaurante" ? "selected" : ""}>Restaurante</option></select></div>
+        <div class="field"><span>CEP</span><input name="cep" id="ed-cep" inputmode="numeric" maxlength="9" value="${this.esc(e.cep || "")}"/></div>
+        <div class="field"><span>Rua / avenida</span><input name="logradouro" value="${this.esc(e.logradouro || "")}"/></div>
+        <div class="field"><span>Número</span><input name="numero" value="${this.esc(e.numero || "")}"/></div>
+        <div class="field"><span>Complemento</span><input name="complemento" value="${this.esc(e.complemento || "")}"/></div>
         <div class="field"><span>Bairro</span><input name="bairro" value="${this.esc(e.bairro || "")}"/></div>
-        <div class="field"><span>Endereço</span><input name="endereco" value="${this.esc(e.endereco || "")}"/></div>
+        <div class="field"><span>Cidade</span><input name="cidade" value="${this.esc(e.cidade || "Aracaju")}"/></div>
+        <div class="field"><span>UF</span><input name="uf" maxlength="2" value="${this.esc(e.uf || "SE")}"/></div>
         <div class="field"><span>Horário</span><input name="horario" value="${this.esc(e.horario || "")}"/></div>
         <div class="field"><span>Meta</span><input name="metaPadrao" type="number" value="${e.metaPadrao || 10}"/></div>
         <div class="field"><span>Status</span><select name="status"><option value="ativo" ${e.status === "ativo" ? "selected" : ""}>Ativo</option><option value="inativo" ${e.status === "inativo" ? "selected" : ""}>Inativo</option></select></div>
       `, async (box) => {
         const g = (n) => box.querySelector(`[name="${n}"]`)?.value;
         const data = await this.post("estabelecimentos/salvar", {
-          id: e.id, nome: g("nome"), tipo: g("tipo"), bairro: g("bairro"), endereco: g("endereco"),
-          horario: g("horario"), metaPadrao: g("metaPadrao"), status: g("status"),
+          id: e.id, nome: g("nome"), tipo: g("tipo"), cep: g("cep"), logradouro: g("logradouro"),
+          numero: g("numero"), complemento: g("complemento"), bairro: g("bairro"),
+          cidade: g("cidade"), uf: g("uf"), horario: g("horario"), metaPadrao: g("metaPadrao"), status: g("status"),
         }, "Casa atualizada.");
         return Boolean(data);
       });

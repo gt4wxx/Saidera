@@ -138,6 +138,47 @@ const Logic = {
     return `${s}, ${nome} 👋`;
   },
 
+  maskCep(v) {
+    const n = String(v || "").replace(/\D/g, "").slice(0, 8);
+    return n.length > 5 ? `${n.slice(0, 5)}-${n.slice(5)}` : n;
+  },
+
+  async viaCep(cep) {
+    const n = String(cep || "").replace(/\D/g, "");
+    if (n.length !== 8) return null;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${n}/json/`);
+      const j = await r.json();
+      if (!j || j.erro) return null;
+      return {
+        logradouro: j.logradouro || "",
+        bairro: j.bairro || "",
+        cidade: j.localidade || "Aracaju",
+        uf: j.uf || "SE",
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  mapsQuery(est) {
+    if (!est) return "Aracaju, SE";
+    if (est.lat && est.lng) return `${est.lat},${est.lng}`;
+    return est.endereco || [est.nome, est.logradouro, est.numero, est.bairro, est.cidade || "Aracaju", est.uf || "SE"].filter(Boolean).join(", ");
+  },
+
+  mapsEmbed(est) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(this.mapsQuery(est))}&z=16&hl=pt-BR&output=embed`;
+  },
+
+  mapsLink(est) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(this.mapsQuery(est))}`;
+  },
+
+  enderecoLinha(est) {
+    return est?.endereco || [est?.logradouro, est?.numero, est?.bairro, est?.cidade].filter(Boolean).join(", ") || "—";
+  },
+
   fmtKm(km) {
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(1).replace(".", ",")} km`;
