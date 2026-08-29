@@ -135,8 +135,20 @@ function admin_rota(string $method, string $path, array $in): bool
         $u = auth_require(['estabelecimento', 'admin']);
         $fid = nid('fun', $in['id'] ?? '');
         if (!$fid) fail('Funcionário não encontrado.');
-        db()->prepare('UPDATE funcionarios SET nome = ?, cargo = ?, status = ? WHERE id = ?')
-            ->execute([trim($in['nome'] ?? ''), $in['cargo'] ?? 'Garçom', ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo', $fid]);
+        $eid = nid('est', $in['estabelecimentoId'] ?? '') ?: null;
+        if ($eid) {
+            db()->prepare('UPDATE funcionarios SET nome = ?, cargo = ?, status = ?, estabelecimento_id = ? WHERE id = ?')
+                ->execute([trim($in['nome'] ?? ''), $in['cargo'] ?? 'Garçom', ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo', $eid, $fid]);
+        } else {
+            db()->prepare('UPDATE funcionarios SET nome = ?, cargo = ?, status = ? WHERE id = ?')
+                ->execute([trim($in['nome'] ?? ''), $in['cargo'] ?? 'Garçom', ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo', $fid]);
+        }
+        if (!empty($in['email'])) {
+            $st = db()->prepare('SELECT usuario_id FROM funcionarios WHERE id = ?');
+            $st->execute([$fid]);
+            $uid = (int) ($st->fetch()['usuario_id'] ?? 0);
+            if ($uid) db()->prepare('UPDATE usuarios SET email = ? WHERE id = ?')->execute([strtolower(trim($in['email'])), $uid]);
+        }
         if (!empty($in['senha'])) {
             $st = db()->prepare('SELECT usuario_id FROM funcionarios WHERE id = ?');
             $st->execute([$fid]);
@@ -377,6 +389,56 @@ function admin_rota(string $method, string $path, array $in): bool
             salvar_midia_casa($eid, $campo, (string) ($in['dataUrl'] ?? ''));
         }
         auditar('Admin atualizou vitrine da casa', (string) $eid);
+        admin_ok_store();
+    }
+
+    if ($path === 'campanhas/salvar') {
+        auth_require(['admin']);
+        $cid = nid('cam', $in['id'] ?? '');
+        if (!$cid) fail('Campanha não encontrada.');
+        $st = db()->prepare('SELECT * FROM campanhas WHERE id = ?');
+        $st->execute([$cid]);
+        $c = $st->fetch();
+        if (!$c) fail('Campanha não encontrada.');
+        if ((int) $c['disparada']) fail('Campanha já disparada. Encerre para parar; não edita depois do envio.');
+        db()->prepare('UPDATE campanhas SET titulo = ?, tipo = ?, publico = ?, mensagem = ?, meta_tampas = ?, altera_meta = ?, bebida_id = ?, periodo_inicio = ?, periodo_fim = ?, canal = ?, parceiro_id = ? WHERE id = ?')
+            ->execute([
+                trim($in['titulo'] ?? $c['titulo']),
+                $in['tipo'] ?? $c['tipo'],
+                $in['publico'] ?? $c['publico'],
+                $in['mensagem'] ?? $c['mensagem'],
+                $in['metaTampas'] !== '' && $in['metaTampas'] !== null ? (int) $in['metaTampas'] : null,
+                !empty($in['alteraMeta']) ? 1 : 0,
+                nid('beb', $in['bebidaId'] ?? '') ?: null,
+                parse_br_date($in['periodoInicio'] ?? null) ?: $c['periodo_inicio'],
+                parse_br_date($in['periodoFim'] ?? null) ?: $c['periodo_fim'],
+                $in['canal'] ?? $c['canal'],
+                nid('par', $in['parceiroId'] ?? '') ?: $c['parceiro_id'],
+                $cid,
+            ]);
+        if (isset($in['estabelecimentos']) && is_array($in['estabelecimentos'])) {
+            db()->prepare('DELETE FROM campanha_estabelecimentos WHERE campanha_id = ?')->execute([$cid]);
+            $ins = db()->prepare('INSERT IGNORE INTO campanha_estabelecimentos (campanha_id, estabelecimento_id) VALUES (?,?)');
+            foreach ($in['estabelecimentos'] as $e) {
+                $id = nid('est', is_string($e) ? $e : '');
+                if ($id) $ins->execute([$cid, $id]);
+            }
+        }
+        auditar('Campanha editada', $in['titulo'] ?? $c['titulo']);
+        admin_ok_store();
+    }
+
+    if ($path === 'parceiros/bebidas') {
+        auth_require(['admin']);
+        $pid = nid('par', $in['id'] ?? '');
+        if (!$pid) fail('Parceiro não encontrado.');
+        db()->prepare('DELETE FROM parceiro_bebidas WHERE parceiro_id = ?')->execute([$pid]);
+        $ins = db()->prepare('INSERT IGNORE INTO parceiro_bebidas (parceiro_id, bebida_id) VALUES (?,?)');
+        foreach ($in['bebidaIds'] ?? [] as $b) {
+            $bid = nid('beb', is_string($b) ? $b : '');
+            if ($bid) $ins->execute([$pid, $bid]);
+        }
+        auditar('Bebidas do parceiro', (string) $pid);
         admin_ok_store();
     }
 

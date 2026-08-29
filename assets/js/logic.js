@@ -5,6 +5,16 @@ const Logic = {
 
   validadeDias: 15,
 
+  suporte() {
+    const m = Store.data?.meta || {};
+    const raw = String(m.suporteWhatsapp || "").trim();
+    return {
+      whatsapp: raw.replace(/\D/g, ""),
+      whatsappLabel: raw,
+      email: String(m.suporteEmail || "").trim(),
+    };
+  },
+
   hidratar() {
     const demo = Store.data?.meta?.demo;
     if (!demo) return;
@@ -409,22 +419,34 @@ const Logic = {
   },
 
   publicoCampanha(cam) {
-    const estId = cam?.estabelecimentoId || (cam?.estabelecimentos || [])[0];
-    if (!estId) return [];
+    const ests = (cam?.estabelecimentos || []).length
+      ? cam.estabelecimentos
+      : [cam?.estabelecimentoId].filter(Boolean);
+    if (!ests.length && !cam?.clienteIds?.length) return [];
     if (cam.clienteIds?.length) {
       return cam.clienteIds.map((id) => this.cliente(id)).filter(Boolean);
     }
-    let clientes =
-      cam.publico === "inativos" || cam.tipo === "chamar" ? this.inativosDoEst(estId) : this.clientesDoEst(estId);
+    const seen = new Set();
+    let clientes = [];
+    ests.forEach((estId) => {
+      const pool =
+        cam.publico === "inativos" || cam.tipo === "chamar" ? this.inativosDoEst(estId) : this.clientesDoEst(estId);
+      pool.forEach((c) => {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          clientes.push(c);
+        }
+      });
+    });
     if (cam.publico === "aniversario") {
-      clientes = this.clientesDoEst(estId).filter((c) => this.ehAniversarianteMes(c));
+      clientes = clientes.filter((c) => this.ehAniversarianteMes(c));
     } else if (cam.publico === "quase") {
       const ids = new Set(
         Store.all("tampas")
-          .filter((t) => t.estabelecimentoId === estId && t.meta - t.atual <= 2 && t.atual > 0)
+          .filter((t) => ests.includes(t.estabelecimentoId) && t.meta - t.atual <= 2 && t.atual > 0)
           .map((t) => t.clienteId)
       );
-      clientes = this.clientesDoEst(estId).filter((c) => ids.has(c.id));
+      clientes = clientes.filter((c) => ids.has(c.id));
     }
     if (cam.limite) clientes = clientes.slice(0, cam.limite);
     return clientes;
@@ -916,7 +938,11 @@ const Logic = {
     return { labels, values };
   },
 
-  audienciasEstimar({ bairros, bebidaId, periodoDias, estabelecimentos }) {
+  audienciasEstimar(a = {}) {
+    const bairros = a.bairros;
+    const bebidaId = a.bebidaId;
+    const periodoDias = a.periodoDias ?? a.dias;
+    const estabelecimentos = a.estabelecimentos ?? a.ests;
     const corte = Date.now() - (Number(periodoDias) || 90) * 86400000;
     const estSet = new Set(estabelecimentos || []);
     const bairroSet = new Set((bairros || []).filter(Boolean));

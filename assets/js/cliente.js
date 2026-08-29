@@ -634,6 +634,16 @@ const ClienteApp = {
             `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${["#/historico", "#/preferencias", "#/privacidade", "#/notificacoes"][i]}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
         )
         .join("")}
+      ${(() => {
+        const s = Logic.suporte();
+        if (!s.whatsapp && !s.email) return "";
+        const limpa = (v) => String(v || "").replace(/[<>&"]/g, "");
+        return `<div class="card pad" style="margin-bottom:8px">
+          <p class="tiny muted">Precisa de ajuda?</p>
+          ${s.whatsapp ? `<a class="btn btn-gold btn-sm" style="margin-top:8px" href="https://wa.me/55${s.whatsapp}" target="_blank" rel="noopener">WhatsApp ${limpa(s.whatsappLabel)}</a>` : ""}
+          ${s.email ? `<a class="btn btn-ghost btn-sm" style="margin-top:8px" href="mailto:${limpa(s.email)}">${limpa(s.email)}</a>` : ""}
+        </div>`;
+      })()}
       ${UI.pwaBox()}
       <button class="btn btn-ghost btn-block" id="sair-app" style="margin-top:8px">${Icons.logout()} Sair</button>`;
   },

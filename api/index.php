@@ -316,6 +316,8 @@ function rota(string $method, string $path): void
         if (isset($in['cidade'])) cfg_set('cidade', trim($in['cidade']));
         if (isset($in['metaPadraoRede'])) cfg_set('meta_padrao_rede', (string) max(1, (int) $in['metaPadraoRede']));
         if (isset($in['validadeSaideraDias'])) cfg_set('validade_saidera_dias', (string) max(1, (int) $in['validadeSaideraDias']));
+        if (isset($in['suporteWhatsapp'])) cfg_set('suporte_whatsapp', trim((string) $in['suporteWhatsapp']));
+        if (isset($in['suporteEmail'])) cfg_set('suporte_email', trim((string) $in['suporteEmail']));
         if (!empty($in['novaSenha'])) {
             if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
             db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);

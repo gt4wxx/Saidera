@@ -2,7 +2,22 @@ const AdminApp = {
   root: null,
   view: "dashboard",
   params: {},
-  q: { est: "", cli: "", fun: "", sai: "", tam: "", cam: "", tkt: "" },
+  q: { est: "", cli: "", fun: "", par: "", beb: "", sai: "", tam: "", cam: "", tkt: "", log: "" },
+  f: {
+    estStatus: "", estTipo: "",
+    cliStatus: "",
+    funStatus: "", funCasa: "",
+    parStatus: "",
+    bebTipo: "",
+    camStatus: "",
+    tamCasa: "", tamQuase: "",
+    saiStatus: "", saiCasa: "",
+    tktStatus: "", tktCasa: "",
+  },
+  novo: {},
+  camDispId: "",
+  dispCanal: "",
+  camPrefill: null,
   aud: { bairros: [], ests: [], bebidaId: "", dias: 90, canal: "push" },
   audPronto: false,
 
@@ -71,7 +86,7 @@ const AdminApp = {
 
   badge(status) {
     const on = status === "ativo" || status === "disponivel" || status === "ativa" || status === "disparada";
-    const gold = status === "solicitada";
+    const gold = status === "solicitada" || status === "pendente";
     const cls = gold ? "badge-gold" : on ? "badge-green" : "badge-ghost";
     return `<span class="badge ${cls}">${this.esc(status || "—")}</span>`;
   },
@@ -84,6 +99,48 @@ const AdminApp = {
     const s = (q || "").trim().toLowerCase();
     if (!s) return lista;
     return lista.filter((item) => campos.some((c) => String(item[c] || "").toLowerCase().includes(s)));
+  },
+
+  chips(key, pares) {
+    const cur = this.f[key] ?? "";
+    return `<div class="chips">${pares.map(([v, lab]) => `<button type="button" class="chip ${cur === v ? "on" : ""}" data-filtro="${key}" data-val="${this.esc(v)}">${this.esc(lab)}</button>`).join("")}</div>`;
+  },
+
+  selCasa(key) {
+    const cur = this.f[key] || "";
+    return `<select class="filtro-sel" data-filtro-sel="${key}">
+      <option value="">Todas as casas</option>
+      ${Store.all("estabelecimentos").map((e) => `<option value="${e.id}" ${e.id === cur ? "selected" : ""}>${this.esc(e.nome)}</option>`).join("")}
+    </select>`;
+  },
+
+  toolbar(inputId, qKey, ph, extra = "") {
+    return `<div class="toolbar">
+      <div class="search">${Icons.search()}<input id="${inputId}" placeholder="${this.esc(ph)}" value="${this.esc(this.q[qKey] || "")}"/></div>
+      ${extra}
+    </div>`;
+  },
+
+  formNovo(key, titulo, inner) {
+    const on = !!this.novo[key];
+    return `<section class="panel form-novo" style="margin-bottom:14px">
+      <button type="button" class="form-novo-toggle" data-novo="${key}">
+        <strong>${on ? "Fechar cadastro" : titulo}</strong>
+        <span class="tiny muted">${on ? "recolher" : "abrir formulário"}</span>
+      </button>
+      ${on ? `<div class="form-novo-body">${inner}</div>` : ""}
+    </section>`;
+  },
+
+  casasDaBebida(bebId) {
+    return Store.all("estabelecimentos").filter((e) => Logic.vendeBebida(e, bebId));
+  },
+
+  camStatus(c) {
+    if (c.status === "encerrada") return "encerrada";
+    if (c.status === "ativa" && c.disparada) return "disparada";
+    if (c.status === "solicitada" || (c.status === "ativa" && !c.disparada)) return "pendente";
+    return c.status || "—";
   },
 
   contagens() {
@@ -141,22 +198,27 @@ const AdminApp = {
       tickets: () => this.tickets(),
       cliente: () => this.fichaCliente(),
       casa: () => this.fichaCasa(),
+      parceiro: () => this.fichaParceiro(),
       relatorios: () => this.relatorios(),
       auditoria: () => this.auditoria(),
       config: () => this.config(),
     };
-    const menuOn = this.view === "cliente" ? "clientes" : this.view === "casa" ? "estabelecimentos" : this.view;
+    const menuOn = this.view === "cliente" ? "clientes" : this.view === "casa" ? "estabelecimentos" : this.view === "parceiro" ? "parceiros" : this.view;
     const titulo = this.view === "cliente"
       ? (Logic.cliente(this.params.id)?.nome || "Cliente")
       : this.view === "casa"
         ? (Logic.est(this.params.id)?.nome || "Casa")
-        : items.find((i) => i[0] === this.view)?.[1] || "Painel";
+        : this.view === "parceiro"
+          ? (Store.find("parceiros", this.params.id)?.nome || "Parceiro")
+          : items.find((i) => i[0] === this.view)?.[1] || "Painel";
     const html = (map[this.view] || map.dashboard)();
     const voltar = this.view === "cliente"
       ? `<a class="btn btn-ghost btn-sm" href="#/clientes">Voltar</a>`
       : this.view === "casa"
         ? `<a class="btn btn-ghost btn-sm" href="#/estabelecimentos">Voltar</a>`
-        : "";
+        : this.view === "parceiro"
+          ? `<a class="btn btn-ghost btn-sm" href="#/parceiros">Voltar</a>`
+          : "";
     this.root.innerHTML = `<div class="dash-app">
       <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
@@ -184,22 +246,31 @@ const AdminApp = {
     const r = Logic.resumoRede();
     const semana = Store.data?.meta?.semana || r.semana;
     const bairros = Store.data?.meta?.bairros || r.bairros;
-    const pendentes = Store.all("campanhas").filter((x) => x.status === "solicitada" || (x.status === "ativa" && !x.disparada));
+    const pendentes = Store.all("campanhas").filter((x) => this.camStatus(x) === "pendente");
+    const cuponsAbertos = Store.all("tickets").filter((t) => this.ticketStatus(t) === "aberto");
+    const quase = Store.all("tampas").filter((t) => t.meta - t.atual <= 2 && t.atual > 0);
     const logs = Logic.logsAuditoria().slice(0, 6);
     const kpis = [
-      ["Casas ativas", c.estabelecimentosAtivos ?? r.estabelecimentos],
-      ["Clientes", c.clientes ?? r.usuarios],
-      ["Contas ativas", c.usuarios ?? r.usuarios],
-      ["Tampas somadas", c.tampas ?? r.tampas],
-      ["Saideras", c.saideras ?? r.saideras],
-      ["Disponíveis", c.saiderasDisponiveis ?? r.disponiveis],
-      ["Usadas", c.saiderasUsadas ?? r.usadas],
-      ["Campanhas", c.campanhas ?? r.campanhas],
+      ["Casas ativas", c.estabelecimentosAtivos ?? r.estabelecimentos, "#/estabelecimentos"],
+      ["Clientes", c.clientes ?? r.usuarios, "#/clientes"],
+      ["Tampas somadas", c.tampas ?? r.tampas, "#/tampas"],
+      ["Saideras disponíveis", c.saiderasDisponiveis ?? r.disponiveis, "#/saideras"],
+      ["Saideras usadas", c.saiderasUsadas ?? r.usadas, "#/saideras"],
+      ["Campanhas pendentes", pendentes.length, "#/disparos"],
+      ["Cupons QR abertos", cuponsAbertos.length, "#/tickets"],
+      ["Quase na Saidera", quase.length, "#/tampas"],
     ];
     return `${Brand.banner("principal", "brand-banner-hero")}
-      <p class="tiny muted" style="margin-bottom:12px">Números do banco. Sem estimativa e sem demonstração.</p>
-      <div class="kpis">${kpis.map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${this.n(v)}</b></div>`).join("")}</div>
+      <p class="tiny muted" style="margin-bottom:12px">Números do banco. Toque num KPI para abrir o menu.</p>
+      <div class="kpis">${kpis.map(([l, v, href]) => `<a class="kpi kpi-go" href="${href}"><span>${l}</span><b>${this.n(v)}</b></a>`).join("")}</div>
+      <div class="atalhos">
+        <a class="btn btn-gold btn-sm" href="#/campanhas">Nova campanha</a>
+        <a class="btn btn-navy btn-sm" href="#/disparos">Validar disparos</a>
+        <a class="btn btn-ghost btn-sm" href="#/tickets">Cupons QR</a>
+        <a class="btn btn-ghost btn-sm" href="#/config">Configurações</a>
+      </div>
       ${pendentes.length ? `<p class="notice" style="margin-bottom:14px">${pendentes.length} campanha(s) aguardando validação. <a href="#/disparos" style="color:#F5B800">Ir para disparos</a></p>` : ""}
+      ${cuponsAbertos.length ? `<section class="panel" style="margin-bottom:14px"><h3>Cupons QR abertos</h3>${cuponsAbertos.slice(0, 6).map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>${this.esc(t.codigo)} · ${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")}</span><a class="btn btn-ghost btn-sm" href="#/tickets">Ver</a></div>`).join("")}</section>` : ""}
       <div class="grid-2">
         <section class="panel"><h3>Tampas nos últimos 7 dias</h3>${semana.values?.some((v) => v) ? UI.lineChart(semana.values, semana.labels) : this.empty("Ainda não há consumos registrados.")}</section>
         <section class="panel"><h3>Saideras por bairro</h3>${bairros.length ? UI.bars(bairros) : this.empty("Nenhuma Saidera conquistada ainda.")}</section>
@@ -212,10 +283,10 @@ const AdminApp = {
 
   estabelecimentos() {
     const q = this.q.est;
-    const list = this.filtrar(Store.all("estabelecimentos"), q, ["nome", "bairro", "endereco", "gestorEmail"]);
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Nova casa</h3>
-      <p class="tiny muted" style="margin:6px 0 10px">Endereço completo com CEP. Ele aparece no Google Maps do app do cliente.</p>
+    let list = this.filtrar(Store.all("estabelecimentos"), q, ["nome", "bairro", "endereco", "gestorEmail"]);
+    if (this.f.estStatus) list = list.filter((e) => e.status === this.f.estStatus);
+    if (this.f.estTipo) list = list.filter((e) => e.tipo === this.f.estTipo);
+    const form = `<p class="tiny muted" style="margin:6px 0 10px">Endereço completo com CEP. Ele aparece no Google Maps do app do cliente.</p>
       <div class="form-grid">
         <div class="field"><span>Nome</span><input id="ne-nome" placeholder="Nome da casa"/></div>
         <div class="field"><span>Tipo</span><select id="ne-tipo"><option value="bar">Bar</option><option value="restaurante">Restaurante</option></select></div>
@@ -231,10 +302,10 @@ const AdminApp = {
         <div class="field"><span>Horário</span><input id="ne-hora" placeholder="18h às 2h"/></div>
         <div class="field"><span>Meta de Tampas</span><input id="ne-meta" type="number" min="1" value="${Store.data?.meta?.metaPadraoRede || 10}"/></div>
       </div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="est-criar">Cadastrar casa</button>
-    </section>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="est-criar">Cadastrar casa</button>`;
+    return `${this.formNovo("est", "Cadastrar nova casa", form)}
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-est" placeholder="Filtrar por nome, bairro ou e-mail" value="${this.esc(q)}"/></div>
+      ${this.toolbar("q-est", "est", "Filtrar por nome, bairro ou e-mail", `${this.chips("estStatus", [["", "Todas"], ["ativo", "Ativas"], ["inativo", "Inativas"]])} ${this.chips("estTipo", [["", "Tipo"], ["bar", "Bar"], ["restaurante", "Restaurante"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Equipe</th><th>Meta</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((e) => `<tr>
@@ -258,10 +329,9 @@ const AdminApp = {
   },
 
   clientes() {
-    const list = this.filtrar(Store.all("clientes"), this.q.cli, ["nome", "codigo", "email", "bairro", "telefone"]);
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Novo cliente</h3>
-      <div class="form-grid">
+    let list = this.filtrar(Store.all("clientes"), this.q.cli, ["nome", "codigo", "email", "bairro", "telefone"]);
+    if (this.f.cliStatus) list = list.filter((c) => c.status === this.f.cliStatus);
+    const form = `<div class="form-grid">
         <div class="field"><span>Nome</span><input id="nc-nome"/></div>
         <div class="field"><span>E-mail</span><input id="nc-email" type="email"/></div>
         <div class="field"><span>Senha</span><input id="nc-senha" type="password"/></div>
@@ -269,10 +339,10 @@ const AdminApp = {
         <div class="field"><span>Bairro</span><input id="nc-bairro"/></div>
         <div class="field"><span>Nascimento</span><input id="nc-nasc" type="date"/></div>
       </div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="cli-criar">Cadastrar cliente</button>
-    </section>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="cli-criar">Cadastrar cliente</button>`;
+    return `${this.formNovo("cli", "Cadastrar novo cliente", form)}
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-cli" placeholder="Filtrar por nome, código ou e-mail" value="${this.esc(this.q.cli)}"/></div>
+      ${this.toolbar("q-cli", "cli", "Filtrar por nome, código ou e-mail", this.chips("cliStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]]))}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Cliente</th><th>Código</th><th>Contato</th><th>Bairro</th><th>Tampas</th><th>Saideras</th><th>Última visita</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((c) => `<tr>
@@ -296,13 +366,13 @@ const AdminApp = {
 
   equipe() {
     const casas = Store.all("estabelecimentos");
-    const list = this.filtrar(Store.all("funcionarios"), this.q.fun, ["nome", "cargo", "email"]).map((f) => ({
+    let list = this.filtrar(Store.all("funcionarios"), this.q.fun, ["nome", "cargo", "email"]).map((f) => ({
       ...f,
       casa: Logic.est(f.estabelecimentoId)?.nome || "—",
     }));
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Novo garçom / funcionário</h3>
-      <div class="form-grid">
+    if (this.f.funStatus) list = list.filter((f) => f.status === this.f.funStatus);
+    if (this.f.funCasa) list = list.filter((f) => f.estabelecimentoId === this.f.funCasa);
+    const form = `<div class="form-grid">
         <div class="field"><span>Nome</span><input id="nf-nome"/></div>
         <div class="field"><span>E-mail</span><input id="nf-email" type="email"/></div>
         <div class="field"><span>Senha</span><input id="nf-senha" type="password"/></div>
@@ -311,10 +381,10 @@ const AdminApp = {
           <select id="nf-est">${casas.map((e) => `<option value="${e.id}">${this.esc(e.nome)}</option>`).join("") || `<option value="">Cadastre uma casa primeiro</option>`}</select>
         </div>
       </div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="fun-criar" ${casas.length ? "" : "disabled"}>Cadastrar</button>
-    </section>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="fun-criar" ${casas.length ? "" : "disabled"}>Cadastrar</button>`;
+    return `${this.formNovo("fun", "Cadastrar garçom / funcionário", form)}
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-fun" placeholder="Filtrar por nome ou e-mail" value="${this.esc(this.q.fun)}"/></div>
+      ${this.toolbar("q-fun", "fun", "Filtrar por nome ou e-mail", `${this.chips("funStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]])} ${this.selCasa("funCasa")}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Nome</th><th>Casa</th><th>Cargo</th><th>E-mail</th><th>Tampas hoje</th><th>Saideras entregues</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((f) => `<tr>
@@ -335,72 +405,116 @@ const AdminApp = {
   },
 
   parceiros() {
-    const list = Store.all("parceiros");
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Novo parceiro</h3>
-      <div class="form-grid">
+    let list = this.filtrar(Store.all("parceiros"), this.q.par, ["nome", "email", "categoria", "selo"]);
+    if (this.f.parStatus) list = list.filter((p) => p.status === this.f.parStatus);
+    const form = `<div class="form-grid">
         <div class="field"><span>Nome</span><input id="np-nome"/></div>
         <div class="field"><span>E-mail</span><input id="np-email" type="email"/></div>
         <div class="field"><span>Senha</span><input id="np-senha" type="password"/></div>
         <div class="field"><span>Categoria</span><input id="np-cat" placeholder="Cerveja, destilado…"/></div>
         <div class="field"><span>Selo</span><input id="np-selo" placeholder="Marca no app"/></div>
       </div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="par-criar">Cadastrar parceiro</button>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="par-criar">Cadastrar parceiro</button>`;
+    return `${this.formNovo("par", "Cadastrar novo parceiro", form)}
+    <section class="panel" style="margin-bottom:14px">
+      ${this.toolbar("q-par", "par", "Filtrar por nome, e-mail ou selo", this.chips("parStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]]))}
     </section>
-    <div class="grid-2">${list.length ? list.map((p) => `<article class="panel">
+    <div class="grid-2">${list.length ? list.map((p) => {
+      const bebs = (p.bebidaIds || []).map((id) => Logic.bebida(id)?.nome).filter(Boolean);
+      return `<article class="panel">
       <div class="row between"><h3>${this.esc(p.nome)}</h3>${this.badge(p.status)}</div>
       <p class="muted small">${this.esc(p.categoria || "Sem categoria")}${p.selo ? " · " + this.esc(p.selo) : ""}</p>
       <p class="tiny muted">${this.esc(p.email || "Sem login")}</p>
+      <p class="tiny muted" style="margin-top:6px">${bebs.length ? this.esc(bebs.join(", ")) : "Nenhuma bebida vinculada"}</p>
       <div class="kpis" style="margin-top:10px">
         <div class="kpi"><b>${this.n(p.campanhasAtivas)}</b><span>Ativas</span></div>
         <div class="kpi"><b>${this.n(p.campanhas)}</b><span>Campanhas</span></div>
         <div class="kpi"><b>${this.n(p.estabelecimentos)}</b><span>Casas</span></div>
       </div>
       <div class="table-actions" style="margin-top:12px">
+        <a class="btn btn-gold btn-sm" href="#/parceiro/${p.id}">Ficha</a>
         <button class="btn btn-ghost btn-sm" data-act="par-editar" data-id="${p.id}">Editar</button>
         <button class="btn btn-ghost btn-sm" data-act="par-status" data-id="${p.id}">${p.status === "ativo" ? "Desativar" : "Ativar"}</button>
       </div>
-    </article>`).join("") : `<section class="panel">${this.empty("Nenhum parceiro cadastrado.")}</section>`}</div>`;
+    </article>`;
+    }).join("") : `<section class="panel">${this.empty("Nenhum parceiro cadastrado.")}</section>`}</div>`;
+  },
+
+  fichaParceiro() {
+    const p = Store.find("parceiros", this.params.id);
+    if (!p) return `<section class="panel">${this.empty("Parceiro não encontrado.")}<a class="btn btn-ghost" href="#/parceiros">Voltar</a></section>`;
+    const cams = Store.all("campanhas").filter((c) => c.parceiroId === p.id);
+    const bebs = Store.all("bebidas");
+    const marcadas = new Set(p.bebidaIds || []);
+    return `<div class="kpis">
+      <div class="kpi"><span>Campanhas ativas</span><b>${this.n(p.campanhasAtivas)}</b></div>
+      <div class="kpi"><span>Campanhas</span><b>${this.n(p.campanhas)}</b></div>
+      <div class="kpi"><span>Casas alcançadas</span><b>${this.n(p.estabelecimentos)}</b></div>
+      <div class="kpi"><span>Status</span><b>${this.esc(p.status)}</b></div>
+    </div>
+    <section class="panel" style="margin-bottom:14px">
+      <p class="tiny muted">${this.esc(p.categoria || "Sem categoria")} · ${this.esc(p.email || "sem login")}${p.selo ? " · " + this.esc(p.selo) : ""}</p>
+      <div class="table-actions wrap" style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm" data-act="par-editar" data-id="${p.id}">Editar cadastro</button>
+        <button class="btn btn-ghost btn-sm" data-act="par-status" data-id="${p.id}">${p.status === "ativo" ? "Desativar" : "Ativar"}</button>
+      </div>
+    </section>
+    <section class="panel" style="margin-bottom:14px">
+      <h3>Bebidas desta marca</h3>
+      <p class="tiny muted" style="margin:6px 0 10px">O que o parceiro patrocina. Usado nas campanhas e no app da casa.</p>
+      <div class="check-list" id="par-bebs">${bebs.map((b) => `<label><input type="checkbox" value="${b.id}" ${marcadas.has(b.id) ? "checked" : ""}/> ${this.esc(b.nome)}${b.marca ? ` · ${this.esc(b.marca)}` : ""}</label>`).join("") || this.empty("Cadastre bebidas primeiro.")}</div>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="par-bebs" data-id="${p.id}" ${bebs.length ? "" : "disabled"}>Salvar bebidas</button>
+    </section>
+    <section class="panel">
+      <h3>Campanhas</h3>
+      ${cams.length ? cams.map((c) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a"><div><strong>${this.esc(c.titulo)}</strong><p class="tiny muted">${this.esc(this.camStatus(c))} · ${this.n(c.publicoPotencial || 0)} destinatários</p></div>${this.badge(this.camStatus(c))}</div>`).join("") : this.empty("Nenhuma campanha deste parceiro.")}
+    </section>`;
   },
 
   bebidas() {
-    const list = Store.all("bebidas");
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Nova bebida da rede</h3>
-      <div class="form-grid">
+    let list = this.filtrar(Store.all("bebidas"), this.q.beb, ["nome", "tipo", "marca"]);
+    if (this.f.bebTipo) list = list.filter((b) => b.tipo === this.f.bebTipo);
+    const form = `<div class="form-grid">
         <div class="field"><span>Nome</span><input id="nb-nome"/></div>
         <div class="field"><span>Tipo</span>
           <select id="nb-tipo"><option value="cerveja">Cerveja</option><option value="nao-alcoolico">Não alcoólico</option><option value="destilado">Destilado</option><option value="outros">Outros</option></select>
         </div>
         <div class="field"><span>Marca</span><input id="nb-marca"/></div>
       </div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="beb-criar">Cadastrar bebida</button>
-    </section>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="beb-criar">Cadastrar bebida</button>`;
+    return `${this.formNovo("beb", "Cadastrar bebida da rede", form)}
     <section class="panel">
+      ${this.toolbar("q-beb", "beb", "Filtrar por nome ou marca", this.chips("bebTipo", [["", "Todos"], ["cerveja", "Cerveja"], ["nao-alcoolico", "Não alcoólico"], ["destilado", "Destilado"], ["outros", "Outros"]]))}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Nome</th><th>Tipo</th><th>Marca</th><th></th></tr></thead>
-        <tbody>${list.map((b) => `<tr>
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Marca</th><th>Casas que vendem</th><th></th></tr></thead>
+        <tbody>${list.map((b) => {
+          const casas = this.casasDaBebida(b.id);
+          return `<tr>
           <td><strong>${this.esc(b.nome)}</strong></td>
           <td>${this.esc(b.tipo)}</td>
           <td>${this.esc(b.marca || "—")}</td>
+          <td>${casas.length ? this.esc(casas.map((e) => e.nome).join(", ")) : "Nenhuma"}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" data-act="beb-editar" data-id="${b.id}">Editar</button>
             <button class="btn btn-danger btn-sm" data-act="beb-excluir" data-id="${b.id}">Excluir</button>
           </td>
-        </tr>`).join("")}</tbody>
+        </tr>`;
+        }).join("")}</tbody>
       </table></div>` : this.empty("Nenhuma bebida no catálogo.")}
     </section>`;
   },
 
   campanhas() {
     const q = this.q.cam;
-    const list = this.filtrar(Store.all("campanhas"), q, ["titulo", "status", "tipo", "mensagem"]);
+    let list = this.filtrar(Store.all("campanhas"), q, ["titulo", "status", "tipo", "mensagem"]);
+    if (this.f.camStatus) list = list.filter((c) => this.camStatus(c) === this.f.camStatus);
     const casas = Store.all("estabelecimentos").filter((e) => e.status === "ativo");
     const pars = Store.all("parceiros").filter((p) => p.status === "ativo");
-    return `<section class="panel" style="margin-bottom:14px">
-      <h3>Nova campanha</h3>
-      <div class="form-grid">
-        <div class="field"><span>Título</span><input id="cam-titulo"/></div>
+    const bebs = Store.all("bebidas");
+    const pre = this.camPrefill || {};
+    const estsOn = pre.estabelecimentos?.length ? new Set(pre.estabelecimentos) : null;
+    const form = `<div class="form-grid">
+        <div class="field"><span>Título</span><input id="cam-titulo" value="${this.esc(pre.titulo || "")}"/></div>
         <div class="field"><span>Tipo</span>
           <select id="cam-tipo">
             <option value="comparecer">Comparecer</option>
@@ -420,32 +534,42 @@ const AdminApp = {
         <div class="field"><span>Parceiro (opcional)</span>
           <select id="cam-par"><option value="">Rede / casa</option>${pars.map((p) => `<option value="${p.id}">${this.esc(p.nome)}</option>`).join("")}</select>
         </div>
+        <div class="field"><span>Bebida (opcional)</span>
+          <select id="cam-beb"><option value="">Todas / não especifica</option>${bebs.map((b) => `<option value="${b.id}" ${b.id === pre.bebidaId ? "selected" : ""}>${this.esc(b.nome)}</option>`).join("")}</select>
+        </div>
         <div class="field"><span>Meta de Tampas</span><input id="cam-meta" type="number" min="1" placeholder="Vazio = não altera"/></div>
+        <div class="field"><span>Início</span><input id="cam-ini" type="date"/></div>
+        <div class="field"><span>Fim</span><input id="cam-fim" type="date"/></div>
         <div class="field"><span>Canal</span>
           <select id="cam-canal"><option value="push">Push</option><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option></select>
         </div>
       </div>
       <div class="field" style="margin-top:10px"><span>Mensagem</span><textarea id="cam-msg" rows="3"></textarea></div>
-      <p class="tiny muted" style="margin:10px 0 6px">Casas participantes</p>
-      <div class="check-list" id="cam-ests">${casas.map((e) => `<label><input type="checkbox" value="${e.id}" checked/> ${this.esc(e.nome)}</label>`).join("") || this.empty("Cadastre uma casa primeiro.")}</div>
-      <button class="btn btn-gold" style="margin-top:12px" data-act="cam-criar">Criar campanha</button>
-    </section>
+      <p class="tiny muted" style="margin:10px 0 6px">Casas participantes${pre.estabelecimentos ? " · pré-selecionadas da audiência" : ""}</p>
+      <div class="check-list" id="cam-ests">${casas.map((e) => `<label><input type="checkbox" value="${e.id}" ${!estsOn || estsOn.has(e.id) ? "checked" : ""}/> ${this.esc(e.nome)}</label>`).join("") || this.empty("Cadastre uma casa primeiro.")}</div>
+      <button class="btn btn-gold" style="margin-top:12px" data-act="cam-criar">Criar campanha</button>`;
+    return `${this.formNovo("cam", "Criar nova campanha", form)}
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-cam" placeholder="Filtrar campanhas" value="${this.esc(q)}"/></div>
+      ${this.toolbar("q-cam", "cam", "Filtrar campanhas", this.chips("camStatus", [["", "Todas"], ["pendente", "Pendentes"], ["disparada", "Disparadas"], ["encerrada", "Encerradas"]]))}
       ${list.length ? list.map((c) => {
         const p = Store.find("parceiros", c.parceiroId);
         const casa = Logic.est(c.estabelecimentoId || c.estabelecimentos?.[0]);
-        const on = c.status === "ativa" && c.disparada;
+        const st = this.camStatus(c);
+        const pend = st === "pendente";
+        const on = st === "disparada";
         const origem = c.origem === "estabelecimento" ? casa?.nome || "Casa / rede" : p?.nome || "Parceiro";
+        const dest = Logic.publicoCampanha(c).length;
+        const beb = Logic.bebida(c.bebidaId);
+        const periodo = [c.periodoInicio, c.periodoFim].filter(Boolean).join(" a ");
         return `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a;align-items:flex-start;gap:12px">
           <div>
             <strong>${this.esc(c.titulo)}</strong>
-            <p class="tiny muted">${this.esc(origem)} · ${this.esc(Logic.tipoCampanhaLabel(c.tipo))} · ${this.esc(Logic.publicoCampanhaLabel(c.publico))} · ${(c.estabelecimentos || []).length} casa(s) · ${this.n(c.publicoPotencial || 0)} destinatários</p>
+            <p class="tiny muted">${this.esc(origem)} · ${this.esc(Logic.tipoCampanhaLabel(c.tipo))} · ${this.esc(Logic.publicoCampanhaLabel(c.publico))} · ${(c.estabelecimentos || []).length} casa(s) · ${this.n(dest)} destinatários${beb ? " · " + this.esc(beb.nome) : ""}${periodo ? " · " + this.esc(periodo) : ""}</p>
             ${c.mensagem ? `<p class="small muted" style="margin-top:4px">${this.esc(c.mensagem)}</p>` : ""}
           </div>
           <div class="table-actions" style="flex-shrink:0">
-            ${this.badge(on ? "disparada" : c.status)}
-            ${c.status === "solicitada" || (c.status === "ativa" && !c.disparada) ? `<button class="btn btn-gold btn-sm" data-act="cam-ativar" data-id="${c.id}">Validar e disparar</button><button class="btn btn-ghost btn-sm" data-act="cam-rejeitar" data-id="${c.id}">Recusar</button><button class="btn btn-danger btn-sm" data-act="cam-excluir" data-id="${c.id}">Excluir</button>` : ""}
+            ${this.badge(st)}
+            ${pend ? `<button class="btn btn-ghost btn-sm" data-act="cam-editar" data-id="${c.id}">Editar</button><button class="btn btn-gold btn-sm" data-act="cam-ativar" data-id="${c.id}">Validar e disparar</button><button class="btn btn-ghost btn-sm" data-act="cam-rejeitar" data-id="${c.id}">Recusar</button><button class="btn btn-danger btn-sm" data-act="cam-excluir" data-id="${c.id}">Excluir</button>` : ""}
             ${on ? `<button class="btn btn-ghost btn-sm" data-act="cam-encerrar" data-id="${c.id}">Encerrar</button>` : ""}
           </div>
         </div>`;
@@ -454,27 +578,36 @@ const AdminApp = {
   },
 
   disparos() {
-    const pendentes = Store.all("campanhas").filter((c) => c.status === "solicitada" || (c.status === "ativa" && !c.disparada));
-    const estimado = Logic.audienciasEstimar(this.aud);
-    return `<section class="panel" style="max-width:720px">
+    const pendentes = Store.all("campanhas").filter((c) => this.camStatus(c) === "pendente");
+    const enviadas = Store.all("campanhas").filter((c) => c.disparada).slice(0, 8);
+    const cam = pendentes.find((c) => c.id === this.camDispId) || pendentes[0];
+    const dest = cam ? Logic.publicoCampanha(cam) : [];
+    const canal = this.dispCanal || cam?.canal || "push";
+    return `<section class="panel" style="max-width:720px;margin-bottom:14px">
       <h3>Validar e disparar</h3>
-      <p class="tiny muted" style="margin:6px 0 12px">O disparo cria notificação real no app dos clientes que entram no público da campanha.</p>
+      <p class="tiny muted" style="margin:6px 0 12px">O disparo notifica o público desta campanha — não a segmentação solta de Audiências.</p>
       <div class="field"><span>Campanha pendente</span>
         <select id="cam-disp">${pendentes.length
           ? pendentes.map((c) => {
               const origem = c.origem === "estabelecimento" ? Logic.est(c.estabelecimentoId)?.nome : Store.find("parceiros", c.parceiroId)?.nome;
-              return `<option value="${c.id}">${this.esc(c.titulo)} · ${this.esc(origem || "rede")}</option>`;
+              return `<option value="${c.id}" ${cam && c.id === cam.id ? "selected" : ""}>${this.esc(c.titulo)} · ${this.esc(origem || "rede")}</option>`;
             }).join("")
           : `<option value="">Nenhuma solicitação pendente</option>`}
         </select>
       </div>
-      <div class="field" style="margin-top:10px"><span>Canal</span>
+      ${cam ? `<p class="tiny muted" style="margin:10px 0 0">${this.esc(Logic.tipoCampanhaLabel(cam.tipo))} · ${this.esc(Logic.publicoCampanhaLabel(cam.publico))} · ${(cam.estabelecimentos || []).length} casa(s)${cam.bebidaId ? ` · ${this.esc(Logic.bebida(cam.bebidaId)?.nome || "")}` : ""}</p>` : ""}
+      <div class="field" style="margin-top:10px"><span>Canal do disparo</span>
         <div class="pill-tabs" style="margin-top:8px">
-          ${["push", "email", "whatsapp"].map((c) => `<button type="button" class="${this.aud.canal === c ? "on" : ""}" data-canal="${c}">${c}</button>`).join("")}
+          ${["push", "email", "whatsapp"].map((c) => `<button type="button" class="${canal === c ? "on" : ""}" data-canal="${c}">${c}</button>`).join("")}
         </div>
       </div>
-      <p class="notice" style="margin:14px 0">Audiência atual da segmentação em Audiências: ${this.n(estimado)} cliente(s) com movimento registrado.</p>
+      <p class="notice" style="margin:14px 0">${cam ? `${this.n(dest.length)} cliente(s) no público desta campanha.` : "Escolha uma campanha pendente."}</p>
+      ${dest.length ? `<p class="tiny muted" style="margin-bottom:12px">${dest.slice(0, 8).map((x) => this.esc(x.nome)).join(", ")}${dest.length > 8 ? ` e mais ${dest.length - 8}` : ""}</p>` : ""}
       <button class="btn btn-gold btn-block" data-act="cam-disparar" ${pendentes.length ? "" : "disabled"}>Validar e disparar</button>
+    </section>
+    <section class="panel" style="max-width:720px">
+      <h3>Últimos disparos</h3>
+      ${enviadas.length ? enviadas.map((c) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a"><div><strong>${this.esc(c.titulo)}</strong><p class="tiny muted">${this.n(c.participantes || c.publicoPotencial || 0)} enviados · ${this.esc(c.canal || "push")}</p></div>${this.badge(this.camStatus(c))}</div>`).join("") : this.empty("Nenhuma campanha disparada ainda.")}
     </section>`;
   },
 
@@ -505,7 +638,8 @@ const AdminApp = {
           <p class="tiny muted">Clientes nesta audiência</p>
           <h1 style="font-size:3rem;color:var(--gold)">${this.n(estimado)}</h1>
           <p>pessoas reais · sem dado inventado</p>
-          <a class="btn btn-gold" style="margin-top:16px" href="#/campanhas">Criar campanha</a>
+          <button class="btn btn-gold" style="margin-top:16px" data-act="aud-usar">Usar na próxima campanha</button>
+          <p class="tiny muted" style="margin-top:8px">Leva casas e bebida para o formulário de Campanhas.</p>
         </div>
       </section>
     </div>`;
@@ -524,13 +658,17 @@ const AdminApp = {
         return [cli?.nome, cli?.codigo, est?.nome, beb?.nome].some((x) => String(x || "").toLowerCase().includes(s));
       });
     }
+    if (this.f.tamCasa) list = list.filter((t) => t.estabelecimentoId === this.f.tamCasa);
+    if (this.f.tamQuase) list = list.filter((t) => t.meta - t.atual <= 2 && t.atual > 0);
+    const quaseN = Store.all("tampas").filter((t) => t.meta - t.atual <= 2 && t.atual > 0).length;
     return `<div class="kpis">
-      <div class="kpi"><span>Cartoões de progresso</span><b>${this.n(c.progressos ?? list.length)}</b></div>
+      <div class="kpi"><span>Cartões de progresso</span><b>${this.n(c.progressos ?? Store.all("tampas").length)}</b></div>
       <div class="kpi"><span>Tampas somadas nos consumos</span><b>${this.n(c.tampas)}</b></div>
+      <div class="kpi"><span>Quase na Saidera</span><b>${this.n(quaseN)}</b></div>
       <div class="kpi"><span>Consumos recentes</span><b>${this.n(Store.all("consumos").length)}</b></div>
     </div>
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-tam" placeholder="Filtrar por cliente, casa ou bebida" value="${this.esc(q)}"/></div>
+      ${this.toolbar("q-tam", "tam", "Filtrar por cliente, casa ou bebida", `${this.selCasa("tamCasa")} ${this.chips("tamQuase", [["", "Todos"], ["quase", "Quase lá"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Cliente</th><th>Casa</th><th>Bebida</th><th>Progresso</th><th>Atualizado</th><th></th></tr></thead>
         <tbody>${list.map((t) => `<tr>
@@ -557,6 +695,8 @@ const AdminApp = {
         return [x.codigo, x.status, cli?.nome, est?.nome].some((v) => String(v || "").toLowerCase().includes(s));
       });
     }
+    if (this.f.saiStatus) list = list.filter((x) => x.status === this.f.saiStatus);
+    if (this.f.saiCasa) list = list.filter((x) => x.estabelecimentoId === this.f.saiCasa);
     return `<div class="kpis">
       <div class="kpi"><span>Total</span><b>${this.n(c.saideras)}</b></div>
       <div class="kpi"><span>Disponíveis</span><b>${this.n(c.saiderasDisponiveis)}</b></div>
@@ -564,7 +704,7 @@ const AdminApp = {
       <div class="kpi"><span>Expiradas</span><b>${this.n(c.saiderasExpiradas)}</b></div>
     </div>
     <section class="panel">
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-sai" placeholder="Filtrar por código, cliente ou casa" value="${this.esc(q)}"/></div>
+      ${this.toolbar("q-sai", "sai", "Filtrar por código, cliente ou casa", `${this.selCasa("saiCasa")} ${this.chips("saiStatus", [["", "Todas"], ["disponivel", "Disponíveis"], ["utilizada", "Usadas"], ["expirada", "Expiradas"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Código</th><th>Cliente</th><th>Casa</th><th>Bebida</th><th>Validade</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((s) => `<tr>
@@ -609,13 +749,21 @@ const AdminApp = {
         return [t.codigo, t.status, est?.nome, cli?.nome, itens].some((v) => String(v || "").toLowerCase().includes(s));
       });
     }
+    if (this.f.tktStatus) list = list.filter((t) => this.ticketStatus(t) === this.f.tktStatus);
+    if (this.f.tktCasa) list = list.filter((t) => t.estabelecimentoId === this.f.tktCasa);
+    const todos = Store.all("tickets");
+    const abertos = todos.filter((t) => this.ticketStatus(t) === "aberto").length;
+    const usados = todos.filter((t) => this.ticketStatus(t) === "usado").length;
+    const cancelados = todos.filter((t) => this.ticketStatus(t) === "cancelado").length;
     return `<div class="kpis">
-      <div class="kpi"><span>Cupons</span><b>${this.n(c.tickets ?? list.length)}</b></div>
-      <div class="kpi"><span>Abertos</span><b>${this.n(c.ticketsAbertos ?? list.filter((t) => !t.usado).length)}</b></div>
+      <div class="kpi"><span>Cupons</span><b>${this.n(c.tickets ?? todos.length)}</b></div>
+      <div class="kpi"><span>Abertos</span><b>${this.n(c.ticketsAbertos ?? abertos)}</b></div>
+      <div class="kpi"><span>Usados</span><b>${this.n(usados)}</b></div>
+      <div class="kpi"><span>Cancelados</span><b>${this.n(cancelados)}</b></div>
     </div>
     <section class="panel">
       <p class="tiny muted" style="margin-bottom:12px">QR gerado pela casa. Cancelar impede o cliente de ler o cupom.</p>
-      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-tkt" placeholder="Filtrar por código, casa ou cliente" value="${this.esc(q)}"/></div>
+      ${this.toolbar("q-tkt", "tkt", "Filtrar por código, casa ou cliente", `${this.selCasa("tktCasa")} ${this.chips("tktStatus", [["", "Todos"], ["aberto", "Abertos"], ["usado", "Usados"], ["cancelado", "Cancelados"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Código</th><th>Casa</th><th>Itens</th><th>Status</th><th>Quando</th><th></th></tr></thead>
         <tbody>${list.map((t) => {
@@ -747,16 +895,31 @@ const AdminApp = {
     const r = Logic.resumoRede();
     const ofertas = Store.all("campanhas").filter((x) => x.disparada).length;
     const totalCam = c.campanhas || Store.all("campanhas").length;
+    const tkts = Store.all("tickets");
     const porCasa = Store.all("estabelecimentos")
-      .map((e) => ({ nome: e.nome, n: e.qtdSaideras || 0 }))
-      .sort((a, b) => b.n - a.n)
-      .slice(0, 8);
-    const maxCasa = Math.max(1, ...porCasa.map((x) => x.n));
+      .map((e) => ({
+        nome: e.nome,
+        clientes: e.qtdClientes || 0,
+        tampas: e.qtdTampas || 0,
+        saideras: e.qtdSaideras || 0,
+        cupons: tkts.filter((t) => t.estabelecimentoId === e.id).length,
+      }))
+      .sort((a, b) => b.saideras - a.saideras);
+    const maxCasa = Math.max(1, ...porCasa.map((x) => x.saideras));
+    const cons = Store.all("consumos");
+    const porBeb = Store.all("bebidas")
+      .map((b) => ({
+        nome: b.nome,
+        casas: this.casasDaBebida(b.id).length,
+        tampas: cons.filter((x) => x.bebidaId === b.id).reduce((a, x) => a + (x.quantidade || 0), 0),
+        saideras: Store.all("saideras").filter((s) => s.bebidaId === b.id).length,
+      }))
+      .sort((a, b) => b.tampas - a.tampas);
     return `<div class="kpis">
       <div class="kpi"><span>Conversão (usadas / total)</span><b>${r.conversao}%</b></div>
       <div class="kpi"><span>Disponíveis</span><b>${this.n(c.saiderasDisponiveis)}</b></div>
       <div class="kpi"><span>Campanhas disparadas</span><b>${this.n(ofertas)}</b></div>
-      <div class="kpi"><span>Equipe</span><b>${this.n(c.funcionarios)}</b></div>
+      <div class="kpi"><span>Cupons QR</span><b>${this.n(tkts.length)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
       <h3>Rede</h3>
@@ -764,32 +927,64 @@ const AdminApp = {
         { nome: "Conversão de Saidera", pct: r.conversao },
         { nome: "Saideras ainda disponíveis", pct: c.saideras ? Math.round(((c.saiderasDisponiveis || 0) / c.saideras) * 100) : 0 },
         { nome: "Campanhas já disparadas", pct: totalCam ? Math.round((ofertas / totalCam) * 100) : 0 },
+        { nome: "Cupons já usados", pct: tkts.length ? Math.round((tkts.filter((t) => this.ticketStatus(t) === "usado").length / tkts.length) * 100) : 0 },
       ])}
     </section>
+    <section class="panel" style="margin-bottom:14px">
+      <h3>Por casa</h3>
+      ${porCasa.length ? `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Casa</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Cupons</th></tr></thead>
+        <tbody>${porCasa.map((e) => `<tr><td>${this.esc(e.nome)}</td><td>${this.n(e.clientes)}</td><td>${this.n(e.tampas)}</td><td>${this.n(e.saideras)}</td><td>${this.n(e.cupons)}</td></tr>`).join("")}</tbody>
+      </table></div>` : this.empty("Nenhuma casa.")}
+      ${porCasa.some((x) => x.saideras) ? `<div style="margin-top:14px">${UI.bars(porCasa.slice(0, 8).map((x) => ({ nome: x.nome, pct: Math.round((x.saideras / maxCasa) * 100) })))}</div>` : ""}
+    </section>
     <section class="panel">
-      <h3>Saideras por casa</h3>
-      ${porCasa.length && porCasa.some((x) => x.n) ? UI.bars(porCasa.map((x) => ({ nome: x.nome, pct: Math.round((x.n / maxCasa) * 100) }))) : this.empty("Ainda não há Saideras por casa.")}
+      <h3>Por bebida</h3>
+      ${porBeb.length ? `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Bebida</th><th>Casas</th><th>Tampas (consumos)</th><th>Saideras</th></tr></thead>
+        <tbody>${porBeb.map((b) => `<tr><td>${this.esc(b.nome)}</td><td>${this.n(b.casas)}</td><td>${this.n(b.tampas)}</td><td>${this.n(b.saideras)}</td></tr>`).join("")}</tbody>
+      </table></div>` : this.empty("Nenhuma bebida no catálogo.")}
     </section>`;
   },
 
   auditoria() {
-    const logs = Logic.logsAuditoria();
+    let logs = Logic.logsAuditoria();
+    if (this.q.log) {
+      const s = this.q.log.toLowerCase();
+      logs = logs.filter((l) => [l.acao, l.detalhe].some((v) => String(v || "").toLowerCase().includes(s)));
+    }
     return `<section class="panel">
+      ${this.toolbar("q-log", "log", "Buscar ação ou detalhe")}
       ${logs.length ? logs.map((l) => `<div class="row between" style="padding:12px 0;border-bottom:1px solid #2a2a2a"><div><strong>${this.esc(l.acao)}</strong><p class="tiny muted">${this.esc(l.detalhe || "")}</p></div><span class="muted small">${Logic.fmtDate(l.em)}</span></div>`).join("") : this.empty("Nenhum evento ainda.")}
     </section>`;
   },
 
   config() {
-    const cidade = Store.data?.meta?.cidade || "";
-    const meta = Store.data?.meta?.metaPadraoRede ?? 10;
-    const validade = Store.data?.meta?.validadeSaideraDias ?? 15;
-    return `<section class="panel" style="max-width:520px">
-      <div class="field"><span>Cidade da operação</span><input id="cfg-cidade" value="${this.esc(cidade)}"/></div>
-      <div class="field" style="margin-top:10px"><span>Meta padrão da rede</span><input id="cfg-meta-rede" type="number" min="1" value="${meta}"/></div>
-      <div class="field" style="margin-top:10px"><span>Validade da Saidera (dias)</span><input id="cfg-validade" type="number" min="1" value="${validade}"/></div>
-      <div class="field" style="margin-top:10px"><span>Nova senha do admin</span><input id="cfg-senha" type="password" placeholder="Deixe vazio para não trocar"/></div>
-      <button class="btn btn-gold" style="margin-top:14px" data-act="cfg-salvar">Salvar</button>
-    </section>`;
+    const m = Store.data?.meta || {};
+    return `<div class="cfg-grid">
+      <section class="panel">
+        <h3>Rede</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">Cidade e meta padrão usadas no cadastro de casas e no app.</p>
+        <div class="field"><span>Cidade da operação</span><input id="cfg-cidade" value="${this.esc(m.cidade || "")}"/></div>
+        <div class="field" style="margin-top:10px"><span>Meta padrão de Tampas</span><input id="cfg-meta-rede" type="number" min="1" value="${m.metaPadraoRede ?? 10}"/></div>
+      </section>
+      <section class="panel">
+        <h3>Validade</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">Prazo das Saideras conquistadas a partir de agora.</p>
+        <div class="field"><span>Validade da Saidera (dias)</span><input id="cfg-validade" type="number" min="1" value="${m.validadeSaideraDias ?? 15}"/></div>
+      </section>
+      <section class="panel">
+        <h3>Suporte</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">Aparece no app do cliente e da casa quando alguém precisa de ajuda.</p>
+        <div class="field"><span>WhatsApp</span><input id="cfg-whats" placeholder="79 99999-0000" value="${this.esc(m.suporteWhatsapp || "")}"/></div>
+        <div class="field" style="margin-top:10px"><span>E-mail</span><input id="cfg-email" type="email" placeholder="suporte@saidera.app" value="${this.esc(m.suporteEmail || "")}"/></div>
+      </section>
+      <section class="panel">
+        <h3>Senha do admin</h3>
+        <div class="field"><span>Nova senha</span><input id="cfg-senha" type="password" placeholder="Deixe vazio para não trocar"/></div>
+      </section>
+    </div>
+    <button class="btn btn-gold" style="margin-top:14px" data-act="cfg-salvar">Salvar configurações</button>`;
   },
 
   modalForm(titulo, campos, onOk) {
@@ -824,10 +1019,40 @@ const AdminApp = {
     keep("#q-est", "est");
     keep("#q-cli", "cli");
     keep("#q-fun", "fun");
+    keep("#q-par", "par");
+    keep("#q-beb", "beb");
     keep("#q-sai", "sai");
     keep("#q-tam", "tam");
     keep("#q-cam", "cam");
     keep("#q-tkt", "tkt");
+    keep("#q-log", "log");
+
+    this.root.querySelectorAll("[data-filtro]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const key = b.getAttribute("data-filtro");
+        this.f[key] = b.getAttribute("data-val") || "";
+        this.render();
+      })
+    );
+    this.root.querySelectorAll("[data-filtro-sel]").forEach((el) =>
+      el.addEventListener("change", () => {
+        this.f[el.getAttribute("data-filtro-sel")] = el.value;
+        this.render();
+      })
+    );
+    this.root.querySelectorAll("[data-novo]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const key = b.getAttribute("data-novo");
+        this.novo[key] = !this.novo[key];
+        this.render();
+      })
+    );
+    this.root.querySelector("#cam-disp")?.addEventListener("change", (e) => {
+      this.camDispId = e.target.value;
+      const cam = Store.find("campanhas", this.camDispId);
+      this.dispCanal = cam?.canal || "";
+      this.render();
+    });
 
     this.root.querySelectorAll("[data-bairro]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -857,7 +1082,8 @@ const AdminApp = {
     );
     this.root.querySelectorAll("[data-canal]").forEach((b) =>
       b.addEventListener("click", () => {
-        this.aud.canal = b.getAttribute("data-canal");
+        this.dispCanal = b.getAttribute("data-canal");
+        this.aud.canal = this.dispCanal;
         this.render();
       })
     );
@@ -910,7 +1136,7 @@ const AdminApp = {
 
   async onAct(act, id, el) {
     if (act === "est-criar") {
-      await this.post("estabelecimentos", {
+      const data = await this.post("estabelecimentos", {
         nome: this.val("#ne-nome"),
         tipo: this.val("#ne-tipo"),
         email: this.val("#ne-email"),
@@ -925,6 +1151,10 @@ const AdminApp = {
         horario: this.val("#ne-hora"),
         metaPadrao: this.val("#ne-meta"),
       }, "Casa e login do gestor criados.");
+      if (data) {
+        this.novo.est = false;
+        this.render();
+      }
       return;
     }
     if (act === "est-editar") {
@@ -963,7 +1193,7 @@ const AdminApp = {
       return;
     }
     if (act === "cli-criar") {
-      await this.post("clientes", {
+      const data = await this.post("clientes", {
         nome: this.val("#nc-nome"),
         email: this.val("#nc-email"),
         senha: this.val("#nc-senha"),
@@ -972,6 +1202,10 @@ const AdminApp = {
         nascimento: this.val("#nc-nasc"),
         cidade: Store.data?.meta?.cidade,
       }, "Cliente cadastrado.");
+      if (data) {
+        this.novo.cli = false;
+        this.render();
+      }
       return;
     }
     if (act === "cli-editar") {
@@ -1006,26 +1240,36 @@ const AdminApp = {
       return;
     }
     if (act === "fun-criar") {
-      await this.post("funcionarios", {
+      const data = await this.post("funcionarios", {
         nome: this.val("#nf-nome"),
         email: this.val("#nf-email"),
         senha: this.val("#nf-senha"),
         cargo: this.val("#nf-cargo") || "Garçom",
         estabelecimentoId: this.val("#nf-est"),
       }, "Funcionário cadastrado.");
+      if (data) {
+        this.novo.fun = false;
+        this.render();
+      }
       return;
     }
     if (act === "fun-editar") {
       const f = Store.find("funcionarios", id);
       if (!f) return;
+      const casas = Store.all("estabelecimentos");
       this.modalForm("Editar funcionário", `
         <div class="field"><span>Nome</span><input name="nome" value="${this.esc(f.nome)}"/></div>
+        <div class="field"><span>E-mail</span><input name="email" type="email" value="${this.esc(f.email || "")}"/></div>
         <div class="field"><span>Cargo</span><input name="cargo" value="${this.esc(f.cargo || "")}"/></div>
+        <div class="field"><span>Casa</span><select name="estabelecimentoId">${casas.map((e) => `<option value="${e.id}" ${e.id === f.estabelecimentoId ? "selected" : ""}>${this.esc(e.nome)}</option>`).join("")}</select></div>
         <div class="field"><span>Status</span><select name="status"><option value="ativo" ${f.status === "ativo" ? "selected" : ""}>Ativo</option><option value="inativo" ${f.status === "inativo" ? "selected" : ""}>Inativo</option></select></div>
         <div class="field"><span>Nova senha</span><input name="senha" type="password" placeholder="Vazio = manter"/></div>
       `, async (box) => {
         const g = (n) => box.querySelector(`[name="${n}"]`)?.value;
-        const data = await this.post("funcionarios/salvar", { id: f.id, nome: g("nome"), cargo: g("cargo"), status: g("status"), senha: g("senha") }, "Funcionário atualizado.");
+        const data = await this.post("funcionarios/salvar", {
+          id: f.id, nome: g("nome"), email: g("email"), cargo: g("cargo"),
+          estabelecimentoId: g("estabelecimentoId"), status: g("status"), senha: g("senha"),
+        }, "Funcionário atualizado.");
         return Boolean(data);
       });
       return;
@@ -1039,13 +1283,22 @@ const AdminApp = {
       return;
     }
     if (act === "par-criar") {
-      await this.post("parceiros", {
+      const data = await this.post("parceiros", {
         nome: this.val("#np-nome"),
         email: this.val("#np-email"),
         senha: this.val("#np-senha"),
         categoria: this.val("#np-cat"),
         selo: this.val("#np-selo"),
       }, "Parceiro cadastrado.");
+      if (data) {
+        this.novo.par = false;
+        this.render();
+      }
+      return;
+    }
+    if (act === "par-bebs") {
+      const bebidaIds = [...(this.root.querySelectorAll("#par-bebs input:checked") || [])].map((x) => x.value);
+      await this.post("parceiros/bebidas", { id, bebidaIds }, "Bebidas do parceiro salvas.");
       return;
     }
     if (act === "par-editar") {
@@ -1076,7 +1329,11 @@ const AdminApp = {
       return;
     }
     if (act === "beb-criar") {
-      await this.post("bebidas/rede", { nome: this.val("#nb-nome"), tipo: this.val("#nb-tipo"), marca: this.val("#nb-marca") }, "Bebida cadastrada.");
+      const data = await this.post("bebidas/rede", { nome: this.val("#nb-nome"), tipo: this.val("#nb-tipo"), marca: this.val("#nb-marca") }, "Bebida cadastrada.");
+      if (data) {
+        this.novo.beb = false;
+        this.render();
+      }
       return;
     }
     if (act === "beb-editar") {
@@ -1101,18 +1358,78 @@ const AdminApp = {
     }
     if (act === "cam-criar") {
       const ests = this.estsMarcadas("#cam-ests");
-      await this.post("campanhas", {
+      const data = await this.post("campanhas", {
         titulo: this.val("#cam-titulo"),
         tipo: this.val("#cam-tipo"),
         publico: this.val("#cam-pub"),
         parceiroId: this.val("#cam-par"),
+        bebidaId: this.val("#cam-beb"),
         metaTampas: this.val("#cam-meta") || null,
         alteraMeta: Boolean(this.val("#cam-meta")),
+        periodoInicio: this.val("#cam-ini"),
+        periodoFim: this.val("#cam-fim"),
         canal: this.val("#cam-canal"),
         mensagem: this.val("#cam-msg"),
         estabelecimentoId: ests[0] || "",
         estabelecimentos: ests,
       }, "Campanha criada. Valide em Disparos.");
+      if (data) {
+        this.novo.cam = false;
+        this.camPrefill = null;
+        this.render();
+      }
+      return;
+    }
+    if (act === "cam-editar") {
+      const c = Store.find("campanhas", id);
+      if (!c) return;
+      if (c.disparada) {
+        UI.toast("Campanha já disparada. Encerre para parar; não edita depois do envio.");
+        return;
+      }
+      const casas = Store.all("estabelecimentos").filter((e) => e.status === "ativo");
+      const pars = Store.all("parceiros").filter((p) => p.status === "ativo");
+      const bebs = Store.all("bebidas");
+      const marcadas = new Set(c.estabelecimentos || []);
+      this.modalForm("Editar campanha", `
+        <div class="field"><span>Título</span><input name="titulo" value="${this.esc(c.titulo)}"/></div>
+        <div class="field"><span>Tipo</span><select name="tipo">${[["comparecer", "Comparecer"], ["aniversario", "Aniversário"], ["tampas", "Tampas reduzidas"], ["chamar", "Chamar de volta"]].map(([v, l]) => `<option value="${v}" ${c.tipo === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="field"><span>Público</span><select name="publico">${[["todos", "Quem frequenta"], ["aniversario", "Aniversariantes"], ["inativos", "Inativos"], ["quase", "Quase Saidera"]].map(([v, l]) => `<option value="${v}" ${c.publico === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="field"><span>Bebida</span><select name="bebidaId"><option value="">—</option>${bebs.map((b) => `<option value="${b.id}" ${b.id === c.bebidaId ? "selected" : ""}>${this.esc(b.nome)}</option>`).join("")}</select></div>
+        <div class="field"><span>Parceiro</span><select name="parceiroId"><option value="">Rede / casa</option>${pars.map((p) => `<option value="${p.id}" ${p.id === c.parceiroId ? "selected" : ""}>${this.esc(p.nome)}</option>`).join("")}</select></div>
+        <div class="field"><span>Meta de Tampas</span><input name="metaTampas" type="number" min="1" value="${c.metaTampas || ""}"/></div>
+        <div class="field"><span>Início</span><input name="periodoInicio" type="date" value="${this.nascIso(c.periodoInicio)}"/></div>
+        <div class="field"><span>Fim</span><input name="periodoFim" type="date" value="${this.nascIso(c.periodoFim)}"/></div>
+        <div class="field"><span>Canal</span><select name="canal">${["push", "email", "whatsapp"].map((x) => `<option value="${x}" ${c.canal === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>
+        <div class="field" style="grid-column:1/-1"><span>Mensagem</span><textarea name="mensagem" rows="3">${this.esc(c.mensagem || "")}</textarea></div>
+        <div class="field" style="grid-column:1/-1"><span>Casas</span><div class="check-list" id="ed-cam-ests">${casas.map((e) => `<label><input type="checkbox" value="${e.id}" ${marcadas.has(e.id) ? "checked" : ""}/> ${this.esc(e.nome)}</label>`).join("")}</div></div>
+      `, async (box) => {
+        const g = (n) => box.querySelector(`[name="${n}"]`)?.value;
+        const ests = [...box.querySelectorAll("#ed-cam-ests input:checked")].map((x) => x.value);
+        const data = await this.post("campanhas/salvar", {
+          id: c.id,
+          titulo: g("titulo"),
+          tipo: g("tipo"),
+          publico: g("publico"),
+          bebidaId: g("bebidaId"),
+          parceiroId: g("parceiroId"),
+          metaTampas: g("metaTampas") || null,
+          alteraMeta: Boolean(g("metaTampas")),
+          periodoInicio: g("periodoInicio"),
+          periodoFim: g("periodoFim"),
+          canal: g("canal"),
+          mensagem: g("mensagem"),
+          estabelecimentos: ests,
+        }, "Campanha atualizada.");
+        return Boolean(data);
+      });
+      return;
+    }
+    if (act === "aud-usar") {
+      this.camPrefill = { estabelecimentos: [...this.aud.ests], bebidaId: this.aud.bebidaId };
+      this.novo.cam = true;
+      location.hash = "#/campanhas";
+      if (this.view === "campanhas") this.render();
       return;
     }
     if (act === "cam-ativar" || act === "cam-disparar") {
@@ -1123,7 +1440,8 @@ const AdminApp = {
         return;
       }
       if (!confirm(`Disparar “${cam.titulo}”? Os clientes do público recebem a notificação.`)) return;
-      const data = await this.post("campanhas/ativar", { id: cam.id, canal: this.aud.canal }, null);
+      const canal = this.dispCanal || this.aud.canal || cam.canal || "push";
+      const data = await this.post("campanhas/ativar", { id: cam.id, canal }, null);
       if (data) {
         UI.modal({
           center: true,
@@ -1278,6 +1596,8 @@ const AdminApp = {
         cidade: this.val("#cfg-cidade"),
         metaPadraoRede: this.val("#cfg-meta-rede"),
         validadeSaideraDias: this.val("#cfg-validade"),
+        suporteWhatsapp: this.val("#cfg-whats"),
+        suporteEmail: this.val("#cfg-email"),
         novaSenha: this.val("#cfg-senha"),
       }, "Configurações salvas.");
     }

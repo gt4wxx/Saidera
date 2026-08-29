@@ -155,6 +155,8 @@ function bootstrap_store(array $u): array
         'cidade' => cfg('cidade', 'Aracaju/SE'),
         'metaPadraoRede' => (int) cfg('meta_padrao_rede', 10),
         'validadeSaideraDias' => (int) cfg('validade_saidera_dias', 15),
+        'suporteWhatsapp' => cfg('suporte_whatsapp', ''),
+        'suporteEmail' => cfg('suporte_email', ''),
         'demo' => [
             'clienteId' => null,
             'estabelecimentoId' => null,
@@ -352,6 +354,14 @@ function bootstrap_store(array $u): array
         (SELECT COUNT(*) FROM saideras s WHERE s.cliente_id = c.id) saideras_total
         FROM clientes c JOIN usuarios u ON u.id = c.usuario_id ORDER BY c.nome LIMIT 500')->fetchAll());
     $empty['parceiros'] = array_map(function ($p) {
+        $bebs = [];
+        try {
+            $st = db()->prepare('SELECT bebida_id FROM parceiro_bebidas WHERE parceiro_id = ?');
+            $st->execute([$p['id']]);
+            $bebs = array_map(fn($r) => pub('beb', $r['bebida_id']), $st->fetchAll());
+        } catch (Throwable $e) {
+            $bebs = [];
+        }
         return [
             'id' => pub('par', $p['id']),
             'nome' => $p['nome'],
@@ -360,6 +370,7 @@ function bootstrap_store(array $u): array
             'status' => $p['status'],
             'logoCor' => $p['logo_cor'],
             'email' => $p['email'] ?? '',
+            'bebidaIds' => $bebs,
             'campanhasAtivas' => (int) $p['campanhas_ativas'],
             'campanhas' => (int) $p['campanhas_total'],
             'estabelecimentos' => (int) $p['casas'],

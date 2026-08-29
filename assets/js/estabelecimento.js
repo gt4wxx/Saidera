@@ -828,6 +828,14 @@ const EstApp = {
         ${custom ? `<button class="btn btn-ghost" type="button" id="reset-cartaz">Usar imagem padrão</button>` : ""}
       </div>
       <button class="btn btn-gold" style="margin-top:16px" id="save-cfg">Salvar</button>
+      ${(() => {
+        const s = Logic.suporte();
+        if (!s.whatsapp && !s.email) return "";
+        return `<section style="margin-top:28px"><h3>Suporte da rede</h3>
+          <p class="tiny muted" style="margin:8px 0 12px">Fale com o admin se o cardápio, o QR ou o login não baterem.</p>
+          <div class="table-actions">${s.whatsapp ? `<a class="btn btn-gold btn-sm" href="https://wa.me/55${s.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>` : ""}${s.email ? `<a class="btn btn-ghost btn-sm" href="mailto:${s.email}">${s.email}</a>` : ""}</div>
+        </section>`;
+      })()}
       <section style="margin-top:28px">
         <h3>Como funciona no salão</h3>
         <p class="tiny muted" style="margin:8px 0 12px">Caminho principal: gere o QR em <strong>Gerar QR</strong>, imprima e entregue. O cliente lê no app. Se precisar, leia o QR do cliente em <strong>QR do cliente</strong> ou no app do garçom. Para baixar a Saidera, o cliente informa o ID dela (SDR-…).</p>

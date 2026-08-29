@@ -267,6 +267,29 @@ body.dash {
   font-size: 0.95rem;
 }
 
+a.kpi-go { text-decoration: none; color: inherit; cursor: pointer; }
+a.kpi-go:hover { outline: 2px solid var(--gold); outline-offset: 0; }
+.atalhos { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 14px;
+}
+.toolbar .search { flex: 1; min-width: 200px; max-width: 420px; }
+.toolbar .chips { margin: 0; }
+.filtro-sel {
+  background: #262626; color: #e6d9a8; border: 0;
+  border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: 0.8rem;
+}
+.form-novo-toggle {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; background: transparent; color: inherit; padding: 0; text-align: left;
+}
+.form-novo-body { margin-top: 16px; }
+.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 920px; }
+@media (max-width: 800px) {
+  .cfg-grid { grid-template-columns: 1fr; }
+}
+
 @media print {
   .no-print,
   .sidebar,

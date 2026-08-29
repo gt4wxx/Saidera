@@ -46,6 +46,11 @@ function saidera_migrar(): void
             if (!in_array($col, $cols, true)) db()->exec($sql);
         }
         db()->exec('ALTER TABLE estabelecimentos MODIFY endereco VARCHAR(400) DEFAULT NULL');
+        db()->exec('CREATE TABLE IF NOT EXISTS parceiro_bebidas (
+          parceiro_id BIGINT UNSIGNED NOT NULL,
+          bebida_id BIGINT UNSIGNED NOT NULL,
+          PRIMARY KEY (parceiro_id, bebida_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     } catch (Throwable $e) {
         /* instalação antiga sem permissão de ALTER — o cadastro novo ainda grava o endereço composto */
     }
