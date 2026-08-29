@@ -1,0 +1,243 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE IF NOT EXISTS config (
+  k VARCHAR(64) PRIMARY KEY,
+  v TEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  senha_hash VARCHAR(255) NOT NULL,
+  papel ENUM('cliente','funcionario','estabelecimento','parceiro','admin') NOT NULL,
+  ativo TINYINT(1) NOT NULL DEFAULT 1,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS clientes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  codigo VARCHAR(20) NOT NULL UNIQUE,
+  nome VARCHAR(120) NOT NULL,
+  primeiro_nome VARCHAR(60) NOT NULL,
+  telefone VARCHAR(30) DEFAULT NULL,
+  nascimento DATE DEFAULT NULL,
+  cidade VARCHAR(80) DEFAULT NULL,
+  bairro VARCHAR(80) DEFAULT NULL,
+  avatar VARCHAR(500) DEFAULT NULL,
+  bebida_favorita_id BIGINT UNSIGNED DEFAULT NULL,
+  prefs_json JSON DEFAULT NULL,
+  ultima_visita DATETIME DEFAULT NULL,
+  cliente_desde DATE NOT NULL,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS estabelecimentos (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(160) NOT NULL,
+  tipo VARCHAR(40) NOT NULL DEFAULT 'bar',
+  bairro VARCHAR(80) DEFAULT NULL,
+  endereco VARCHAR(220) DEFAULT NULL,
+  lat DECIMAL(10,7) DEFAULT NULL,
+  lng DECIMAL(10,7) DEFAULT NULL,
+  avaliacao DECIMAL(3,2) NOT NULL DEFAULT 0,
+  avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
+  imagem VARCHAR(500) DEFAULT NULL,
+  cartaz VARCHAR(500) DEFAULT NULL,
+  status ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+  horario VARCHAR(80) DEFAULT NULL,
+  meta_padrao INT UNSIGNED NOT NULL DEFAULT 10,
+  promocao VARCHAR(200) DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS estabelecimento_gestores (
+  usuario_id BIGINT UNSIGNED NOT NULL,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (usuario_id, estabelecimento_id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS funcionarios (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  nome VARCHAR(120) NOT NULL,
+  cargo VARCHAR(60) NOT NULL DEFAULT 'Garçom',
+  status ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+  avatar VARCHAR(500) DEFAULT NULL,
+  tampas_hoje INT UNSIGNED NOT NULL DEFAULT 0,
+  saideras_entregues INT UNSIGNED NOT NULL DEFAULT 0,
+  turno_data DATE DEFAULT NULL,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS parceiros (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id BIGINT UNSIGNED DEFAULT NULL UNIQUE,
+  nome VARCHAR(160) NOT NULL,
+  categoria VARCHAR(80) DEFAULT NULL,
+  selo VARCHAR(80) DEFAULT NULL,
+  status ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+  logo_cor VARCHAR(16) DEFAULT '#F5B800',
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS bebidas (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(80) NOT NULL,
+  tipo VARCHAR(40) NOT NULL DEFAULT 'cerveja',
+  marca VARCHAR(80) DEFAULT NULL,
+  cor VARCHAR(16) DEFAULT '#F5B800'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS estabelecimento_bebidas (
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  meta INT UNSIGNED DEFAULT NULL,
+  regra VARCHAR(20) NOT NULL DEFAULT 'padrao',
+  PRIMARY KEY (estabelecimento_id, bebida_id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS progresso_tampas (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cliente_id BIGINT UNSIGNED NOT NULL,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  atual INT UNSIGNED NOT NULL DEFAULT 0,
+  meta INT UNSIGNED NOT NULL DEFAULT 10,
+  atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_prog (cliente_id, estabelecimento_id, bebida_id),
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS consumos (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cliente_id BIGINT UNSIGNED NOT NULL,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  quantidade INT UNSIGNED NOT NULL,
+  funcionario_id BIGINT UNSIGNED DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS saideras (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  codigo VARCHAR(20) NOT NULL UNIQUE,
+  cliente_id BIGINT UNSIGNED NOT NULL,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  campanha_id BIGINT UNSIGNED DEFAULT NULL,
+  status ENUM('disponivel','utilizada','expirada') NOT NULL DEFAULT 'disponivel',
+  conquistada_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  utilizada_em DATETIME DEFAULT NULL,
+  expira_em DATETIME NOT NULL,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  codigo VARCHAR(20) NOT NULL UNIQUE,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  usado TINYINT(1) NOT NULL DEFAULT 0,
+  usado_por BIGINT UNSIGNED DEFAULT NULL,
+  usado_em DATETIME DEFAULT NULL,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ticket_itens (
+  ticket_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  nome VARCHAR(80) NOT NULL,
+  quantidade INT UNSIGNED NOT NULL,
+  PRIMARY KEY (ticket_id, bebida_id),
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS campanhas (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(180) NOT NULL,
+  origem ENUM('parceiro','estabelecimento') NOT NULL DEFAULT 'parceiro',
+  estabelecimento_id BIGINT UNSIGNED DEFAULT NULL,
+  parceiro_id BIGINT UNSIGNED DEFAULT NULL,
+  status ENUM('rascunho','solicitada','ativa','encerrada') NOT NULL DEFAULT 'solicitada',
+  tipo VARCHAR(30) DEFAULT NULL,
+  publico VARCHAR(30) DEFAULT 'todos',
+  mensagem TEXT,
+  meta_tampas INT UNSIGNED DEFAULT NULL,
+  altera_meta TINYINT(1) NOT NULL DEFAULT 0,
+  bebida_id BIGINT UNSIGNED DEFAULT NULL,
+  periodo_inicio DATE DEFAULT NULL,
+  periodo_fim DATE DEFAULT NULL,
+  canal VARCHAR(20) DEFAULT 'push',
+  disparada TINYINT(1) NOT NULL DEFAULT 0,
+  cliente_ids_json JSON DEFAULT NULL,
+  limite INT UNSIGNED DEFAULT NULL,
+  publico_potencial INT UNSIGNED DEFAULT 0,
+  participantes INT UNSIGNED DEFAULT 0,
+  saideras_count INT UNSIGNED DEFAULT 0,
+  solicitada_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS campanha_estabelecimentos (
+  campanha_id BIGINT UNSIGNED NOT NULL,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (campanha_id, estabelecimento_id),
+  FOREIGN KEY (campanha_id) REFERENCES campanhas(id) ON DELETE CASCADE,
+  FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS campanha_adesoes (
+  campanha_id BIGINT UNSIGNED NOT NULL,
+  cliente_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (campanha_id, cliente_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notificacoes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cliente_id BIGINT UNSIGNED NOT NULL,
+  titulo VARCHAR(180) NOT NULL,
+  texto TEXT,
+  tipo VARCHAR(30) DEFAULT 'sistema',
+  campanha_id BIGINT UNSIGNED DEFAULT NULL,
+  lida TINYINT(1) NOT NULL DEFAULT 0,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS auditoria (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  acao VARCHAR(120) NOT NULL,
+  detalhe VARCHAR(400) DEFAULT NULL,
+  em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS avisos_estabelecimento (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  titulo VARCHAR(180) NOT NULL,
+  texto TEXT,
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO config (k, v) VALUES
+  ('cidade', 'Aracaju/SE'),
+  ('meta_padrao_rede', '10'),
+  ('validade_saidera_dias', '15')
+ON DUPLICATE KEY UPDATE v = VALUES(v);
+
+SET FOREIGN_KEY_CHECKS = 1;

@@ -1,14 +1,16 @@
 const ParceiroApp = {
   root: null,
   view: "dashboard",
-  parId: "par-001",
+  parId: null,
   sol: null,
   camPage: 1,
   estPage: 1,
   perPage: 10,
 
-  boot() {
-    Store.init();
+  async boot() {
+    const ok = await Store.init({ papel: "parceiro" });
+    if (!ok) return;
+    this.parId = Store.demo().parceiroId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     Store.on(() => this.render());
@@ -86,7 +88,7 @@ const ParceiroApp = {
       <main class="dash-main">
         <div class="dash-head">
           <div class="row"><button class="icon-btn menu-btn" data-menu>${Icons.menu()}</button>
-          <div><p class="tiny muted">Painel do parceiro · Dados demonstrativos</p><h1>${this.par().nome}</h1></div></div>
+          <div><p class="tiny muted">Painel do parceiro</p><h1>${this.par().nome}</h1></div></div>
           <a class="btn btn-gold btn-sm" href="#/solicitar">Nova solicitação</a>
         </div>
         ${html}
@@ -320,7 +322,7 @@ const ParceiroApp = {
       this.sol.selected = [];
       this.render();
     });
-    this.root.querySelector("#enviar-sol")?.addEventListener("click", () => {
+    this.root.querySelector("#enviar-sol")?.addEventListener("click", async () => {
       this.syncSol();
       const s = this.sol;
       const selected = (s.selected || []).filter((id) => Logic.vendeBebida(id, s.bebidaId));
@@ -330,38 +332,29 @@ const ParceiroApp = {
       }
       const inicio = s.inicio || Logic.periodoCampanha().inicio;
       const fim = s.umDia ? inicio : s.fim || inicio;
-      const cam = {
-        id: `cam-live-${Date.now()}`,
-        titulo: `${s.obj} · ${Logic.bebida(s.bebidaId)?.nome || "Marca"}`,
-        origem: "parceiro",
-        parceiroId: this.parId,
-        status: "solicitada",
-        mensagem: s.msg,
-        metaTampas: s.meta,
-        bebidaId: s.bebidaId,
-        estabelecimentos: selected,
-        periodoInicio: inicio,
-        periodoFim: fim,
-        umDia: Boolean(s.umDia),
-        publicoPotencial: Logic.audienciasEstimar({ estabelecimentos: selected, bebidaId: s.bebidaId, periodoDias: 30 }),
-        participantes: 0,
-        saideras: 0,
-        canal: "push",
-        disparada: false,
-        patrocinioBar: false,
-        solicitadaEm: new Date().toISOString(),
-      };
-      Store.data.campanhas.unshift(cam);
-      Logic.avisarEstabelecimentosParceiro(cam);
-      Logic.auditar("Solicitação de parceiro", `${this.par().nome} · ${Logic.bebida(s.bebidaId)?.nome}`);
-      this.sol.selected = [];
-      Store.save();
-      UI.modal({
-        center: true,
-        html: `<h2>Solicitação enviada para análise.</h2>
-          <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas: ${Logic.bebida(s.bebidaId)?.nome} com Saidera em ${s.meta} Tampas ${Logic.periodoTexto(cam)}. O Admin Saidera ainda precisa ativar o disparo.</p>
-          <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
-      });
+      try {
+        const data = await API.post("campanhas", {
+          titulo: `${s.obj} · ${Logic.bebida(s.bebidaId)?.nome || "Marca"}`,
+          parceiroId: this.parId,
+          mensagem: s.msg,
+          metaTampas: s.meta,
+          alteraMeta: true,
+          bebidaId: s.bebidaId,
+          estabelecimentos: selected,
+          periodoInicio: inicio,
+          periodoFim: fim,
+        });
+        if (data.store) Store.replace(data.store);
+        this.sol.selected = [];
+        UI.modal({
+          center: true,
+          html: `<h2>Solicitação enviada para análise.</h2>
+            <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas. O Admin Saidera ainda precisa ativar o disparo.</p>
+            <button class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
+        });
+      } catch (e) {
+        UI.toast(e.message);
+      }
     });
   },
 };

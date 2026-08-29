@@ -9,8 +9,9 @@ const ClienteApp = {
   homeQuery: "",
   homePerPage: 10,
 
-  boot() {
-    Store.init();
+  async boot() {
+    const ok = await Store.init({ papel: "cliente" });
+    if (!ok) return;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     Store.on(() => this.render());
@@ -104,7 +105,7 @@ const ClienteApp = {
   heroCard() {
     const me = this.me();
     const ganhas = Logic.saiderasDisponiveis(me.id);
-    const recente = ganhas.find((s) => s.estabelecimentoId === "est-001") || ganhas[0];
+    const recente = ganhas[0];
     if (recente) {
       const est = Logic.est(recente.estabelecimentoId);
       const beb = Logic.bebida(recente.bebidaId);
@@ -119,20 +120,40 @@ const ClienteApp = {
         </div>
       </article>`;
     }
-    const p = Logic.progresso(me.id, "est-001", "beb-001");
-    const est = Logic.est("est-001");
+    const list = Store.all("tampas").filter((t) => t.clienteId === me.id && t.atual > 0);
+    const p = list.sort((a, b) => b.atual / b.meta - a.atual / a.meta)[0];
+    const est = p ? Logic.est(p.estabelecimentoId) : Store.all("estabelecimentos")[0];
+    if (!est) {
+      return `<article class="hero-progress" data-go="#/ler">
+        <div class="content" style="padding:18px">
+          <h2>Leia o QR da casa</h2>
+          <p class="muted">As Tampas entram no app quando você lê o cupom impresso.</p>
+        </div>
+      </article>`;
+    }
+    if (!p) {
+      return `<article class="hero-progress" data-go="#/est/${est.id}">
+        <div class="bg">${UI.photo(Logic.imagemEst(est), est.nome)}</div>
+        <div class="overlay"></div>
+        <div class="content">
+          <span class="badge badge-gold">COMECE AQUI</span>
+          <h2>${est.nome}</h2>
+          <p>Leia o QR da casa ou mostre o seu ao garçom.</p>
+        </div>
+      </article>`;
+    }
     const falta = p.meta - p.atual;
-    return `<article class="hero-progress" data-go="#/est/est-001">
+    const beb = Logic.bebida(p.bebidaId);
+    return `<article class="hero-progress" data-go="#/est/${est.id}">
       <div class="bg">${UI.photo(Logic.imagemEst(est), est.nome)}</div>
       <div class="overlay"></div>
       <div class="content">
         <span class="badge badge-gold">VOCÊ ESTÁ QUASE LÁ 🍺</span>
         <h2>${est.nome}</h2>
-        <p>Heineken · ${p.atual} / ${p.meta} Tampas</p>
+        <p>${beb?.nome || "Bebida"} · ${p.atual} / ${p.meta} Tampas</p>
         <div style="margin:12px 0">${UI.tampas(p.atual, p.meta)}</div>
         ${UI.barra(p.atual, p.meta)}
         <p style="margin-top:10px;font-weight:700">Falta apenas ${falta} ${falta === 1 ? "Tampa" : "Tampas"} 🍺</p>
-        <div class="cta-row"><button class="btn btn-gold btn-sm">Ver progresso</button></div>
       </div>
     </article>`;
   },
@@ -219,7 +240,7 @@ const ClienteApp = {
       ? `<p class="tiny muted">${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.homeQuery.trim()}”</p>`
       : `<p class="tiny muted">${from}–${to} de ${list.length}</p>`;
     return `${this.top()}
-      <p class="muted small">Aracaju · Dados demonstrativos</p>
+      <p class="muted small">Aracaju</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
       <div class="row" style="gap:8px;margin-bottom:14px">
@@ -644,20 +665,8 @@ const ClienteApp = {
             `<button class="card pad btn-block" style="text-align:left;margin-bottom:8px" data-go="${["#/historico", "#/preferencias", "#/privacidade", "#/notificacoes"][i]}"><div class="row between"><span>${l}</span><span class="muted">›</span></div></button>`
         )
         .join("")}
-      <section class="card pad" style="margin:14px 0">
-        <p class="tiny muted">Quem está na demonstração</p>
-        <div class="row wrap" style="margin-top:10px;gap:8px">
-          ${Logic.clientesDemo()
-            .map(
-              (c) =>
-                `<button class="btn ${c.id === me.id ? "btn-gold" : "btn-dark"} btn-sm" data-demo-cli="${c.id}">${c.primeiroNome}</button>`
-            )
-            .join("")}
-        </div>
-        <p class="tiny muted" style="margin-top:8px">Troque para ver Tampas e Saideras de outra pessoa da demo.</p>
-      </section>
       ${UI.pwaBox()}
-      <a class="btn btn-ghost btn-block" href="../index.html" style="margin-top:8px">${Icons.logout()} Sair</a>`;
+      <button class="btn btn-ghost btn-block" id="sair-app" style="margin-top:8px">${Icons.logout()} Sair</button>`;
   },
 
   historico() {
@@ -687,7 +696,7 @@ const ClienteApp = {
       <p class="tiny muted" style="margin-top:12px;text-align:center">Cada cupom é de uso único. Depois de lido, acaba.</p>`;
   },
 
-  aplicarTicket(codigo) {
+  async aplicarTicket(codigo) {
     if (this._lendo) return;
     const raw = String(codigo || "").trim();
     if (!raw) {
@@ -696,7 +705,7 @@ const ClienteApp = {
     }
     this._lendo = true;
     if (window.QR?.stopScan) QR.stopScan();
-    const res = Logic.resgatarTicket(raw, this.me().id);
+    const res = await Logic.resgatarTicket(raw);
     if (!res.ok) {
       this._lendo = false;
       UI.toast(res.erro);
@@ -859,15 +868,10 @@ const ClienteApp = {
         if (body && list) body.scrollTop = Math.max(0, list.offsetTop - 12);
       })
     );
-    this.root.querySelectorAll("[data-demo-cli]").forEach((b) =>
-      b.addEventListener("click", () => {
-        const c = Logic.escolherClienteDemo(b.getAttribute("data-demo-cli"));
-        if (c) {
-          UI.toast(`Agora você é ${c.primeiroNome} nesta demo.`);
-          this.go("#/home");
-        }
-      })
-    );
+    this.root.querySelector("#sair-app")?.addEventListener("click", async () => {
+      await API.post("auth/logout", {});
+      location.href = "../index.html";
+    });
     this.root.querySelectorAll("[data-pref]").forEach((el) =>
       el.addEventListener("change", () => {
         Logic.salvarPrefsCliente(this.me().id, { [el.getAttribute("data-pref")]: el.checked });

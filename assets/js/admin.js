@@ -4,8 +4,9 @@ const AdminApp = {
   params: {},
   aud: { bairros: ["Atalaia", "Coroa do Meio", "13 de Julho"], ests: ["est-001", "est-002", "est-004", "est-005", "est-009", "est-011", "est-015", "est-024"], bebidaId: "beb-001", dias: 90, canal: "push" },
 
-  boot() {
-    Store.init();
+  async boot() {
+    const ok = await Store.init({ papel: "admin" });
+    if (!ok) return;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     Store.on(() => this.render());
@@ -61,7 +62,7 @@ const AdminApp = {
       <main class="dash-main">
         <div class="dash-head">
           <div class="row"><button class="icon-btn menu-btn" data-menu>${Icons.menu()}</button>
-          <div><p class="tiny muted">Aracaju/SE · Dados demonstrativos</p><h1>${items.find((i) => i[0] === this.view)?.[1] || "Painel"}</h1></div></div>
+          <div><p class="tiny muted">Admin Saidera</p><h1>${items.find((i) => i[0] === this.view)?.[1] || "Painel"}</h1></div></div>
         </div>
         ${html}
       </main>
@@ -93,7 +94,18 @@ const AdminApp = {
   estabelecimentos() {
     const q = this.params.id || "";
     const list = Store.all("estabelecimentos");
-    return `<section class="panel">
+    return `<section class="panel" style="margin-bottom:14px">
+      <h3>Nova casa</h3>
+      <p class="tiny muted" style="margin:6px 0 10px">Cria o estabelecimento e o login do gestor.</p>
+      <div class="row wrap" style="gap:8px">
+        <input id="ne-nome" placeholder="Nome da casa"/>
+        <input id="ne-email" type="email" placeholder="E-mail do gestor"/>
+        <input id="ne-senha" type="password" placeholder="Senha"/>
+        <input id="ne-bairro" placeholder="Bairro"/>
+        <button class="btn btn-gold" id="ne-ok">Cadastrar</button>
+      </div>
+    </section>
+    <section class="panel">
       <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-est" placeholder="Filtrar por nome ou bairro" value="${q}"/></div>
       <div class="table-wrap"><table class="data">
         <thead><tr><th>Nome</th><th>Tipo</th><th>Bairro</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Padrão</th><th>Status</th></tr></thead>
@@ -102,8 +114,8 @@ const AdminApp = {
             (e) => `<tr>
               <td><strong>${e.nome}</strong><p class="tiny muted">${e.endereco}</p></td>
               <td>${Logic.tipoEst(e)}</td>
-              <td>${e.bairro}</td><td>${e.clientes}</td><td>${e.tampas.toLocaleString("pt-BR")}</td>
-              <td>${e.saideras}</td><td>${e.metaPadrao}</td>
+              <td>${e.bairro || "—"}</td><td>—</td><td>—</td>
+              <td>—</td><td>${e.metaPadrao}</td>
               <td><span class="badge ${e.status === "ativo" ? "badge-green" : "badge-ghost"}">${e.status}</span></td>
             </tr>`
           )
@@ -129,7 +141,17 @@ const AdminApp = {
   },
 
   parceiros() {
-    return `<div class="grid-2">${Store.all("parceiros")
+    return `<section class="panel" style="margin-bottom:14px">
+      <h3>Novo parceiro</h3>
+      <div class="row wrap" style="gap:8px;margin-top:10px">
+        <input id="np-nome" placeholder="Nome da marca"/>
+        <input id="np-email" type="email" placeholder="E-mail"/>
+        <input id="np-senha" type="password" placeholder="Senha"/>
+        <input id="np-cat" placeholder="Categoria"/>
+        <button class="btn btn-gold" id="np-ok">Cadastrar</button>
+      </div>
+    </section>
+    <div class="grid-2">${Store.all("parceiros")
       .map(
         (p) => `<article class="panel">
           <div class="row between"><h3>${p.nome}</h3><span class="badge badge-navy">${p.selo}</span></div>
@@ -338,38 +360,81 @@ const AdminApp = {
         this.render();
       })
     );
-    this.root.querySelector("#simular")?.addEventListener("click", () => {
+    this.root.querySelector("#np-ok")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("parceiros", {
+          nome: this.root.querySelector("#np-nome")?.value,
+          email: this.root.querySelector("#np-email")?.value,
+          senha: this.root.querySelector("#np-senha")?.value,
+          categoria: this.root.querySelector("#np-cat")?.value,
+        });
+        if (data.store) Store.replace(data.store);
+        UI.toast("Parceiro cadastrado.");
+      } catch (e) {
+        UI.toast(e.message);
+      }
+    });
+    this.root.querySelector("#ne-ok")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("estabelecimentos", {
+          nome: this.root.querySelector("#ne-nome")?.value,
+          email: this.root.querySelector("#ne-email")?.value,
+          senha: this.root.querySelector("#ne-senha")?.value,
+          bairro: this.root.querySelector("#ne-bairro")?.value,
+        });
+        if (data.store) Store.replace(data.store);
+        UI.toast("Casa e login do gestor criados.");
+      } catch (e) {
+        UI.toast(e.message);
+      }
+    });
+    this.root.querySelector("#simular")?.addEventListener("click", async () => {
       const id = this.root.querySelector("#cam-disp")?.value;
       const cam = Store.find("campanhas", id) || Store.all("campanhas").find((c) => c.status === "solicitada");
       if (!cam) {
         UI.toast("Nenhuma campanha para ativar.");
         return;
       }
-      Logic.ativarPatrocinio(cam, { canal: this.aud.canal });
-      UI.modal({
-        center: true,
-        html: `${UI.celebrate("Disparo ativado", this.msgAtivacao(cam))}
-          <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Fechar</button>`,
-      });
-    });
-    this.root.querySelectorAll("[data-ativar]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        const cam = Store.find("campanhas", btn.getAttribute("data-ativar"));
-        if (!cam) return;
-        Logic.ativarPatrocinio(cam, { canal: this.aud.canal });
+      try {
+        const data = await API.post("campanhas/ativar", { id: cam.id });
+        if (data.store) Store.replace(data.store);
         UI.modal({
           center: true,
           html: `${UI.celebrate("Disparo ativado", this.msgAtivacao(cam))}
             <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Fechar</button>`,
         });
+      } catch (e) {
+        UI.toast(e.message);
+      }
+    });
+    this.root.querySelectorAll("[data-ativar]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const cam = Store.find("campanhas", btn.getAttribute("data-ativar"));
+        if (!cam) return;
+        try {
+          const data = await API.post("campanhas/ativar", { id: cam.id });
+          if (data.store) Store.replace(data.store);
+          UI.modal({
+            center: true,
+            html: `${UI.celebrate("Disparo ativado", this.msgAtivacao(cam))}
+              <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Fechar</button>`,
+          });
+        } catch (e) {
+          UI.toast(e.message);
+        }
       })
     );
-    this.root.querySelector("#cfg")?.addEventListener("click", () => {
-      Store.data.meta.cidade = this.root.querySelector("#cfg-cidade")?.value?.trim() || "Aracaju/SE";
-      Store.data.meta.metaPadraoRede = Number(this.root.querySelector("#cfg-meta-rede")?.value) || 10;
-      Logic.auditar("Configurações", Store.data.meta.cidade);
-      Store.save();
-      UI.toast("Configurações salvas nesta demonstração.");
+    this.root.querySelector("#cfg")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("config", {
+          cidade: this.root.querySelector("#cfg-cidade")?.value,
+          metaPadraoRede: this.root.querySelector("#cfg-meta-rede")?.value,
+        });
+        if (data.store) Store.replace(data.store);
+        UI.toast("Configurações salvas.");
+      } catch (e) {
+        UI.toast(e.message);
+      }
     });
   },
 };

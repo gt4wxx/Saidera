@@ -378,6 +378,12 @@ table.data tr:hover td { background: rgba(255,255,255,0.03); }
 .bar-row .track i { display: block; height: 100%; background: var(--gold); border-radius: inherit; transform-origin: left; animation: growBar .7s ease both; }
 .bar-row .pct { width: 40px; text-align: right; font-size: 0.78rem; color: var(--gray-2); }
 
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field span { font-size: 0.75rem; font-weight: 700; color: var(--gray-2); }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 0; background: #1a1a1a; color: inherit;
+}
+
 .notice {
   background: var(--navy); color: var(--cream);
   border-radius: 14px; padding: 10px 12px; font-size: 0.75rem; font-weight: 600;

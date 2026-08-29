@@ -1,6 +1,6 @@
 const Logic = {
   hoje() {
-    return new Date(2026, 7, 19);
+    return new Date();
   },
 
   validadeDias: 15,
@@ -32,15 +32,6 @@ const Logic = {
         mudou = true;
       }
     });
-    const demoSai = Store.all("saideras").find((s) => s.codigo === "SDR-8842" && s.status === "disponivel");
-    if (demoSai) {
-      const d = new Date(hoje);
-      d.setDate(d.getDate() + 3);
-      if (demoSai.expiraEm !== d.toISOString()) {
-        demoSai.expiraEm = d.toISOString();
-        mudou = true;
-      }
-    }
     if (mudou) Store.save(false);
   },
 
@@ -58,16 +49,15 @@ const Logic = {
   },
 
   clientesDemo() {
-    return ["cli-001", "cli-002", "cli-003"].map((id) => this.cliente(id)).filter(Boolean);
+    return [];
   },
 
-  escolherClienteDemo(id) {
-    const c = this.cliente(id);
-    if (!c || !Store.data.meta?.demo) return null;
-    Store.data.meta.demo.clienteId = id;
-    sessionStorage.setItem("saidera_cliente", id);
-    Store.save();
-    this.auditar("Troca de cliente demo", c.nome);
+  async buscarCliente(q) {
+    const c = await API.get("clientes/codigo", { q });
+    if (c && !this.cliente(c.id)) {
+      Store.data.clientes = Store.data.clientes || [];
+      Store.data.clientes.unshift(c);
+    }
     return c;
   },
 
@@ -86,13 +76,10 @@ const Logic = {
     return c.prefs;
   },
 
-  salvarPrefsCliente(clienteId, patch) {
-    const prefs = this.prefsCliente(clienteId);
-    Object.assign(prefs, patch);
-    const c = this.cliente(clienteId);
-    if (patch.bebidaFavoritaId) c.bebidaFavoritaId = patch.bebidaFavoritaId;
-    Store.save();
-    return prefs;
+  async salvarPrefsCliente(clienteId, patch) {
+    const data = await API.post("prefs", patch);
+    if (data.store) Store.replace(data.store);
+    return this.prefsCliente(clienteId);
   },
 
   auditar(acao, detalhe) {
@@ -361,14 +348,14 @@ const Logic = {
 
   inativosDoEst(estId) {
     const corte = this.hoje().getTime() - 30 * 86400000;
-    const doBar = this.clientesDoEst(estId).filter((c) => c.id !== "cli-001");
+    const doBar = this.clientesDoEst(estId);
     const frios = doBar.filter((c) => !c.ultimaVisitaIso || new Date(c.ultimaVisitaIso).getTime() < corte);
     const ids = new Set(frios.map((c) => c.id));
     const extraBar = doBar.filter((c) => !ids.has(c.id));
     extraBar.forEach((c) => ids.add(c.id));
     const pool = [...frios, ...extraBar];
     Store.all("clientes").forEach((c) => {
-      if (c.id !== "cli-001" && !ids.has(c.id)) pool.push(c);
+      if (!ids.has(c.id)) pool.push(c);
     });
     return pool.slice(0, 80);
   },
@@ -398,7 +385,6 @@ const Logic = {
   clienteNoPublico(clienteId, cam) {
     if (!cam || cam.origem !== "estabelecimento") return true;
     if (cam.clienteIds?.length) return cam.clienteIds.includes(clienteId);
-    if (clienteId === Store.demo()?.clienteId && cam.publico !== "aniversario" && cam.tipo !== "chamar") return true;
     return this.publicoCampanha(cam).some((c) => c.id === clienteId);
   },
 
@@ -408,53 +394,17 @@ const Logic = {
     return Math.max(n, demo[publico] || n);
   },
 
-  solicitarCampanhaCasa({
-    estabelecimentoId,
-    tipo,
-    publico,
-    titulo,
-    mensagem,
-    bebidaId,
-    metaTampas,
-    canal,
-    clienteIds,
-    limite,
-  }) {
-    const est = this.est(estabelecimentoId);
-    const modelo = this.modelosCampanhaCasa(est)[tipo] || this.modelosCampanhaCasa(est).comparecer;
-    const alteraMeta = modelo.alteraMeta;
-    const per = this.periodoCampanha();
-    const ids = [...new Set(clienteIds || [])];
-    const cam = {
-      id: `cam-casa-${Date.now()}`,
-      titulo: titulo || modelo.titulo,
-      origem: "estabelecimento",
-      estabelecimentoId,
-      parceiroId: null,
-      status: "solicitada",
-      tipo,
-      publico: publico || modelo.publico,
-      mensagem: mensagem || modelo.mensagem,
-      metaTampas: alteraMeta ? Number(metaTampas) || modelo.metaTampas || 6 : null,
-      alteraMeta,
-      bebidaId: alteraMeta ? bebidaId || est?.bebidas?.[0]?.id || "beb-001" : bebidaId || "beb-001",
-      estabelecimentos: [estabelecimentoId],
-      periodoInicio: per.inicio,
-      periodoFim: per.fim,
-      clienteIds: ids,
-      limite: ids.length || limite || null,
-      publicoPotencial: ids.length || limite || this.estimarPublicoCasa(estabelecimentoId, publico || modelo.publico),
-      participantes: 0,
-      saideras: 0,
-      canal: canal || "push",
-      disparada: false,
-      patrocinioBar: false,
-      solicitadaEm: new Date().toISOString(),
-    };
-    Store.data.campanhas.unshift(cam);
-    this.auditar("Solicitação de campanha", `${est?.nome || "Casa"} · ${cam.titulo}`);
-    Store.save();
-    return cam;
+  async solicitarCampanhaCasa(payload) {
+    const est = this.est(payload.estabelecimentoId);
+    const modelo = this.modelosCampanhaCasa(est)[payload.tipo] || this.modelosCampanhaCasa(est).comparecer;
+    const data = await API.post("campanhas", {
+      ...payload,
+      titulo: payload.titulo || modelo.titulo,
+      mensagem: payload.mensagem || modelo.mensagem,
+      alteraMeta: modelo.alteraMeta,
+    });
+    if (data.store) Store.replace(data.store);
+    return Store.find("campanhas", data.id) || { id: data.id, ...payload, status: "solicitada" };
   },
 
   periodoCampanha(dias = 12) {
@@ -798,202 +748,46 @@ const Logic = {
     return codigo;
   },
 
-  criarTicket({ estabelecimentoId, itens }) {
-    if (!Store.data.tickets) Store.data.tickets = [];
-    const limpos = (itens || [])
-      .map((i) => ({
-        bebidaId: i.bebidaId,
-        nome: this.bebida(i.bebidaId)?.nome || i.nome || "Bebida",
-        quantidade: Math.max(0, Number(i.quantidade) || 0),
-      }))
-      .filter((i) => i.bebidaId && i.quantidade > 0);
-    if (!limpos.length) return null;
-    const ticket = {
-      id: `tkt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      codigo: this.novoCodigoTicket(),
-      estabelecimentoId,
-      itens: limpos,
-      usado: false,
-      usadoPor: null,
-      usadoEm: null,
-      criadoEm: new Date().toISOString(),
-    };
-    Store.data.tickets.unshift(ticket);
-    this.auditar(
-      "QR de tampas gerado",
-      `${this.est(estabelecimentoId)?.nome || ""} · ${ticket.codigo} · ${limpos.map((i) => `${i.quantidade}× ${i.nome}`).join(", ")}`
-    );
-    Store.save();
-    return ticket;
+  async criarTicket({ estabelecimentoId, itens }) {
+    const data = await API.post("tickets", { estabelecimentoId, itens });
+    if (data.store) Store.replace(data.store);
+    return data.ticket;
   },
 
-  resgatarTicket(codigo, clienteId) {
-    if (!Store.data.tickets) Store.data.tickets = [];
-    const t = this.ticketPorCodigo(window.QR?.parseTicket?.(codigo) || codigo);
-    if (!t) return { ok: false, erro: "QR inválido. Peça um novo cupom à casa." };
-    if (t.usado) return { ok: false, erro: "Este QR já foi usado. Cada cupom vale uma vez." };
-    const est = this.est(t.estabelecimentoId);
-    if (!est) return { ok: false, erro: "Estabelecimento deste QR não foi encontrado." };
-    const cli = this.cliente(clienteId);
-    if (!cli) return { ok: false, erro: "Cliente da demonstração não encontrado." };
-    t.usado = true;
-    t.usadoPor = clienteId;
-    t.usadoEm = new Date().toISOString();
-    const resultados = [];
-    let ganhas = 0;
-    const novas = [];
-    t.itens.forEach((item) => {
-      const res = this.registrarConsumo({
-        clienteId,
-        estabelecimentoId: t.estabelecimentoId,
-        bebidaId: item.bebidaId,
-        quantidade: item.quantidade,
-        silencioso: true,
-        persistir: false,
-      });
-      resultados.push({ ...item, ...res });
-      ganhas += res.ganhas || 0;
-      (res.novas || []).forEach((s) => novas.push(s));
-    });
-    const resumo = t.itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
-    Store.data.notificacoes.unshift({
-      id: `ntf-tkt-${Date.now()}`,
-      clienteId,
-      titulo: ganhas ? "Você ganhou uma Saidera!" : "Tampas adicionadas",
-      texto: `${resumo} no ${est.nome}.`,
-      tipo: ganhas ? "saidera" : "progresso",
-      lida: false,
-      criadoEm: new Date().toISOString(),
-    });
-    this.auditar("QR de tampas resgatado", `${est.nome} · ${cli.primeiroNome} · ${t.codigo} · ${resumo}`);
-    Store.save();
-    return { ok: true, ticket: t, est, resultados, ganhas, novas };
+  async resgatarTicket(codigo) {
+    try {
+      const data = await API.post("tickets/resgatar", { codigo });
+      if (data.store) Store.replace(data.store);
+      return { ok: true, ticket: data.ticket, est: data.est, ganhas: data.ganhas, novas: data.novas };
+    } catch (e) {
+      return { ok: false, erro: e.message };
+    }
   },
 
-  entregarSaideraPorCodigo(codigo, estabelecimentoId, funcionarioId) {
-    this.hidratarSaideras();
-    const raw = String(codigo || "")
-      .trim()
-      .toUpperCase()
-      .replace(/^(SDR)(\d)/, "SDR-$2");
-    if (!raw) return { ok: false, erro: "Informe o ID da Saidera." };
-    const s = Store.all("saideras").find((x) => String(x.codigo || "").toUpperCase() === raw);
-    if (!s) return { ok: false, erro: "Saidera não encontrada. Confira o ID com o cliente." };
-    if (s.estabelecimentoId !== estabelecimentoId) {
-      return { ok: false, erro: `Esta Saidera é do ${this.est(s.estabelecimentoId)?.nome || "outro estabelecimento"}.` };
+  async entregarSaideraPorCodigo(codigo, estabelecimentoId, funcionarioId) {
+    try {
+      const data = await API.post("saideras/entregar", { codigo, estabelecimentoId, funcionarioId });
+      if (data.store) Store.replace(data.store);
+      return { ok: true, saidera: data.saidera };
+    } catch (e) {
+      return { ok: false, erro: e.message };
     }
-    if (s.status === "utilizada") return { ok: false, erro: "Esta Saidera já foi utilizada." };
-    if (s.status === "expirada" || (s.expiraEm && new Date(s.expiraEm) < this.hoje())) {
-      s.status = "expirada";
-      Store.save();
-      return { ok: false, erro: "Esta Saidera expirou." };
-    }
-    const ok = this.entregarSaidera(s.id, funcionarioId);
-    if (!ok) return { ok: false, erro: "Não foi possível entregar esta Saidera." };
-    return { ok: true, saidera: ok };
   },
 
-  registrarConsumo({ clienteId, estabelecimentoId, bebidaId, quantidade, funcionarioId, silencioso, persistir }) {
-    const est = this.est(estabelecimentoId);
-    const cam = this.ofertaAtivaPara(clienteId, estabelecimentoId, bebidaId);
-    const metaOferta = cam?.metaTampas || null;
-    const metaBar = this.metaOriginal(est, bebidaId);
-    const p = this.garantirProgresso(clienteId, estabelecimentoId, bebidaId);
-    const antes = p.atual;
-    let ganhas = 0;
-    let ofertaConcluida = false;
-    const novas = [];
-
-    if (metaOferta) {
-      const total = p.atual + quantidade;
-      if (total >= metaOferta) {
-        ganhas += 1;
-        ofertaConcluida = true;
-        novas.push(
-          this.novaSaidera({ clienteId, estabelecimentoId, bebidaId, campanhaId: cam.id })
-        );
-        this.consumirOferta(clienteId, cam.id, estabelecimentoId, bebidaId);
-        const resto = total - metaOferta;
-        const extra = Math.floor(resto / metaBar);
-        ganhas += extra;
-        for (let i = 0; i < extra; i++) {
-          novas.push(this.novaSaidera({ clienteId, estabelecimentoId, bebidaId }));
-        }
-        p.atual = resto % metaBar;
-        p.meta = metaBar;
-      } else {
-        p.atual = total;
-        p.meta = metaOferta;
-      }
-    } else {
-      const total = p.atual + quantidade;
-      const extra = Math.floor(total / metaBar);
-      ganhas = extra;
-      p.atual = total % metaBar;
-      p.meta = metaBar;
-      for (let i = 0; i < extra; i++) {
-        novas.push(this.novaSaidera({ clienteId, estabelecimentoId, bebidaId }));
-      }
-    }
-    p.atualizadoEm = new Date().toISOString();
-
-    Store.data.consumos.unshift({
-        id: `con-live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      clienteId,
-      estabelecimentoId,
-      bebidaId,
-      quantidade,
-      funcionarioId: funcionarioId || Store.demo().funcionarioId,
-      criadoEm: new Date().toISOString(),
-    });
-    this.marcarTurno(funcionarioId || Store.demo().funcionarioId, { tampas: quantidade });
-
-    const cli = this.cliente(clienteId);
-    cli.ultimaVisita = new Date().toLocaleDateString("pt-BR");
-    cli.ultimaVisitaIso = new Date().toISOString();
-
-    if (!silencioso) {
-      const titulo = ofertaConcluida
-        ? "Oferta concluída! Você ganhou uma Saidera"
-        : ganhas
-          ? "Você ganhou uma Saidera!"
-          : `${quantidade} Tampa${quantidade > 1 ? "s" : ""} registrada${quantidade > 1 ? "s" : ""}`;
-      const texto = ofertaConcluida
-        ? `${this.bebida(bebidaId).nome} no ${est.nome}. A próxima Saidera volta à regra da casa: ${metaBar} Tampas.`
-        : ganhas
-          ? `${this.bebida(bebidaId).nome} no ${est.nome}. Informe o ID da Saidera à casa para retirar.`
-          : `${this.bebida(bebidaId).nome} no ${est.nome}: ${p.atual}/${p.meta}.`;
-
-      Store.data.notificacoes.unshift({
-        id: `ntf-live-${Date.now()}`,
-        clienteId,
-        titulo,
-        texto,
-        tipo: ganhas ? "saidera" : "progresso",
-        lida: false,
-        criadoEm: new Date().toISOString(),
-      });
-      this.auditar("Registro de consumo", `${est.nome} · ${cli.primeiroNome} · ${this.bebida(bebidaId).nome} ×${quantidade}`);
-    }
-    if (persistir !== false) Store.save();
-    return { antes, depois: p.atual, meta: p.meta, ganhas, novas, progresso: p, ofertaConcluida, metaBar };
-  },
-
-  entregarSaidera(saideraId, funcionarioId) {
-    this.hidratarSaideras();
-    const s = Store.find("saideras", saideraId);
-    if (!s || s.status !== "disponivel") return null;
-    if (s.expiraEm && new Date(s.expiraEm) < this.hoje()) {
-      s.status = "expirada";
-      Store.save();
+  async entregarSaidera(saideraId, funcionarioId) {
+    try {
+      const data = await API.post("saideras/entregar", { saideraId, funcionarioId });
+      if (data.store) Store.replace(data.store);
+      return data.saidera;
+    } catch {
       return null;
     }
-    s.status = "utilizada";
-    s.utilizadaEm = new Date().toISOString();
-    this.marcarTurno(funcionarioId || Store.demo().funcionarioId, { saideras: 1 });
-    this.auditar("Entrega de Saidera", `${this.cliente(s.clienteId)?.primeiroNome || ""} · ${this.bebida(s.bebidaId)?.nome || ""} · ${s.codigo}`);
-    Store.save();
-    return s;
+  },
+
+  async registrarConsumo(payload) {
+    const data = await API.post("consumos", payload);
+    if (data.store) Store.replace(data.store);
+    return data.resultado;
   },
 
   entregarPrimeira(clienteId, estabelecimentoId, bebidaId, funcionarioId) {

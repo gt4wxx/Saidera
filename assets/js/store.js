@@ -1,51 +1,39 @@
-const STORE_KEY = "saidera_v2";
-
 const Store = {
   data: null,
+  session: null,
   listeners: [],
 
-  init() {
-    if (!window.SAIDERA_SEED) {
-      document.body.innerHTML = "<p style='padding:40px;font-family:sans-serif'>Abra o Saidera com <code>node serve.js</code> e acesse http://localhost:5173</p>";
-      throw new Error("SAIDERA_SEED ausente");
+  async init({ papel } = {}) {
+    const me = await API.me();
+    if (!me) {
+      location.href = API.home();
+      return false;
     }
-    const cached = localStorage.getItem(STORE_KEY);
-    if (cached) {
-      try {
-        this.data = JSON.parse(cached);
-        if (!this.data?.clientes?.length || !this.data?.meta) throw new Error("bad cache");
-      } catch {
-        this.data = structuredClone(window.SAIDERA_SEED);
-        this.save(false);
-      }
-    } else {
-      this.data = structuredClone(window.SAIDERA_SEED);
-      this.save(false);
+    if (papel && me.papel !== papel) {
+      location.href = /\/pages\//.test(location.pathname) ? `../${me.pagina}` : me.pagina;
+      return false;
     }
-    window.addEventListener("storage", (e) => {
-      if (e.key === STORE_KEY && e.newValue) {
-        try {
-          this.data = JSON.parse(e.newValue);
-          this.emit();
-        } catch {}
-      }
-    });
+    this.session = me;
+    const boot = await API.get("bootstrap");
+    this.data = boot;
     if (window.Logic?.hidratar) Logic.hidratar();
-    return this;
+    return true;
   },
 
-  save(emit = true) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(this.data));
+  replace(data, emit = true) {
+    if (data) this.data = data;
     if (emit) this.emit();
   },
 
-  reset() {
-    localStorage.removeItem(STORE_KEY);
-    sessionStorage.removeItem("saidera_cliente");
-    this.data = structuredClone(window.SAIDERA_SEED);
-    this.save(false);
+  save(emit = true) {
+    if (emit) this.emit();
+  },
+
+  async reload() {
+    const boot = await API.get("bootstrap");
+    this.replace(boot);
     if (window.Logic?.hidratar) Logic.hidratar();
-    this.emit();
+    return this.data;
   },
 
   on(fn) {
@@ -60,15 +48,15 @@ const Store = {
   },
 
   all(key) {
-    return this.data[key] || [];
+    return (this.data && this.data[key]) || [];
   },
 
   find(key, id) {
-    return (this.data[key] || []).find((x) => x.id === id);
+    return this.all(key).find((x) => x.id === id);
   },
 
   demo() {
-    return this.data.meta.demo;
+    return this.session || this.data?.meta?.demo || {};
   },
 };
 

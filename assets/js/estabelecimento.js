@@ -2,10 +2,10 @@ const EstApp = {
   root: null,
   view: "dashboard",
   params: {},
-  estId: "est-001",
+  estId: null,
   qty: 1,
   drinkId: "beb-001",
-  clienteSel: "cli-001",
+  clienteSel: null,
   ticketQtys: null,
   ticketGeradoId: null,
   campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: "beb-001", canal: "push" },
@@ -14,8 +14,10 @@ const EstApp = {
   cliPerPage: 10,
   cliQuery: "",
 
-  boot() {
-    Store.init();
+  async boot() {
+    const ok = await Store.init({ papel: "estabelecimento" });
+    if (!ok) return;
+    this.estId = Store.demo().estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     Store.on(() => this.render());
@@ -85,7 +87,7 @@ const EstApp = {
           <div class="row">
             <button class="icon-btn menu-btn" data-menu>${Icons.menu()}</button>
             <div>
-      <p class="tiny muted">Estabelecimento · Dados demonstrativos</p>
+      <p class="tiny muted">Estabelecimento</p>
               <h1 id="view-title"></h1>
             </div>
           </div>
@@ -199,15 +201,12 @@ const EstApp = {
   },
 
   recentes() {
-    const ids = ["cli-001", "cli-002", "cli-003"];
-    return ids
-      .map((id) => {
-        const c = Logic.cliente(id);
-        const drinkId = id === "cli-002" ? "beb-002" : id === "cli-003" ? "beb-006" : "beb-001";
-        const p = Logic.garantirProgresso(id, this.estId, drinkId);
-        const disp = Logic.saiderasDisponiveis(id, this.estId, drinkId);
-        const falta = p.meta - p.atual;
-        const beb = Logic.bebida(drinkId);
+    const list = Logic.clientesDoEst(this.estId).slice(0, 8);
+    if (!list.length) return `<p class="muted">Ainda não há clientes nesta casa.</p>`;
+    return list
+      .map((c) => {
+        const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
+        const disp = Logic.saiderasDisponiveis(c.id, this.estId);
         const action = disp.length
           ? `<a class="btn btn-gold btn-sm" href="#/saideras">Baixar com o ID</a>`
           : `<a class="btn btn-dark btn-sm" href="#/registrar">Gerar QR</a>`;
@@ -216,11 +215,11 @@ const EstApp = {
             <img src="${c.avatar}" alt=""/>
             <div>
               <strong>${c.primeiroNome}</strong>
-              <p class="small muted">${beb.nome} · ${disp.length ? p.meta : p.atual} / ${p.meta}</p>
+              <p class="small muted">${t ? `${t.atual}/${t.meta}` : "Sem Tampas ainda"}</p>
             </div>
           </div>
           <div class="row">
-            ${disp.length ? `<span class="badge badge-green">Saidera disponível</span>` : `<span class="muted small">${falta === 1 ? "Falta 1" : "Faltam " + falta}</span>`}
+            ${disp.length ? `<span class="badge badge-green">Saidera disponível</span>` : ""}
             ${action}
           </div>
         </div>`;
@@ -470,9 +469,6 @@ const EstApp = {
       <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-28491" value="${c ? c.nome : ""}"/></div>
       <div class="row wrap" style="margin-bottom:16px;gap:8px">
         <button class="btn btn-navy btn-sm" id="scan-qr">${Icons.qr()} Escanear QR do cliente</button>
-        <button class="btn btn-dark btn-sm" data-pick="cli-001">Ellisson</button>
-        <button class="btn btn-dark btn-sm" data-pick="cli-002">Carlos</button>
-        <button class="btn btn-dark btn-sm" data-pick="cli-003">Maria</button>
       </div>
       ${
         c
@@ -560,8 +556,17 @@ const EstApp = {
 
   funcionarios() {
     const list = Store.all("funcionarios").filter((f) => f.estabelecimentoId === this.estId);
-    return `<p class="notice" style="margin-bottom:14px">O registro no salão agora é no app do garçom. Este painel continua para o gerente.</p>
-      <a class="btn btn-gold btn-sm" href="garcom.html" style="margin-bottom:14px">Abrir app do garçom</a>
+    return `<section class="panel" style="margin-bottom:14px">
+      <h3>Novo garçom</h3>
+      <div class="row wrap" style="gap:8px;margin-top:10px">
+        <input id="nf-nome" placeholder="Nome"/>
+        <input id="nf-email" type="email" placeholder="E-mail"/>
+        <input id="nf-senha" type="password" placeholder="Senha"/>
+        <input id="nf-cargo" placeholder="Cargo" value="Garçom"/>
+        <button class="btn btn-gold" id="nf-ok">Cadastrar</button>
+      </div>
+    </section>
+      <p class="notice" style="margin-bottom:14px">O registro no salão é no app do garçom, com o login criado aqui.</p>
       <div class="grid-2">${list
       .map(
         (f) => `<article class="panel">
@@ -876,20 +881,24 @@ const EstApp = {
         this.render();
       })
     );
-    this.root.querySelector("#gerar-ticket")?.addEventListener("click", () => {
+    this.root.querySelector("#gerar-ticket")?.addEventListener("click", async () => {
       const itens = this.ticketItens();
       if (!itens.length) {
         UI.toast("Escolha pelo menos uma bebida.");
         return;
       }
-      const t = Logic.criarTicket({ estabelecimentoId: this.estId, itens });
-      if (!t) {
-        UI.toast("Não foi possível gerar o QR.");
-        return;
+      try {
+        const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
+        if (!t) {
+          UI.toast("Não foi possível gerar o QR.");
+          return;
+        }
+        this.ticketGeradoId = t.id;
+        this.render();
+        UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
+      } catch (e) {
+        UI.toast(e.message);
       }
-      this.ticketGeradoId = t.id;
-      this.render();
-      UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
     });
     this.root.querySelector("#print-ticket")?.addEventListener("click", () => window.print());
     this.root.querySelector("#novo-ticket")?.addEventListener("click", () => {
@@ -903,9 +912,9 @@ const EstApp = {
         this.root.querySelector("#ticket-print")?.scrollIntoView({ block: "start", behavior: "smooth" });
       })
     );
-    this.root.querySelector("#entregar-sai")?.addEventListener("click", () => {
+    this.root.querySelector("#entregar-sai")?.addEventListener("click", async () => {
       const codigo = this.root.querySelector("#sai-codigo")?.value || "";
-      const res = Logic.entregarSaideraPorCodigo(codigo, this.estId);
+      const res = await Logic.entregarSaideraPorCodigo(codigo, this.estId);
       if (!res.ok) {
         UI.toast(res.erro);
         return;
@@ -937,12 +946,12 @@ const EstApp = {
       this.qty = Math.min(12, this.qty + 1);
       this.render();
     });
-    this.root.querySelector("#do-reg")?.addEventListener("click", () => {
+    this.root.querySelector("#do-reg")?.addEventListener("click", async () => {
       const cid = this.params.id || this.clienteSel;
       const c = Logic.cliente(cid);
       const b = Logic.bebida(this.drinkId);
       if (!c) return;
-      const res = Logic.registrarConsumo({
+      const res = await Logic.registrarConsumo({
         clienteId: cid,
         estabelecimentoId: this.estId,
         bebidaId: this.drinkId,
@@ -978,8 +987,6 @@ const EstApp = {
           <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR pessoal do cliente</p>
           <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
           <div class="row wrap" style="margin-top:12px;gap:8px">
-            <button class="btn btn-dark btn-sm" data-use="cli-001">Ellisson</button>
-            <button class="btn btn-dark btn-sm" data-use="cli-002">Carlos</button>
             <button class="btn btn-ghost btn-sm" data-close-modal>Cancelar</button>
           </div>`,
       });
@@ -1039,15 +1046,17 @@ const EstApp = {
           <div class="field"><span>Meta (vazio = padrão)</span><input id="nd-meta" type="number" placeholder="10"/></div>
           <button class="btn btn-gold btn-block" style="margin-top:12px" id="nd-ok">Adicionar</button>`,
       });
-      document.getElementById("nd-ok")?.addEventListener("click", () => {
+      document.getElementById("nd-ok")?.addEventListener("click", async () => {
         const nome = document.getElementById("nd-nome").value || "Nova bebida";
         const meta = Number(document.getElementById("nd-meta").value) || null;
-        const id = `beb-live-${Date.now()}`;
-        Store.data.bebidas.push({ id, nome, tipo: "outros", marca: "Casa", cor: "#F5B800" });
-        this.est().bebidas.push({ id, nome, meta, regra: meta ? "propria" : "padrao" });
-        Store.save();
-        document.querySelector(".modal-bg")?.remove();
-        UI.toast("Bebida adicionada na demonstração.");
+        try {
+          const data = await API.post("bebidas", { estabelecimentoId: this.estId, nome, meta });
+          if (data.store) Store.replace(data.store);
+          document.querySelector(".modal-bg")?.remove();
+          UI.toast("Bebida adicionada.");
+        } catch (e) {
+          UI.toast(e.message);
+        }
       });
     });
     this.root.querySelector("#edit-meta")?.addEventListener("click", () => {
@@ -1063,13 +1072,34 @@ const EstApp = {
         document.querySelector(".modal-bg")?.remove();
       });
     });
-    this.root.querySelector("#save-cfg")?.addEventListener("click", () => {
-      const est = this.est();
-      est.nome = this.root.querySelector("#cfg-nome")?.value?.trim() || est.nome;
-      est.bairro = this.root.querySelector("#cfg-bairro")?.value?.trim() || est.bairro;
-      est.metaPadrao = Number(this.root.querySelector("#cfg-meta")?.value) || est.metaPadrao || 10;
-      Store.save();
-      UI.toast("Configurações salvas.");
+    this.root.querySelector("#nf-ok")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("funcionarios", {
+          estabelecimentoId: this.estId,
+          nome: this.root.querySelector("#nf-nome")?.value,
+          email: this.root.querySelector("#nf-email")?.value,
+          senha: this.root.querySelector("#nf-senha")?.value,
+          cargo: this.root.querySelector("#nf-cargo")?.value || "Garçom",
+        });
+        if (data.store) Store.replace(data.store);
+        UI.toast("Garçom cadastrado. Ele entra pelo app do garçom.");
+      } catch (e) {
+        UI.toast(e.message);
+      }
+    });
+    this.root.querySelector("#save-cfg")?.addEventListener("click", async () => {
+      try {
+        const data = await API.post("estabelecimentos/salvar", {
+          id: this.estId,
+          nome: this.root.querySelector("#cfg-nome")?.value,
+          bairro: this.root.querySelector("#cfg-bairro")?.value,
+          metaPadrao: this.root.querySelector("#cfg-meta")?.value,
+        });
+        if (data.store) Store.replace(data.store);
+        UI.toast("Configurações salvas.");
+      } catch (e) {
+        UI.toast(e.message);
+      }
     });
     this.root.querySelector("#pick-cartaz")?.addEventListener("click", () => this.root.querySelector("#cfg-cartaz")?.click());
     this.root.querySelector("#cfg-cartaz")?.addEventListener("change", async (e) => {
@@ -1134,7 +1164,7 @@ const EstApp = {
         if (n) n.textContent = String(this.volta.ids.length);
       })
     );
-    this.root.querySelector("#pedir-volta")?.addEventListener("click", () => {
+    this.root.querySelector("#pedir-volta")?.addEventListener("click", async () => {
       this.volta.mensagem = this.root.querySelector("#volta-msg")?.value || this.volta.mensagem;
       this.volta.ids = [...this.root.querySelectorAll(".volta-list input:checked")].map((i) => i.value);
       if (!this.volta.ids.length) {
@@ -1142,7 +1172,7 @@ const EstApp = {
         return;
       }
       const modelo = Logic.modelosCampanhaCasa(this.est()).chamar;
-      const cam = Logic.solicitarCampanhaCasa({
+      const cam = await Logic.solicitarCampanhaCasa({
         estabelecimentoId: this.estId,
         tipo: "chamar",
         publico: "inativos",
@@ -1174,7 +1204,7 @@ const EstApp = {
         this.render();
       })
     );
-    this.root.querySelector("#enviar-camp-casa")?.addEventListener("click", () => {
+    this.root.querySelector("#enviar-camp-casa")?.addEventListener("click", async () => {
       this.syncCampForm();
       if (!this.campForm.tipo) {
         UI.toast("Escolha o tipo da campanha.");
@@ -1192,7 +1222,7 @@ const EstApp = {
         canal: this.campForm.canal,
       };
       this.campForm.tipo = null;
-      const cam = Logic.solicitarCampanhaCasa(payload);
+      const cam = await Logic.solicitarCampanhaCasa(payload);
       UI.modal({
         center: true,
         html: `<h2>Pedido enviado ao Admin Saidera</h2>

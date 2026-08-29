@@ -155,14 +155,7 @@ const UI = {
   },
 
   demoWidget() {
-    return `<details class="demo-fab">
-      <summary>MODO DEMO</summary>
-      <div class="demo-panel">
-        <strong>Roteiro da apresentação</strong>
-        <p>1. A casa imprime o cupom de Tampas; o cliente lê no app.<br/>2. Se precisar, o cliente mostra o QR dele e o garçom abre a comanda.<br/>3. Cada cupom impresso é de uso único.<br/>4. Para baixar a Saidera, informe o ID (SDR-…).<br/>Demo: Ellisson · SDR-28491 · Heineken 7/8.</p>
-        <button class="btn btn-gold btn-block btn-sm" data-action="reset-demo">Resetar demonstração</button>
-      </div>
-    </details>`;
+    return "";
   },
 
   celebrate(title, sub) {

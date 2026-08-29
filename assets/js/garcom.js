@@ -1,7 +1,7 @@
 const GarcomApp = {
   root: null,
-  funId: "fun-001",
-  estId: "est-001",
+  funId: null,
+  estId: null,
   clienteId: null,
   drinkId: "beb-001",
   qty: 1,
@@ -10,8 +10,11 @@ const GarcomApp = {
   sessao: [],
   recentes: [],
 
-  boot() {
-    Store.init();
+  async boot() {
+    const ok = await Store.init({ papel: "funcionario" });
+    if (!ok) return;
+    this.funId = Store.demo().funcionarioId;
+    this.estId = Store.demo().estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     const saved = sessionStorage.getItem("saidera_comanda");
@@ -102,7 +105,7 @@ const GarcomApp = {
     const f = this.fun();
     const recentes = this.recentes.map((id) => Logic.cliente(id)).filter(Boolean);
     return `${this.top()}
-      <p class="tiny muted">Turno no salão · Dados demonstrativos</p>
+      <p class="tiny muted">Turno no salão</p>
       <h1 style="margin:8px 0 6px">Pronto no salão</h1>
       <p class="muted" style="margin-bottom:14px">Dois caminhos: ler o QR do cliente ou baixar a Saidera pelo ID.</p>
       ${Brand.banner("secundario", "brand-banner")}
@@ -120,7 +123,7 @@ const GarcomApp = {
       </div>
       <div class="card pad" style="margin-top:14px">
         <p class="tiny muted">ID do cliente</p>
-        <div class="search" style="margin-top:8px">${Icons.search()}<input id="busca-id" placeholder="SDR-28491"/></div>
+        <div class="search" style="margin-top:8px">${Icons.search()}<input id="busca-id" placeholder="ID do cliente · SDR-…"/></div>
         <p class="tiny muted" style="margin:14px 0 8px">ID da Saidera</p>
         <div class="row" style="gap:8px">
           <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="SDR-8842"/></div>
@@ -133,12 +136,7 @@ const GarcomApp = {
             <div class="row wrap" style="gap:8px">${recentes
               .map((c) => `<button class="btn btn-dark btn-sm" data-open="${c.id}">${c.primeiroNome}</button>`)
               .join("")}</div>`
-          : `<p class="tiny muted" style="margin:16px 0 8px">Atalhos da demonstração</p>
-            <div class="row wrap" style="gap:8px">
-              <button class="btn btn-dark btn-sm" data-open="cli-001">Ellisson</button>
-              <button class="btn btn-dark btn-sm" data-open="cli-002">Carlos</button>
-              <button class="btn btn-dark btn-sm" data-open="cli-003">Maria</button>
-            </div>`
+          : `<p class="tiny muted" style="margin:16px 0 8px">Leia o QR do cliente ou digite o ID SDR-…</p>`
       }
       <div class="grid-2" style="margin-top:22px">
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
@@ -281,23 +279,30 @@ const GarcomApp = {
     }
   },
 
-  abrirPorLeitura(raw) {
+  async abrirPorLeitura(raw) {
     const d = window.QR?.decode ? QR.decode(raw) : { tipo: "desconhecido", codigo: raw };
     if (d.tipo === "ticket") {
       UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
       return false;
     }
     const codigo = d.codigo;
-    const c = Logic.clientePorCodigo(codigo);
+    let c = Logic.clientePorCodigo(codigo);
+    if (!c) {
+      try {
+        c = await Logic.buscarCliente(codigo);
+      } catch {
+        c = null;
+      }
+    }
     if (c) {
       this.abrir(c.id);
       return true;
     }
-    UI.toast("QR do cliente não reconhecido. Na demo, use SDR-28491.");
+    UI.toast("Cliente não encontrado. Confira o QR ou o ID.");
     return false;
   },
 
-  baixarSaidera(raw) {
+  async baixarSaidera(raw) {
     const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: String(raw || "").trim() };
     if (d.tipo === "ticket") {
       UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
@@ -311,7 +316,7 @@ const GarcomApp = {
         return;
       }
     }
-    const res = Logic.entregarSaideraPorCodigo(d.codigo, this.estId, this.funId);
+    const res = await Logic.entregarSaideraPorCodigo(d.codigo, this.estId, this.funId);
     if (!res.ok) {
       const c = Logic.clientePorCodigo(d.codigo);
       if (c) {
@@ -413,22 +418,26 @@ const GarcomApp = {
       this.qty = Math.min(12, this.qty + 1);
       this.render();
     });
-    this.root.querySelector("#do-reg")?.addEventListener("click", () => {
+    this.root.querySelector("#do-reg")?.addEventListener("click", async () => {
       const c = Logic.cliente(this.clienteId);
       const b = Logic.bebida(this.drinkId);
       this.sessao.unshift({ nome: b.nome, qtd: this.qty });
-      const res = Logic.registrarConsumo({
-        clienteId: this.clienteId,
-        estabelecimentoId: this.estId,
-        bebidaId: this.drinkId,
-        quantidade: this.qty,
-        funcionarioId: this.funId,
-      });
-      this.afterRegister(res, c, b);
+      try {
+        const res = await Logic.registrarConsumo({
+          clienteId: this.clienteId,
+          estabelecimentoId: this.estId,
+          bebidaId: this.drinkId,
+          quantidade: this.qty,
+          funcionarioId: this.funId,
+        });
+        this.afterRegister(res, c, b);
+      } catch (e) {
+        UI.toast(e.message);
+      }
     });
     this.root.querySelectorAll("[data-entregar]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        const s = Logic.entregarSaidera(btn.getAttribute("data-entregar"), this.funId);
+      btn.addEventListener("click", async () => {
+        const s = await Logic.entregarSaidera(btn.getAttribute("data-entregar"), this.funId);
         if (s) {
           UI.modal({
             center: true,
