@@ -225,10 +225,16 @@ const Logic = {
       : "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=900&q=80&auto=format&fit=crop";
   },
 
+  midiaUrl(src) {
+    if (!src) return src;
+    if (/^(https?:|data:|\/|\.\.\/)/i.test(src)) return src;
+    return /\/pages\//.test(location.pathname) ? `../${src}` : src;
+  },
+
   imagemEst(est) {
     if (typeof est === "string") est = this.est(est);
     if (!est) return this.imagemPadraoEst();
-    return est.cartaz || est.imagem || this.imagemPadraoEst(est);
+    return this.midiaUrl(est.cartaz || est.imagem || this.imagemPadraoEst(est));
   },
 
   lerCartazArquivo(file) {

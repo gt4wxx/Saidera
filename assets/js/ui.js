@@ -208,7 +208,7 @@ const UI = {
       const act = el.closest("[data-act]");
       if (act && !act.disabled && window.AdminApp?.onAct) {
         e.preventDefault();
-        window.AdminApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"));
+        window.AdminApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"), act);
         return;
       }
       const href = el.closest("[data-href]");

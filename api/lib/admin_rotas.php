@@ -246,5 +246,147 @@ function admin_rota(string $method, string $path, array $in): bool
         ok(['total' => count($ids)]);
     }
 
+    if ($path === 'tampas/ajustar') {
+        auth_require(['admin']);
+        $cli = nid('cli', $in['clienteId'] ?? '');
+        $eid = nid('est', $in['estabelecimentoId'] ?? '');
+        $bid = nid('beb', $in['bebidaId'] ?? '');
+        if (!$cli || !$eid || !$bid) fail('Informe cliente, casa e bebida.');
+        if (!empty($in['quantidade'])) {
+            $res = registrar_consumo($cli, $eid, $bid, (int) $in['quantidade'], null, false);
+            auditar('Admin adicionou Tampas', pub('cli', $cli) . ' · ×' . (int) $in['quantidade']);
+            admin_ok_store(['resultado' => $res]);
+        }
+        $p = garantir_progresso($cli, $eid, $bid);
+        $meta = max(1, (int) $p['meta']);
+        $atual = max(0, min($meta - 1, (int) ($in['atual'] ?? 0)));
+        db()->prepare('UPDATE progresso_tampas SET atual = ?, atualizado_em = NOW() WHERE id = ?')->execute([$atual, $p['id']]);
+        auditar('Admin ajustou Tampas', pub('cli', $cli) . " · {$atual}/{$meta}");
+        admin_ok_store();
+    }
+
+    if ($path === 'saideras/conceder') {
+        auth_require(['admin']);
+        $cli = nid('cli', $in['clienteId'] ?? '');
+        $eid = nid('est', $in['estabelecimentoId'] ?? '');
+        $bid = nid('beb', $in['bebidaId'] ?? '');
+        if (!$cli || !$eid || !$bid) fail('Informe cliente, casa e bebida.');
+        $s = nova_saidera($cli, $eid, $bid);
+        $beb = db()->prepare('SELECT nome FROM bebidas WHERE id = ?');
+        $beb->execute([$bid]);
+        notificar($cli, 'Você ganhou uma Saidera!', ($beb->fetch()['nome'] ?? 'Bebida') . ' · ' . $s['codigo'] . ' (crédito do suporte).', 'saidera');
+        auditar('Admin concedeu Saidera', $s['codigo']);
+        admin_ok_store(['saidera' => $s]);
+    }
+
+    if ($path === 'saideras/prorrogar') {
+        auth_require(['admin']);
+        $sid = nid('sai', $in['id'] ?? '');
+        if (!$sid) fail('Saidera não encontrada.');
+        $dias = max(1, min(90, (int) ($in['dias'] ?? 15)));
+        $st = db()->prepare('SELECT codigo, expira_em, status FROM saideras WHERE id = ?');
+        $st->execute([$sid]);
+        $s = $st->fetch();
+        if (!$s) fail('Saidera não encontrada.');
+        $base = strtotime($s['expira_em']) > time() ? $s['expira_em'] : date('Y-m-d H:i:s');
+        $exp = (new DateTimeImmutable($base))->modify('+' . $dias . ' days')->format('Y-m-d H:i:s');
+        db()->prepare("UPDATE saideras SET expira_em = ?, status = IF(status = 'expirada', 'disponivel', status) WHERE id = ?")->execute([$exp, $sid]);
+        auditar('Admin prorrogou Saidera', $s['codigo'] . ' · +' . $dias . 'd');
+        admin_ok_store();
+    }
+
+    if ($path === 'saideras/restaurar') {
+        auth_require(['admin']);
+        $sid = nid('sai', $in['id'] ?? '');
+        if (!$sid) fail('Saidera não encontrada.');
+        $dias = (int) cfg('validade_saidera_dias', 15);
+        $exp = (new DateTimeImmutable())->modify('+' . $dias . ' days')->format('Y-m-d H:i:s');
+        db()->prepare("UPDATE saideras SET status = 'disponivel', utilizada_em = NULL, expira_em = ? WHERE id = ?")->execute([$exp, $sid]);
+        auditar('Admin restaurou Saidera', (string) $sid);
+        admin_ok_store();
+    }
+
+    if ($path === 'tickets/cancelar') {
+        auth_require(['admin']);
+        $tid = nid('tkt', $in['id'] ?? '');
+        if (!$tid) fail('Cupom não encontrado.');
+        $st = db()->prepare('SELECT codigo, usado FROM tickets WHERE id = ?');
+        $st->execute([$tid]);
+        $t = $st->fetch();
+        if (!$t) fail('Cupom não encontrado.');
+        if ((int) $t['usado']) fail('Este cupom já foi usado ou cancelado.');
+        db()->prepare('UPDATE tickets SET usado = 1, usado_por = NULL, usado_em = NOW() WHERE id = ?')->execute([$tid]);
+        auditar('Admin cancelou cupom', $t['codigo']);
+        admin_ok_store();
+    }
+
+    if ($path === 'clientes/codigo-reset') {
+        auth_require(['admin']);
+        $cli = nid('cli', $in['id'] ?? '');
+        if (!$cli) fail('Cliente não encontrado.');
+        $codigo = codigo_unico('SDR', 'clientes');
+        db()->prepare('UPDATE clientes SET codigo = ? WHERE id = ?')->execute([$codigo, $cli]);
+        auditar('Admin resetou QR do cliente', $codigo);
+        admin_ok_store(['codigo' => $codigo]);
+    }
+
+    if ($path === 'notificacoes/enviar') {
+        auth_require(['admin']);
+        $cli = nid('cli', $in['clienteId'] ?? '');
+        $titulo = trim($in['titulo'] ?? '');
+        $texto = trim($in['texto'] ?? '');
+        if (!$cli) fail('Informe o cliente.');
+        if (strlen($titulo) < 2) fail('Informe o título do aviso.');
+        notificar($cli, $titulo, $texto ?: $titulo, 'sistema');
+        auditar('Admin enviou aviso', $titulo);
+        admin_ok_store();
+    }
+
+    if ($path === 'estabelecimentos/bebida') {
+        auth_require(['admin']);
+        $eid = nid('est', $in['estabelecimentoId'] ?? $in['id'] ?? '');
+        $bid = nid('beb', $in['bebidaId'] ?? '');
+        if (!$eid || !$bid) fail('Informe a casa e a bebida.');
+        $meta = isset($in['meta']) && $in['meta'] !== '' && $in['meta'] !== null ? max(1, (int) $in['meta']) : null;
+        $regra = in_array($in['regra'] ?? '', ['padrao', 'propria', 'patrocinio'], true) ? $in['regra'] : ($meta ? 'propria' : 'padrao');
+        db()->prepare('INSERT INTO estabelecimento_bebidas (estabelecimento_id, bebida_id, meta, regra) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE meta = VALUES(meta), regra = VALUES(regra)')
+            ->execute([$eid, $bid, $meta, $regra]);
+        auditar('Admin atualizou cardápio', pub('est', $eid) . ' · ' . pub('beb', $bid));
+        admin_ok_store();
+    }
+
+    if ($path === 'estabelecimentos/bebida-remover') {
+        auth_require(['admin']);
+        $eid = nid('est', $in['estabelecimentoId'] ?? $in['id'] ?? '');
+        $bid = nid('beb', $in['bebidaId'] ?? '');
+        if (!$eid || !$bid) fail('Informe a casa e a bebida.');
+        db()->prepare('DELETE FROM estabelecimento_bebidas WHERE estabelecimento_id = ? AND bebida_id = ?')->execute([$eid, $bid]);
+        auditar('Admin removeu bebida da casa', pub('est', $eid) . ' · ' . pub('beb', $bid));
+        admin_ok_store();
+    }
+
+    if ($path === 'estabelecimentos/midia') {
+        auth_require(['admin']);
+        $eid = nid('est', $in['id'] ?? '');
+        if (!$eid) fail('Casa não encontrada.');
+        if (array_key_exists('promocao', $in)) {
+            db()->prepare('UPDATE estabelecimentos SET promocao = ? WHERE id = ?')->execute([trim((string) $in['promocao']) ?: null, $eid]);
+        }
+        $campo = $in['campo'] ?? '';
+        if ($campo === 'cartaz' || $campo === 'imagem') {
+            salvar_midia_casa($eid, $campo, (string) ($in['dataUrl'] ?? ''));
+        }
+        auditar('Admin atualizou vitrine da casa', (string) $eid);
+        admin_ok_store();
+    }
+
+    if ($path === 'saideras/entregar-admin') {
+        auth_require(['admin']);
+        $sid = nid('sai', $in['id'] ?? $in['saideraId'] ?? '');
+        if (!$sid) fail('Saidera não encontrada.');
+        entregar_saidera($sid, null);
+        admin_ok_store();
+    }
+
     return false;
 }

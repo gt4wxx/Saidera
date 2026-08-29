@@ -2,7 +2,7 @@ const AdminApp = {
   root: null,
   view: "dashboard",
   params: {},
-  q: { est: "", cli: "", fun: "", sai: "", tam: "", cam: "" },
+  q: { est: "", cli: "", fun: "", sai: "", tam: "", cam: "", tkt: "" },
   aud: { bairros: [], ests: [], bebidaId: "", dias: 90, canal: "push" },
   audPronto: false,
 
@@ -19,6 +19,7 @@ const AdminApp = {
       ["audiencias", "Audiências", Icons.users()],
       ["tampas", "Tampas", Icons.tampas()],
       ["saideras", "Saideras", Icons.gift()],
+      ["tickets", "Cupons QR", Icons.qr()],
       ["relatorios", "Relatórios", Icons.chart()],
       ["auditoria", "Auditoria", Icons.clipboard()],
       ["config", "Configurações", Icons.settings()],
@@ -137,17 +138,30 @@ const AdminApp = {
       audiencias: () => this.audiencias(),
       tampas: () => this.tampas(),
       saideras: () => this.saideras(),
+      tickets: () => this.tickets(),
+      cliente: () => this.fichaCliente(),
+      casa: () => this.fichaCasa(),
       relatorios: () => this.relatorios(),
       auditoria: () => this.auditoria(),
       config: () => this.config(),
     };
-    const titulo = items.find((i) => i[0] === this.view)?.[1] || "Painel";
+    const menuOn = this.view === "cliente" ? "clientes" : this.view === "casa" ? "estabelecimentos" : this.view;
+    const titulo = this.view === "cliente"
+      ? (Logic.cliente(this.params.id)?.nome || "Cliente")
+      : this.view === "casa"
+        ? (Logic.est(this.params.id)?.nome || "Casa")
+        : items.find((i) => i[0] === this.view)?.[1] || "Painel";
     const html = (map[this.view] || map.dashboard)();
+    const voltar = this.view === "cliente"
+      ? `<a class="btn btn-ghost btn-sm" href="#/clientes">Voltar</a>`
+      : this.view === "casa"
+        ? `<a class="btn btn-ghost btn-sm" href="#/estabelecimentos">Voltar</a>`
+        : "";
     this.root.innerHTML = `<div class="dash-app">
       <div class="sidebar-scrim" data-close-menu></div>
       <aside class="sidebar" id="sidebar">
         ${Brand.sideHead("Admin")}
-        <nav>${items.map(([id, l, ic]) => `<a class="${this.view === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
+        <nav>${items.map(([id, l, ic]) => `<a class="${menuOn === id ? "on" : ""}" href="#/${id}">${ic}${l}</a>`).join("")}</nav>
         <div class="side-foot">
           <p class="tiny muted">${this.esc(Store.session?.email || "")}</p>
           <a class="btn btn-ghost btn-sm btn-block" href="../index.php?sair=1">Sair</a>
@@ -157,6 +171,7 @@ const AdminApp = {
         <div class="dash-head">
           <div class="row"><button class="icon-btn menu-btn" data-menu>${Icons.menu()}</button>
           <div><p class="tiny muted">Painel real da rede</p><h1>${titulo}</h1></div></div>
+          ${voltar}
         </div>
         ${html}
       </main>
@@ -233,6 +248,7 @@ const AdminApp = {
           <td>${e.metaPadrao}</td>
           <td>${this.badge(e.status)}</td>
           <td class="table-actions">
+            <a class="btn btn-ghost btn-sm" href="#/casa/${e.id}">Ficha</a>
             <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar</button>
             <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
           </td>
@@ -269,6 +285,7 @@ const AdminApp = {
           <td>${this.esc(c.ultimaVisita || "—")}</td>
           <td>${this.badge(c.status)}</td>
           <td class="table-actions">
+            <a class="btn btn-ghost btn-sm" href="#/cliente/${c.id}">Ficha</a>
             <button class="btn btn-ghost btn-sm" data-act="cli-editar" data-id="${c.id}">Editar</button>
             <button class="btn btn-ghost btn-sm" data-act="cli-status" data-id="${c.id}">${c.status === "ativo" ? "Desativar" : "Ativar"}</button>
           </td>
@@ -515,13 +532,14 @@ const AdminApp = {
     <section class="panel">
       <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-tam" placeholder="Filtrar por cliente, casa ou bebida" value="${this.esc(q)}"/></div>
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Casa</th><th>Bebida</th><th>Progresso</th><th>Atualizado</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Casa</th><th>Bebida</th><th>Progresso</th><th>Atualizado</th><th></th></tr></thead>
         <tbody>${list.map((t) => `<tr>
           <td>${this.esc(Logic.cliente(t.clienteId)?.nome || "—")}</td>
           <td>${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")}</td>
           <td>${this.esc(Logic.bebida(t.bebidaId)?.nome || "—")}</td>
           <td>${t.atual}/${t.meta} ${UI.barra(t.atual, t.meta)}</td>
           <td>${Logic.fmtDate(t.atualizadoEm)}</td>
+          <td class="table-actions"><button class="btn btn-ghost btn-sm" data-act="tam-ajustar" data-id="${t.id}">Ajustar</button></td>
         </tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhum progresso de Tampas ainda.")}
     </section>`;
@@ -556,9 +574,171 @@ const AdminApp = {
           <td>${this.esc(Logic.bebida(s.bebidaId)?.nome || "—")}</td>
           <td>${this.esc(Logic.validadeLabel(s))}</td>
           <td>${this.badge(s.status)}</td>
-          <td>${s.status === "disponivel" ? `<button class="btn btn-ghost btn-sm" data-act="sai-expirar" data-id="${s.id}">Expirar</button>` : ""}</td>
+          <td class="table-actions">${this.saiAcoes(s)}</td>
         </tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhuma Saidera conquistada ainda.")}
+    </section>`;
+  },
+
+  saiAcoes(s) {
+    const bits = [];
+    if (s.status === "disponivel") {
+      bits.push(`<button class="btn btn-ghost btn-sm" data-act="sai-entregar" data-id="${s.id}">Entregar</button>`);
+      bits.push(`<button class="btn btn-ghost btn-sm" data-act="sai-prorrogar" data-id="${s.id}">Prorrogar</button>`);
+      bits.push(`<button class="btn btn-ghost btn-sm" data-act="sai-expirar" data-id="${s.id}">Expirar</button>`);
+    } else {
+      bits.push(`<button class="btn btn-ghost btn-sm" data-act="sai-restaurar" data-id="${s.id}">Restaurar</button>`);
+    }
+    return bits.join("");
+  },
+
+  ticketStatus(t) {
+    return t.status || (!t.usado ? "aberto" : t.usadoPor ? "usado" : "cancelado");
+  },
+
+  tickets() {
+    const q = this.q.tkt;
+    const c = this.contagens();
+    let list = Store.all("tickets");
+    if (q) {
+      const s = q.toLowerCase();
+      list = list.filter((t) => {
+        const est = Logic.est(t.estabelecimentoId);
+        const cli = Logic.cliente(t.usadoPor);
+        const itens = (t.itens || []).map((i) => i.nome).join(" ");
+        return [t.codigo, t.status, est?.nome, cli?.nome, itens].some((v) => String(v || "").toLowerCase().includes(s));
+      });
+    }
+    return `<div class="kpis">
+      <div class="kpi"><span>Cupons</span><b>${this.n(c.tickets ?? list.length)}</b></div>
+      <div class="kpi"><span>Abertos</span><b>${this.n(c.ticketsAbertos ?? list.filter((t) => !t.usado).length)}</b></div>
+    </div>
+    <section class="panel">
+      <p class="tiny muted" style="margin-bottom:12px">QR gerado pela casa. Cancelar impede o cliente de ler o cupom.</p>
+      <div class="search" style="margin-bottom:12px;max-width:360px">${Icons.search()}<input id="q-tkt" placeholder="Filtrar por código, casa ou cliente" value="${this.esc(q)}"/></div>
+      ${list.length ? `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Código</th><th>Casa</th><th>Itens</th><th>Status</th><th>Quando</th><th></th></tr></thead>
+        <tbody>${list.map((t) => {
+          const st = this.ticketStatus(t);
+          const itens = (t.itens || []).map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
+          return `<tr>
+            <td><strong>${this.esc(t.codigo)}</strong></td>
+            <td>${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")}</td>
+            <td>${this.esc(itens || "—")}</td>
+            <td>${this.badge(st)}</td>
+            <td>${t.usadoEm ? Logic.fmtDate(t.usadoEm) : Logic.fmtDate(t.criadoEm)}</td>
+            <td class="table-actions">${st === "aberto" ? `<button class="btn btn-ghost btn-sm" data-act="tkt-cancelar" data-id="${t.id}">Cancelar</button>` : t.usadoPor ? `<a class="btn btn-ghost btn-sm" href="#/cliente/${t.usadoPor}">Cliente</a>` : ""}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>` : this.empty("Nenhum cupom gerado ainda.")}
+    </section>`;
+  },
+
+  fichaCliente() {
+    const c = Logic.cliente(this.params.id);
+    if (!c) return `<section class="panel">${this.empty("Cliente não encontrado.")}<a class="btn btn-ghost" href="#/clientes">Voltar</a></section>`;
+    const tampas = Store.all("tampas").filter((t) => t.clienteId === c.id);
+    const sais = Store.all("saideras").filter((s) => s.clienteId === c.id);
+    const cons = Store.all("consumos").filter((x) => x.clienteId === c.id).slice(0, 12);
+    const tkts = Store.all("tickets").filter((t) => t.usadoPor === c.id);
+    return `<div class="kpis">
+      <div class="kpi"><span>Código QR</span><b>${this.esc(c.codigo)}</b></div>
+      <div class="kpi"><span>Tampas em aberto</span><b>${this.n(tampas.reduce((a, t) => a + t.atual, 0))}</b></div>
+      <div class="kpi"><span>Saideras</span><b>${this.n(sais.length)}</b></div>
+      <div class="kpi"><span>Status</span><b>${this.esc(c.status)}</b></div>
+    </div>
+    <section class="panel" style="margin-bottom:14px">
+      <div class="person" style="margin-bottom:12px">
+        <img src="${this.avatar(c.avatar)}" alt=""/>
+        <div>
+          <h3>${this.esc(c.nome)}</h3>
+          <p class="tiny muted">${this.esc(c.email || "sem e-mail")} · ${this.esc(c.telefone || "sem telefone")} · ${this.esc(c.bairro || "sem bairro")}</p>
+          <p class="tiny muted">Cliente desde ${this.esc(c.clienteDesde || "—")} · última visita ${this.esc(c.ultimaVisita || "—")}</p>
+        </div>
+      </div>
+      <div class="table-actions wrap">
+        <button class="btn btn-gold btn-sm" data-act="cli-aviso" data-id="${c.id}">Enviar aviso</button>
+        <button class="btn btn-navy btn-sm" data-act="sai-conceder" data-id="${c.id}">Conceder Saidera</button>
+        <button class="btn btn-ghost btn-sm" data-act="tam-ajustar-cli" data-id="${c.id}">Ajustar Tampas</button>
+        <button class="btn btn-ghost btn-sm" data-act="cli-qr" data-id="${c.id}">Novo código QR</button>
+        <button class="btn btn-ghost btn-sm" data-act="cli-editar" data-id="${c.id}">Editar cadastro</button>
+        <button class="btn btn-ghost btn-sm" data-act="cli-status" data-id="${c.id}">${c.status === "ativo" ? "Desativar acesso" : "Reativar acesso"}</button>
+      </div>
+    </section>
+    <div class="grid-2">
+      <section class="panel">
+        <h3>Tampas</h3>
+        ${tampas.length ? tampas.map((t) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a">
+          <div><strong>${this.esc(Logic.bebida(t.bebidaId)?.nome || "Bebida")}</strong><p class="tiny muted">${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")} · ${t.atual}/${t.meta}</p></div>
+          <button class="btn btn-ghost btn-sm" data-act="tam-ajustar" data-id="${t.id}">Ajustar</button>
+        </div>`).join("") : this.empty("Nenhum progresso ainda.")}
+      </section>
+      <section class="panel">
+        <h3>Saideras</h3>
+        ${sais.length ? sais.map((s) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a;gap:8px">
+          <div><strong>${this.esc(s.codigo)}</strong><p class="tiny muted">${this.esc(Logic.bebida(s.bebidaId)?.nome || "—")} · ${this.esc(Logic.est(s.estabelecimentoId)?.nome || "—")}</p></div>
+          <div class="table-actions">${this.saiAcoes(s)}</div>
+        </div>`).join("") : this.empty("Nenhuma Saidera.")}
+      </section>
+    </div>
+    <section class="panel" style="margin-top:14px">
+      <h3>Consumos recentes</h3>
+      ${cons.length ? cons.map((x) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>+${x.quantidade} ${this.esc(Logic.bebida(x.bebidaId)?.nome || "Bebida")} · ${this.esc(Logic.est(x.estabelecimentoId)?.nome || "")}</span><span class="muted small">${Logic.fmtDate(x.criadoEm)}</span></div>`).join("") : this.empty("Nenhum consumo.")}
+      ${tkts.length ? `<p class="tiny muted" style="margin-top:14px">Cupons lidos: ${tkts.map((t) => t.codigo).join(", ")}</p>` : ""}
+    </section>`;
+  },
+
+  fichaCasa() {
+    const e = Logic.est(this.params.id);
+    if (!e) return `<section class="panel">${this.empty("Casa não encontrada.")}<a class="btn btn-ghost" href="#/estabelecimentos">Voltar</a></section>`;
+    const noCard = new Set((e.bebidas || []).map((b) => b.id));
+    const rede = Store.all("bebidas");
+    const equipe = Store.all("funcionarios").filter((f) => f.estabelecimentoId === e.id);
+    const tkts = Store.all("tickets").filter((t) => t.estabelecimentoId === e.id).slice(0, 12);
+    const img = this.avatar(e.cartaz || e.imagem || Logic.imagemPadraoEst(e));
+    return `<div class="kpis">
+      <div class="kpi"><span>Clientes</span><b>${this.n(e.qtdClientes)}</b></div>
+      <div class="kpi"><span>Tampas</span><b>${this.n(e.qtdTampas)}</b></div>
+      <div class="kpi"><span>Saideras</span><b>${this.n(e.qtdSaideras)}</b></div>
+      <div class="kpi"><span>Equipe</span><b>${this.n(equipe.length)}</b></div>
+    </div>
+    <section class="panel" style="margin-bottom:14px">
+      <p class="tiny muted">${this.esc(Logic.tipoEst(e))} · ${this.esc(Logic.enderecoLinha(e))} · gestor ${this.esc(e.gestorEmail || "—")}</p>
+      <div class="table-actions wrap" style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar endereço</button>
+        <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
+      </div>
+    </section>
+    <div class="grid-2">
+      <section class="panel">
+        <h3>Vitrine no app</h3>
+        <div class="cartaz-preview" style="margin:12px 0"><img src="${img}" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:14px" onerror="this.style.display='none'"/></div>
+        <div class="field"><span>Promoção curta</span><input id="casa-promo" value="${this.esc(e.promocao || "")}" placeholder="Ex.: Happy hour até 20h"/></div>
+        <div class="table-actions wrap" style="margin-top:10px">
+          <button class="btn btn-gold btn-sm" data-act="casa-promo" data-id="${e.id}">Salvar promoção</button>
+          <button class="btn btn-navy btn-sm" data-act="casa-cartaz" data-id="${e.id}">Enviar cartaz</button>
+          ${e.cartaz ? `<button class="btn btn-ghost btn-sm" data-act="casa-cartaz-reset" data-id="${e.id}">Tirar cartaz</button>` : ""}
+        </div>
+        <input type="file" id="casa-cartaz-file" accept="image/jpeg,image/png,image/webp,image/*" hidden/>
+      </section>
+      <section class="panel">
+        <h3>Cardápio desta casa</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">O que o cliente e o garçom veem. Meta vazia usa a padrão da casa (${e.metaPadrao}).</p>
+        ${(e.bebidas || []).length ? e.bebidas.map((b) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a;gap:8px">
+          <div><strong>${this.esc(b.nome)}</strong><p class="tiny muted">${b.meta ? b.meta + " Tampas" : "Padrão"} · ${this.esc(b.regra || "padrao")}</p></div>
+          <button class="btn btn-danger btn-sm" data-act="casa-beb-off" data-id="${e.id}" data-beb="${b.id}">Tirar</button>
+        </div>`).join("") : this.empty("Nenhuma bebida vinculada.")}
+        <div class="row wrap" style="gap:8px;margin-top:12px">
+          <select id="casa-beb-nova" style="flex:1;min-width:160px">${rede.filter((b) => !noCard.has(b.id)).map((b) => `<option value="${b.id}">${this.esc(b.nome)}</option>`).join("") || `<option value="">Todas já estão no cardápio</option>`}</select>
+          <input id="casa-beb-meta" type="number" min="1" placeholder="Meta" style="width:90px"/>
+          <button class="btn btn-gold btn-sm" data-act="casa-beb-on" data-id="${e.id}" ${rede.some((b) => !noCard.has(b.id)) ? "" : "disabled"}>Incluir</button>
+        </div>
+      </section>
+    </div>
+    <section class="panel" style="margin-top:14px">
+      <h3>Equipe</h3>
+      ${equipe.length ? equipe.map((f) => `<div class="row between" style="padding:8px 0"><span>${this.esc(f.nome)} · ${this.esc(f.cargo)}</span>${this.badge(f.status)}</div>`).join("") : this.empty("Nenhum funcionário.")}
+      ${tkts.length ? `<h3 style="margin-top:16px">Últimos cupons</h3>${tkts.map((t) => `<div class="row between" style="padding:8px 0"><span>${this.esc(t.codigo)} · ${this.esc(this.ticketStatus(t))}</span><span class="muted small">${Logic.fmtDate(t.criadoEm)}</span></div>`).join("")}` : ""}
     </section>`;
   },
 
@@ -647,6 +827,7 @@ const AdminApp = {
     keep("#q-sai", "sai");
     keep("#q-tam", "tam");
     keep("#q-cam", "cam");
+    keep("#q-tkt", "tkt");
 
     this.root.querySelectorAll("[data-bairro]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -681,6 +862,16 @@ const AdminApp = {
       })
     );
     this.ligarCep(this.root, "#ne-cep", { rua: "#ne-rua", bairro: "#ne-bairro", cidade: "#ne-cidade", uf: "#ne-uf" });
+    this.root.querySelector("#casa-cartaz-file")?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !this.params.id) return;
+      try {
+        const dataUrl = await Logic.lerCartazArquivo(file);
+        await this.post("estabelecimentos/midia", { id: this.params.id, campo: "cartaz", dataUrl }, "Cartaz salvo. O cliente já vê no app.");
+      } catch (err) {
+        UI.toast(err.message);
+      }
+    });
   },
 
   ligarCep(box, cepSel, campos) {
@@ -707,7 +898,17 @@ const AdminApp = {
     return [...(this.root.querySelectorAll(`${sel} input:checked`) || [])].map((x) => x.value);
   },
 
-  async onAct(act, id) {
+  optsCasaBebida(c, estId, bebId) {
+    const casas = Store.all("estabelecimentos");
+    const bebs = estId ? Logic.est(estId)?.bebidas || Store.all("bebidas") : Store.all("bebidas");
+    return {
+      casas: casas.map((e) => `<option value="${e.id}" ${e.id === estId ? "selected" : ""}>${this.esc(e.nome)}</option>`).join(""),
+      bebs: bebs.map((b) => `<option value="${b.id}" ${b.id === bebId ? "selected" : ""}>${this.esc(b.nome)}</option>`).join(""),
+      cliente: c,
+    };
+  },
+
+  async onAct(act, id, el) {
     if (act === "est-criar") {
       await this.post("estabelecimentos", {
         nome: this.val("#ne-nome"),
@@ -950,6 +1151,126 @@ const AdminApp = {
     if (act === "sai-expirar") {
       if (!confirm("Marcar esta Saidera como expirada?")) return;
       await this.post("saideras/expirar", { id }, "Saidera expirada.");
+      return;
+    }
+    if (act === "sai-prorrogar") {
+      const dias = prompt("Prorrogar por quantos dias?", "15");
+      if (dias == null) return;
+      await this.post("saideras/prorrogar", { id, dias: Number(dias) || 15 }, "Validade prorrogada.");
+      return;
+    }
+    if (act === "sai-restaurar") {
+      if (!confirm("Devolver esta Saidera como disponível?")) return;
+      await this.post("saideras/restaurar", { id }, "Saidera restaurada.");
+      return;
+    }
+    if (act === "sai-entregar") {
+      if (!confirm("Marcar como entregue ao cliente?")) return;
+      await this.post("saideras/entregar-admin", { id }, "Saidera marcada como entregue.");
+      return;
+    }
+    if (act === "sai-conceder") {
+      const c = Store.find("clientes", id);
+      if (!c) return;
+      const o = this.optsCasaBebida(c);
+      this.modalForm("Conceder Saidera", `
+        <div class="field"><span>Cliente</span><input value="${this.esc(c.nome)}" disabled/></div>
+        <div class="field"><span>Casa</span><select name="estabelecimentoId">${o.casas}</select></div>
+        <div class="field"><span>Bebida</span><select name="bebidaId">${o.bebs || "<option value=''>Cadastre uma bebida</option>"}</select></div>
+      `, async (box) => {
+        const data = await this.post("saideras/conceder", {
+          clienteId: c.id,
+          estabelecimentoId: box.querySelector("[name=estabelecimentoId]")?.value,
+          bebidaId: box.querySelector("[name=bebidaId]")?.value,
+        }, "Saidera creditada. O cliente vê no app.");
+        return Boolean(data);
+      });
+      return;
+    }
+    if (act === "tam-ajustar" || act === "tam-ajustar-cli") {
+      const t = act === "tam-ajustar" ? Store.find("tampas", id) : null;
+      const c = Logic.cliente(t?.clienteId || id);
+      if (!c) return;
+      const o = this.optsCasaBebida(c, t?.estabelecimentoId, t?.bebidaId);
+      this.modalForm("Ajustar Tampas", `
+        <div class="field"><span>Cliente</span><input value="${this.esc(c.nome)}" disabled/></div>
+        <div class="field"><span>Casa</span><select name="estabelecimentoId">${o.casas}</select></div>
+        <div class="field"><span>Bebida</span><select name="bebidaId">${o.bebs}</select></div>
+        <div class="field"><span>Deixar o progresso em</span><input name="atual" type="number" min="0" value="${t ? t.atual : 0}"/></div>
+        <div class="field"><span>Ou somar Tampas agora</span><input name="quantidade" type="number" min="0" placeholder="0 = só ajustar o número"/></div>
+      `, async (box) => {
+        const g = (n) => box.querySelector(`[name="${n}"]`)?.value;
+        const qtd = Number(g("quantidade")) || 0;
+        const data = await this.post("tampas/ajustar", {
+          clienteId: c.id,
+          estabelecimentoId: g("estabelecimentoId"),
+          bebidaId: g("bebidaId"),
+          atual: g("atual"),
+          quantidade: qtd || undefined,
+        }, qtd ? "Tampas adicionadas." : "Progresso ajustado.");
+        return Boolean(data);
+      });
+      return;
+    }
+    if (act === "cli-aviso") {
+      const c = Store.find("clientes", id);
+      if (!c) return;
+      this.modalForm("Aviso no app", `
+        <div class="field"><span>Cliente</span><input value="${this.esc(c.nome)}" disabled/></div>
+        <div class="field"><span>Título</span><input name="titulo" placeholder="Ex.: Seu QR foi atualizado"/></div>
+        <div class="field"><span>Texto</span><textarea name="texto" rows="3"></textarea></div>
+      `, async (box) => {
+        const data = await this.post("notificacoes/enviar", {
+          clienteId: c.id,
+          titulo: box.querySelector("[name=titulo]")?.value,
+          texto: box.querySelector("[name=texto]")?.value,
+        }, "Aviso enviado ao app do cliente.");
+        return Boolean(data);
+      });
+      return;
+    }
+    if (act === "cli-qr") {
+      const c = Store.find("clientes", id);
+      if (!c) return;
+      if (!confirm(`Gerar um novo código QR para ${c.nome}? O anterior (${c.codigo}) deixa de valer.`)) return;
+      await this.post("clientes/codigo-reset", { id }, "Novo código gerado. Peça para o cliente abrir o app.");
+      return;
+    }
+    if (act === "tkt-cancelar") {
+      if (!confirm("Cancelar este cupom? Ele não poderá mais ser lido.")) return;
+      await this.post("tickets/cancelar", { id }, "Cupom cancelado.");
+      return;
+    }
+    if (act === "casa-promo") {
+      await this.post("estabelecimentos/midia", { id, promocao: this.val("#casa-promo") }, "Promoção atualizada.");
+      return;
+    }
+    if (act === "casa-cartaz") {
+      this.root.querySelector("#casa-cartaz-file")?.click();
+      return;
+    }
+    if (act === "casa-cartaz-reset") {
+      if (!confirm("Voltar à imagem padrão no app do cliente?")) return;
+      await this.post("estabelecimentos/midia", { id, campo: "cartaz", dataUrl: "" }, "Cartaz removido.");
+      return;
+    }
+    if (act === "casa-beb-on") {
+      const bebidaId = this.val("#casa-beb-nova");
+      if (!bebidaId) {
+        UI.toast("Escolha uma bebida.");
+        return;
+      }
+      await this.post("estabelecimentos/bebida", {
+        estabelecimentoId: id,
+        bebidaId,
+        meta: this.val("#casa-beb-meta") || null,
+      }, "Bebida incluída no cardápio.");
+      return;
+    }
+    if (act === "casa-beb-off") {
+      const beb = el?.getAttribute("data-beb");
+      if (!beb || !confirm("Tirar esta bebida do cardápio da casa?")) return;
+      await this.post("estabelecimentos/bebida-remover", { estabelecimentoId: id, bebidaId: beb }, "Bebida removida do cardápio.");
       return;
     }
     if (act === "cfg-salvar") {

@@ -383,6 +383,7 @@ function bootstrap_store(array $u): array
     $empty['auditoria'] = array_map(fn($a) => [
         'em' => iso($a['em']), 'acao' => $a['acao'], 'detalhe' => $a['detalhe'],
     ], db()->query('SELECT * FROM auditoria ORDER BY em DESC LIMIT 120')->fetchAll());
+    $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), db()->query('SELECT id FROM tickets ORDER BY criado_em DESC LIMIT 250')->fetchAll());
     $empty['funcionarios'] = array_map(fn($f) => [
         'id' => pub('fun', $f['id']),
         'nome' => $f['nome'],

@@ -77,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Saidera</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=6"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=6"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=7"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=7"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
   <link rel="manifest" href="manifest.webmanifest"/>
@@ -127,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
     </section>
   </main>
-  <script src="assets/js/icons.js?v=6"></script>
-  <script src="assets/js/ui.js?v=6"></script>
+  <script src="assets/js/icons.js?v=7"></script>
+  <script src="assets/js/ui.js?v=7"></script>
   <script>
     document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Saidera</span>`;
   </script>

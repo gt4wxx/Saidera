@@ -304,6 +304,7 @@ function ticket_pub(int $id): array
         'usadoPor' => $row['usado_por'] ? pub('cli', $row['usado_por']) : null,
         'usadoEm' => iso($row['usado_em']),
         'criadoEm' => iso($row['criado_em']),
+        'status' => !$row['usado'] ? 'aberto' : ($row['usado_por'] ? 'usado' : 'cancelado'),
     ];
 }
 
@@ -380,6 +381,37 @@ function entregar_saidera(int $id, ?int $funId = null): array
 function expirar_saideras(): void
 {
     db()->exec("UPDATE saideras SET status = 'expirada' WHERE status = 'disponivel' AND expira_em < NOW()");
+}
+
+function salvar_midia_casa(int $eid, string $campo, string $dataUrl): string
+{
+    if (!in_array($campo, ['cartaz', 'imagem'], true)) {
+        fail('Campo de imagem inválido.');
+    }
+    if ($dataUrl === '' || $dataUrl === 'null') {
+        db()->prepare("UPDATE estabelecimentos SET {$campo} = NULL WHERE id = ?")->execute([$eid]);
+        return '';
+    }
+    if (!preg_match('#^data:image/(jpeg|jpg|png|webp);base64,#i', $dataUrl, $m)) {
+        fail('Envie uma imagem JPG, PNG ou WebP.');
+    }
+    $raw = preg_replace('#^data:image/\w+;base64,#i', '', $dataUrl);
+    $bin = base64_decode($raw, true);
+    if (!$bin || strlen($bin) > 2500000) {
+        fail('Imagem inválida ou maior que 2 MB.');
+    }
+    $dir = dirname(__DIR__, 2) . '/uploads/casas';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        fail('Não foi possível criar a pasta de uploads.');
+    }
+    $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+    $name = $eid . '-' . $campo . '-' . substr(bin2hex(random_bytes(3)), 0, 6) . '.' . $ext;
+    if (file_put_contents($dir . '/' . $name, $bin) === false) {
+        fail('Não foi possível gravar a imagem.');
+    }
+    $path = 'uploads/casas/' . $name;
+    db()->prepare("UPDATE estabelecimentos SET {$campo} = ? WHERE id = ?")->execute([$path, $eid]);
+    return $path;
 }
 
 function cliente_por_codigo(string $q): ?array

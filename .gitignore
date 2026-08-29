@@ -1,2 +1,5 @@
 api/config.php
-uploads/
+uploads/*
+!uploads/.htaccess
+!uploads/casas/
+!uploads/casas/.htaccess

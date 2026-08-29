@@ -201,6 +201,7 @@ body.dash {
 .tipo-card h3 { margin: 8px 0 4px; font-size: 1rem; }
 .tipo-card.on { border-color: var(--gold); background: var(--gold-dim); }
 .table-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.table-actions.wrap { margin-top: 4px; }
 .btn-danger { background: #3a1515; color: #ffb4b4; }
 .btn-danger:hover { filter: brightness(1.08); }
 .empty-msg { padding: 22px 8px; text-align: center; }
