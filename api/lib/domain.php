@@ -602,3 +602,82 @@ function cliente_por_codigo(string $q): ?array
     $st->execute(['%' . strtolower($q) . '%', strtolower($q)]);
     return $st->fetch() ?: null;
 }
+
+function menus_casa_catalogo(): array
+{
+    return ['dashboard', 'clientes', 'registrar', 'atender', 'bebidas', 'saideras', 'funcionarios', 'inteligencia', 'campanhas', 'config', 'planos'];
+}
+
+function menus_casa_fixos(): array
+{
+    return ['dashboard', 'config', 'planos'];
+}
+
+function sanitizar_menus_casa($ids): array
+{
+    $ok = menus_casa_catalogo();
+    $ids = is_array($ids) ? $ids : [];
+    $out = [];
+    foreach ($ids as $id) {
+        $id = (string) $id;
+        if (in_array($id, $ok, true) && !in_array($id, $out, true)) $out[] = $id;
+    }
+    foreach (menus_casa_fixos() as $f) {
+        if (!in_array($f, $out, true)) $out[] = $f;
+    }
+    return $out;
+}
+
+function row_plano(array $p): array
+{
+    $menus = $p['menus_json'] ? json_decode($p['menus_json'], true) : [];
+    return [
+        'id' => pub('pln', $p['id']),
+        'nome' => $p['nome'],
+        'descricao' => $p['descricao'] ?? '',
+        'preco' => $p['preco'] !== null && $p['preco'] !== '' ? (float) $p['preco'] : null,
+        'menus' => sanitizar_menus_casa($menus),
+        'aMostra' => (bool) ($p['a_mostra'] ?? 0),
+        'status' => $p['status'] ?? 'ativo',
+        'casas' => isset($p['casas']) ? (int) $p['casas'] : null,
+    ];
+}
+
+function plano_padrao_id(): ?int
+{
+    $row = db()->query("SELECT id FROM planos WHERE status = 'ativo' ORDER BY id ASC LIMIT 1")->fetch();
+    return $row ? (int) $row['id'] : null;
+}
+
+function garantir_planos(): void
+{
+    $n = (int) db()->query('SELECT COUNT(*) n FROM planos')->fetch()['n'];
+    if ($n > 0) {
+        $pid = plano_padrao_id();
+        if ($pid) {
+            db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE plano_id IS NULL')->execute([$pid]);
+        }
+        return;
+    }
+    $ins = db()->prepare('INSERT INTO planos (nome, descricao, preco, menus_json, a_mostra, status) VALUES (?,?,?,?,?,?)');
+    $ins->execute([
+        'Completo',
+        'Todos os menus da casa. Bom para quem já opera a Saidera no dia a dia.',
+        null,
+        json_encode(menus_casa_catalogo()),
+        1,
+        'ativo',
+    ]);
+    $completo = (int) db()->lastInsertId();
+    $ins->execute([
+        'Essencial',
+        'QR, clientes, Saideras e o básico. Sem campanhas nem inteligência.',
+        null,
+        json_encode(sanitizar_menus_casa(['dashboard', 'clientes', 'registrar', 'atender', 'saideras', 'config', 'planos'])),
+        1,
+        'ativo',
+    ]);
+    if ($completo) {
+        db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE plano_id IS NULL')->execute([$completo]);
+    }
+}

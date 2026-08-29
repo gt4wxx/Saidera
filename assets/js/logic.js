@@ -258,6 +258,58 @@ const Logic = {
     return est?.tipo === "restaurante" ? "Restaurante" : "Bar";
   },
 
+  menusCasaCatalogo() {
+    return [
+      { id: "dashboard", nome: "Visão Geral", fixo: true },
+      { id: "clientes", nome: "Clientes" },
+      { id: "registrar", nome: "Gerar QR" },
+      { id: "atender", nome: "QR do cliente" },
+      { id: "bebidas", nome: "Bebidas" },
+      { id: "saideras", nome: "Saideras" },
+      { id: "funcionarios", nome: "Funcionários" },
+      { id: "inteligencia", nome: "Conheça seus clientes" },
+      { id: "campanhas", nome: "Campanhas" },
+      { id: "config", nome: "Configurações", fixo: true },
+      { id: "planos", nome: "Planos", fixo: true },
+    ];
+  },
+
+  menusCasaFixos() {
+    return ["dashboard", "config", "planos"];
+  },
+
+  plano(id) {
+    return Store.find("planos", id);
+  },
+
+  planoDaCasa(est) {
+    const e = typeof est === "string" ? this.est(est) : est;
+    return e?.planoId ? this.plano(e.planoId) : null;
+  },
+
+  menusDaCasa(est) {
+    const all = this.menusCasaCatalogo().map((m) => m.id);
+    const p = this.planoDaCasa(est);
+    if (!p || p.status === "inativo") return all;
+    const set = new Set([...(p.menus || []), ...this.menusCasaFixos()]);
+    return all.filter((id) => set.has(id));
+  },
+
+  casaPode(est, menuId) {
+    if (menuId === "chamar") menuId = "inteligencia";
+    if (menuId === "cliente") menuId = "clientes";
+    return this.menusDaCasa(est).includes(menuId);
+  },
+
+  msgPlanoBloqueado() {
+    const s = String(Store.data?.meta?.msgPlanoBloqueado || "Indisponível").trim();
+    return s || "Indisponível";
+  },
+
+  labelMenuCasa(id) {
+    return this.menusCasaCatalogo().find((m) => m.id === id)?.nome || id;
+  },
+
   imagemPadraoEst(est) {
     const tipo = typeof est === "string" ? this.est(est)?.tipo : est?.tipo;
     return tipo === "restaurante"

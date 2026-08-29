@@ -242,6 +242,8 @@ function rota(string $method, string $path): void
                 max(1, (int) ($in['metaPadrao'] ?? 10)),
             ]);
         $eid = (int) db()->lastInsertId();
+        $pid = plano_padrao_id();
+        if ($pid) db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid, $eid]);
         foreach (['Heineken', 'Budweiser', 'Brahma', 'Coca-Cola'] as $nomeBeb) {
             $st = db()->prepare('SELECT id FROM bebidas WHERE nome = ?');
             $st->execute([$nomeBeb]);
@@ -392,12 +394,31 @@ function rota(string $method, string $path): void
         if (isset($in['validadeSaideraDias'])) cfg_set('validade_saidera_dias', (string) max(1, (int) $in['validadeSaideraDias']));
         if (isset($in['suporteWhatsapp'])) cfg_set('suporte_whatsapp', trim((string) $in['suporteWhatsapp']));
         if (isset($in['suporteEmail'])) cfg_set('suporte_email', trim((string) $in['suporteEmail']));
+        if (array_key_exists('msgPlanoBloqueado', $in)) {
+            $msg = trim((string) $in['msgPlanoBloqueado']);
+            if (function_exists('mb_substr')) $msg = mb_substr($msg, 0, 80);
+            else $msg = substr($msg, 0, 80);
+            cfg_set('msg_plano_bloqueado', $msg !== '' ? $msg : 'Indisponível');
+        }
         if (!empty($in['novaSenha'])) {
             if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
             db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);
         }
         auditar('Configurações', $in['cidade'] ?? '');
         ok(['store' => bootstrap_store(auth_user())]);
+    }
+
+    if ($path === 'planos/escolher' && $method === 'POST') {
+        $u = auth_require(['estabelecimento']);
+        $eid = gestor_est_id((int) $u['id']);
+        $pid = nid('pln', $in['planoId'] ?? '');
+        $st = db()->prepare("SELECT * FROM planos WHERE id = ? AND status = 'ativo' AND a_mostra = 1");
+        $st->execute([$pid]);
+        $p = $st->fetch();
+        if (!$p) fail('Este plano não está à mostra ou não está ativo.');
+        db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid, $eid]);
+        auditar('Casa escolheu plano', $p['nome']);
+        ok(['store' => bootstrap_store($u)]);
     }
 
     if (admin_rota($method, $path, $in)) return;

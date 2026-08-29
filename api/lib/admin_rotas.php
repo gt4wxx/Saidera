@@ -465,6 +465,84 @@ function admin_rota(string $method, string $path, array $in): bool
         admin_ok_store();
     }
 
+    if ($path === 'planos') {
+        auth_require(['admin']);
+        $nome = trim($in['nome'] ?? '');
+        if (strlen($nome) < 2) fail('Informe o nome do plano.');
+        $menus = sanitizar_menus_casa($in['menus'] ?? []);
+        $precoRaw = $in['preco'] ?? null;
+        $preco = $precoRaw === '' || $precoRaw === null ? null : (float) $precoRaw;
+        db()->prepare('INSERT INTO planos (nome, descricao, preco, menus_json, a_mostra, status) VALUES (?,?,?,?,?,?)')
+            ->execute([
+                $nome,
+                trim($in['descricao'] ?? '') ?: null,
+                $preco,
+                json_encode($menus),
+                !empty($in['aMostra']) ? 1 : 0,
+                ($in['status'] ?? 'ativo') === 'inativo' ? 'inativo' : 'ativo',
+            ]);
+        auditar('Plano criado', $nome);
+        admin_ok_store();
+    }
+
+    if ($path === 'planos/salvar') {
+        auth_require(['admin']);
+        $pid = nid('pln', $in['id'] ?? '');
+        if (!$pid) fail('Plano não encontrado.');
+        $nome = trim($in['nome'] ?? '');
+        if (strlen($nome) < 2) fail('Informe o nome do plano.');
+        $menus = sanitizar_menus_casa($in['menus'] ?? []);
+        $precoRaw = $in['preco'] ?? null;
+        $preco = $precoRaw === '' || $precoRaw === null ? null : (float) $precoRaw;
+        db()->prepare('UPDATE planos SET nome = ?, descricao = ?, preco = ?, menus_json = ?, a_mostra = ?, status = ? WHERE id = ?')
+            ->execute([
+                $nome,
+                trim($in['descricao'] ?? '') ?: null,
+                $preco,
+                json_encode($menus),
+                !empty($in['aMostra']) ? 1 : 0,
+                ($in['status'] ?? 'ativo') === 'inativo' ? 'inativo' : 'ativo',
+                $pid,
+            ]);
+        auditar('Plano atualizado', $nome);
+        admin_ok_store();
+    }
+
+    if ($path === 'planos/status') {
+        auth_require(['admin']);
+        $pid = nid('pln', $in['id'] ?? '');
+        if (!$pid) fail('Plano não encontrado.');
+        $status = ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo';
+        db()->prepare('UPDATE planos SET status = ? WHERE id = ?')->execute([$status, $pid]);
+        auditar($status === 'ativo' ? 'Plano reativado' : 'Plano desativado', (string) $pid);
+        admin_ok_store();
+    }
+
+    if ($path === 'planos/mostra') {
+        auth_require(['admin']);
+        $pid = nid('pln', $in['id'] ?? '');
+        if (!$pid) fail('Plano não encontrado.');
+        $mostra = !empty($in['aMostra']) ? 1 : 0;
+        db()->prepare('UPDATE planos SET a_mostra = ? WHERE id = ?')->execute([$mostra, $pid]);
+        auditar($mostra ? 'Plano à mostra para as casas' : 'Plano escondido das casas', (string) $pid);
+        admin_ok_store();
+    }
+
+    if ($path === 'planos/atribuir') {
+        auth_require(['admin']);
+        $eid = nid('est', $in['estabelecimentoId'] ?? $in['id'] ?? '');
+        $pid = nid('pln', $in['planoId'] ?? '');
+        if (!$eid) fail('Informe a casa.');
+        if ($pid) {
+            $st = db()->prepare('SELECT id FROM planos WHERE id = ?');
+            $st->execute([$pid]);
+            if (!$st->fetch()) fail('Plano não encontrado.');
+        }
+        db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid ?: null, $eid]);
+        auditar('Plano atribuído à casa', pub('est', $eid));
+        admin_ok_store();
+    }
+
     if ($path === 'saideras/entregar-admin') {
         auth_require(['admin']);
         $sid = nid('sai', $in['id'] ?? $in['saideraId'] ?? '');

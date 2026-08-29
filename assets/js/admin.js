@@ -35,6 +35,7 @@ const AdminApp = {
       ["tampas", "Tampas", Icons.tampas()],
       ["saideras", "Saideras", Icons.gift()],
       ["tickets", "Cupons QR", Icons.qr()],
+      ["planos", "Planos", Icons.shield()],
       ["relatorios", "Relatórios", Icons.chart()],
       ["auditoria", "Auditoria", Icons.clipboard()],
       ["config", "Configurações", Icons.settings()],
@@ -196,6 +197,7 @@ const AdminApp = {
       tampas: () => this.tampas(),
       saideras: () => this.saideras(),
       tickets: () => this.tickets(),
+      planos: () => this.planos(),
       cliente: () => this.fichaCliente(),
       casa: () => this.fichaCasa(),
       parceiro: () => this.fichaParceiro(),
@@ -307,7 +309,7 @@ const AdminApp = {
     <section class="panel">
       ${this.toolbar("q-est", "est", "Filtrar por nome, bairro ou e-mail", `${this.chips("estStatus", [["", "Todas"], ["ativo", "Ativas"], ["inativo", "Inativas"]])} ${this.chips("estTipo", [["", "Tipo"], ["bar", "Bar"], ["restaurante", "Restaurante"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Equipe</th><th>Meta</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Equipe</th><th>Plano</th><th>Meta</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((e) => `<tr>
           <td><strong>${this.esc(e.nome)}</strong><p class="tiny muted">${this.esc(Logic.enderecoLinha(e))}</p></td>
           <td>${this.esc(Logic.tipoEst(e))}</td>
@@ -316,6 +318,7 @@ const AdminApp = {
           <td>${this.n(e.qtdTampas)}</td>
           <td>${this.n(e.qtdSaideras)}</td>
           <td>${this.n(e.qtdFuncionarios)}</td>
+          <td>${this.esc(Logic.planoDaCasa(e)?.nome || "Completo")}</td>
           <td>${e.metaPadrao}</td>
           <td>${this.badge(e.status)}</td>
           <td class="table-actions">
@@ -782,6 +785,64 @@ const AdminApp = {
     </section>`;
   },
 
+  checksMenus(selecionados) {
+    const sel = new Set(selecionados || Logic.menusCasaCatalogo().map((m) => m.id));
+    return `<div class="check-list">${Logic.menusCasaCatalogo()
+      .map(
+        (m) => `<label>
+          <input type="checkbox" data-menu-pln="${m.id}" ${sel.has(m.id) ? "checked" : ""} ${m.fixo ? "disabled" : ""}/>
+          <div><strong>${this.esc(m.nome)}</strong>${m.fixo ? `<p class="tiny muted">Sempre visível para a casa</p>` : ""}</div>
+        </label>`
+      )
+      .join("")}</div>`;
+  },
+
+  menusDoForm(root = this.root) {
+    const ids = [];
+    root.querySelectorAll("[data-menu-pln]").forEach((el) => {
+      if (el.checked || el.disabled) ids.push(el.getAttribute("data-menu-pln"));
+    });
+    return ids;
+  },
+
+  planos() {
+    const list = Store.all("planos");
+    const form = `<div class="form-grid">
+        <div class="field"><span>Nome</span><input id="npn-nome" placeholder="Ex.: Completo"/></div>
+        <div class="field"><span>Preço (opcional)</span><input id="npn-preco" type="number" min="0" step="0.01" placeholder="0"/></div>
+      </div>
+      <div class="field" style="margin-top:10px"><span>Descrição</span><textarea id="npn-desc" rows="2" placeholder="O que a casa ganha neste plano"></textarea></div>
+      <label class="toggle-row" style="margin:12px 0"><span>À mostra para os estabelecimentos</span><input type="checkbox" id="npn-mostra" checked/></label>
+      <p class="tiny muted" style="margin-bottom:8px">Menus que a casa vê neste plano</p>
+      ${this.checksMenus(Logic.menusCasaCatalogo().map((m) => m.id))}
+      <button class="btn btn-gold" style="margin-top:12px" data-act="pln-criar">Cadastrar plano</button>`;
+    return `${this.formNovo("pln", "Cadastrar novo plano", form)}
+    <section class="panel" style="margin-bottom:14px">
+      <h3>Mensagem dos menus bloqueados</h3>
+      <p class="tiny muted" style="margin:6px 0 10px">Aparece na casa quando o menu existe no plano, mas não está liberado. O conteúdo fica turvo; no toque ou no mouse a logo reforça e mostra este texto.</p>
+      <div class="field"><span>Texto</span><input id="pln-msg" maxlength="80" value="${this.esc(Store.data?.meta?.msgPlanoBloqueado || "Indisponível")}" placeholder="Indisponível"/></div>
+      <button class="btn btn-navy btn-sm" style="margin-top:10px" data-act="pln-msg">Salvar mensagem</button>
+    </section>
+    <section class="panel">
+      <p class="muted small" style="margin-bottom:12px">O plano define quais menus a casa usa livremente. Os outros continuam no menu, turvos. Se estiver à mostra, o estabelecimento vê e pode escolher. Visão Geral, Configurações e Planos ficam sempre livres.</p>
+      ${list.length ? `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Plano</th><th>Menus</th><th>À mostra</th><th>Casas</th><th>Status</th><th></th></tr></thead>
+        <tbody>${list.map((p) => `<tr>
+          <td><strong>${this.esc(p.nome)}</strong><p class="tiny muted">${this.esc(p.descricao || "")}${p.preco != null ? " · R$ " + Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}</p></td>
+          <td>${(p.menus || []).map((id) => this.esc(Logic.labelMenuCasa(id))).join(", ")}</td>
+          <td>${p.aMostra ? `<span class="badge badge-gold">À mostra</span>` : `<span class="badge badge-ghost">Só admin</span>`}</td>
+          <td>${this.n(p.casas ?? Store.all("estabelecimentos").filter((e) => e.planoId === p.id).length)}</td>
+          <td>${this.badge(p.status)}</td>
+          <td class="table-actions">
+            <button class="btn btn-ghost btn-sm" data-act="pln-editar" data-id="${p.id}">Editar</button>
+            <button class="btn btn-ghost btn-sm" data-act="pln-mostra" data-id="${p.id}">${p.aMostra ? "Esconder" : "Deixar à mostra"}</button>
+            <button class="btn btn-ghost btn-sm" data-act="pln-status" data-id="${p.id}">${p.status === "ativo" ? "Desativar" : "Ativar"}</button>
+          </td>
+        </tr>`).join("")}</tbody>
+      </table></div>` : this.empty("Nenhum plano ainda. Cadastre o primeiro.")}
+    </section>`;
+  },
+
   fichaCliente() {
     const c = Logic.cliente(this.params.id);
     if (!c) return `<section class="panel">${this.empty("Cliente não encontrado.")}<a class="btn btn-ghost" href="#/clientes">Voltar</a></section>`;
@@ -851,8 +912,12 @@ const AdminApp = {
       <div class="kpi"><span>Equipe</span><b>${this.n(equipe.length)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
-      <p class="tiny muted">${this.esc(Logic.tipoEst(e))} · ${this.esc(Logic.enderecoLinha(e))} · gestor ${this.esc(e.gestorEmail || "—")}</p>
-      <div class="table-actions wrap" style="margin-top:12px">
+      <p class="tiny muted">${this.esc(Logic.tipoEst(e))} · ${this.esc(Logic.enderecoLinha(e))} · gestor ${this.esc(e.gestorEmail || "—")} · plano ${this.esc(Logic.planoDaCasa(e)?.nome || "Completo")}</p>
+      <div class="row wrap" style="gap:8px;margin-top:12px;align-items:flex-end">
+        <div class="field" style="margin:0;min-width:220px"><span>Plano desta casa</span>
+          <select id="casa-plano">${Store.all("planos").map((p) => `<option value="${p.id}" ${e.planoId === p.id ? "selected" : ""}>${this.esc(p.nome)}${p.aMostra ? "" : " (só admin)"}</option>`).join("")}</select>
+        </div>
+        <button class="btn btn-gold btn-sm" data-act="casa-plano" data-id="${e.id}">Salvar plano</button>
         <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar endereço</button>
         <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
       </div>
@@ -972,6 +1037,11 @@ const AdminApp = {
         <h3>Validade</h3>
         <p class="tiny muted" style="margin:6px 0 10px">Prazo das Saideras conquistadas a partir de agora.</p>
         <div class="field"><span>Validade da Saidera (dias)</span><input id="cfg-validade" type="number" min="1" value="${m.validadeSaideraDias ?? 15}"/></div>
+      </section>
+      <section class="panel">
+        <h3>Planos</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">Texto sobre o conteúdo turvo quando o menu não está no plano da casa.</p>
+        <div class="field"><span>Mensagem de menu bloqueado</span><input id="cfg-pln-msg" maxlength="80" value="${this.esc(m.msgPlanoBloqueado || "Indisponível")}" placeholder="Indisponível"/></div>
       </section>
       <section class="panel">
         <h3>Suporte</h3>
@@ -1135,6 +1205,66 @@ const AdminApp = {
   },
 
   async onAct(act, id, el) {
+    if (act === "pln-criar") {
+      const data = await this.post("planos", {
+        nome: this.val("#npn-nome"),
+        descricao: this.val("#npn-desc"),
+        preco: this.val("#npn-preco"),
+        aMostra: this.root.querySelector("#npn-mostra")?.checked,
+        menus: this.menusDoForm(),
+      }, "Plano cadastrado.");
+      if (data) {
+        this.novo.pln = false;
+        this.render();
+      }
+      return;
+    }
+    if (act === "pln-editar") {
+      const p = Store.find("planos", id);
+      if (!p) return;
+      this.modalForm("Editar plano", `
+        <div class="field"><span>Nome</span><input name="nome" value="${this.esc(p.nome)}"/></div>
+        <div class="field"><span>Preço</span><input name="preco" type="number" min="0" step="0.01" value="${p.preco != null ? p.preco : ""}"/></div>
+        <div class="field"><span>Descrição</span><textarea name="descricao" rows="2">${this.esc(p.descricao || "")}</textarea></div>
+        <label class="toggle-row"><span>À mostra para os estabelecimentos</span><input type="checkbox" name="aMostra" ${p.aMostra ? "checked" : ""}/></label>
+        <p class="tiny muted" style="margin:10px 0 6px">Menus da casa</p>
+        ${this.checksMenus(p.menus)}
+      `, async (box) => {
+        const g = (n) => box.querySelector(`[name="${n}"]`)?.value;
+        const data = await this.post("planos/salvar", {
+          id: p.id,
+          nome: g("nome"),
+          descricao: g("descricao"),
+          preco: g("preco"),
+          aMostra: box.querySelector('[name="aMostra"]')?.checked,
+          status: p.status,
+          menus: this.menusDoForm(box),
+        }, "Plano atualizado.");
+        return Boolean(data);
+      });
+      return;
+    }
+    if (act === "pln-mostra") {
+      const p = Store.find("planos", id);
+      if (!p) return;
+      await this.post("planos/mostra", { id, aMostra: !p.aMostra }, p.aMostra ? "Plano escondido das casas." : "Plano à mostra para as casas.");
+      return;
+    }
+    if (act === "pln-status") {
+      const p = Store.find("planos", id);
+      if (!p) return;
+      const prox = p.status === "ativo" ? "inativo" : "ativo";
+      await this.post("planos/status", { id, status: prox }, prox === "ativo" ? "Plano reativado." : "Plano desativado.");
+      return;
+    }
+    if (act === "casa-plano") {
+      await this.post("planos/atribuir", { estabelecimentoId: id, planoId: this.val("#casa-plano") }, "Plano da casa atualizado.");
+      return;
+    }
+    if (act === "pln-msg") {
+      await this.post("config", { msgPlanoBloqueado: this.val("#pln-msg") }, "Mensagem dos menus bloqueados atualizada.");
+      return;
+    }
     if (act === "est-criar") {
       const data = await this.post("estabelecimentos", {
         nome: this.val("#ne-nome"),
@@ -1598,6 +1728,7 @@ const AdminApp = {
         validadeSaideraDias: this.val("#cfg-validade"),
         suporteWhatsapp: this.val("#cfg-whats"),
         suporteEmail: this.val("#cfg-email"),
+        msgPlanoBloqueado: this.val("#cfg-pln-msg"),
         novaSenha: this.val("#cfg-senha"),
       }, "Configurações salvas.");
     }

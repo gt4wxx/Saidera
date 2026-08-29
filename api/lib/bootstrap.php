@@ -70,6 +70,7 @@ function row_est(array $e, bool $comBebidas = true): array
         'qtdTampas' => isset($e['qtd_tampas']) ? (int) $e['qtd_tampas'] : null,
         'qtdSaideras' => isset($e['qtd_saideras']) ? (int) $e['qtd_saideras'] : null,
         'qtdFuncionarios' => isset($e['qtd_funcionarios']) ? (int) $e['qtd_funcionarios'] : null,
+        'planoId' => !empty($e['plano_id']) ? pub('pln', $e['plano_id']) : null,
         'bebidas' => [],
     ];
     if ($comBebidas) {
@@ -157,6 +158,7 @@ function bootstrap_store(array $u): array
         'validadeSaideraDias' => (int) cfg('validade_saidera_dias', 15),
         'suporteWhatsapp' => cfg('suporte_whatsapp', ''),
         'suporteEmail' => cfg('suporte_email', ''),
+        'msgPlanoBloqueado' => cfg('msg_plano_bloqueado', 'Indisponível') ?: 'Indisponível',
         'demo' => [
             'clienteId' => null,
             'estabelecimentoId' => null,
@@ -179,6 +181,7 @@ function bootstrap_store(array $u): array
         'tickets' => [],
         'auditoria' => [],
         'avisosEstabelecimento' => [],
+        'planos' => [],
     ];
 
     if ($u['papel'] === 'cliente') {
@@ -312,6 +315,14 @@ function bootstrap_store(array $u): array
         $empty['parceiros'] = array_map(fn($p) => [
             'id' => pub('par', $p['id']), 'nome' => $p['nome'], 'selo' => $p['selo'],
         ], db()->query('SELECT * FROM parceiros')->fetchAll());
+        $meuPlano = nid('pln', $empty['estabelecimentos'][0]['planoId'] ?? '') ?: 0;
+        try {
+            $st = db()->prepare("SELECT * FROM planos WHERE status = 'ativo' AND (a_mostra = 1 OR id = ?)");
+            $st->execute([$meuPlano]);
+            $empty['planos'] = array_map('row_plano', $st->fetchAll());
+        } catch (Throwable $e) {
+            $empty['planos'] = [];
+        }
         return $empty;
     }
 
@@ -397,6 +408,13 @@ function bootstrap_store(array $u): array
         'em' => iso($a['em']), 'acao' => $a['acao'], 'detalhe' => $a['detalhe'],
     ], db()->query('SELECT * FROM auditoria ORDER BY em DESC LIMIT 120')->fetchAll());
     $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), db()->query('SELECT id FROM tickets ORDER BY criado_em DESC LIMIT 250')->fetchAll());
+    try {
+        $empty['planos'] = array_map('row_plano', db()->query(
+            'SELECT p.*, (SELECT COUNT(*) FROM estabelecimentos e WHERE e.plano_id = p.id) casas FROM planos p ORDER BY p.nome'
+        )->fetchAll());
+    } catch (Throwable $e) {
+        $empty['planos'] = [];
+    }
     $empty['funcionarios'] = array_map(fn($f) => [
         'id' => pub('fun', $f['id']),
         'nome' => $f['nome'],

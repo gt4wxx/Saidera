@@ -75,6 +75,23 @@ const EstApp = {
     return Number(v || 0).toLocaleString("pt-BR");
   },
 
+  telaBloqueada() {
+    return !Logic.casaPode(this.est(), this.view);
+  },
+
+  envolverBloqueio(html) {
+    if (!this.telaBloqueada()) return html;
+    return `<div class="plano-lock" data-plano-lock>
+      <div class="plano-lock-body">${html}</div>
+      <div class="plano-lock-veil">
+        <div class="plano-lock-mark">
+          ${Brand.simbolo(96)}
+          <p class="plano-lock-msg">${this.esc(Logic.msgPlanoBloqueado())}</p>
+        </div>
+      </div>
+    </div>`;
+  },
+
   badgeFreq(f) {
     const lab = Logic.freqLabel(f);
     return `<span class="badge freq-${f || "baixa"}">${this.esc(lab)}</span>`;
@@ -146,8 +163,9 @@ const EstApp = {
       chamar: () => this.chamar(),
       campanhas: () => this.campanhas(),
       config: () => this.config(),
+      planos: () => this.planos(),
     };
-    const html = (map[this.view] || map.dashboard)();
+    const html = this.envolverBloqueio((map[this.view] || map.dashboard)());
     this.root.innerHTML = `<div class="dash-app">
       <div class="sidebar-scrim" data-close-menu></div>
       ${this.sidebar()}
@@ -182,6 +200,7 @@ const EstApp = {
       chamar: "Chamar de volta",
       campanhas: "Campanhas",
       config: "Configurações",
+      planos: "Planos",
     };
     const t = this.root.querySelector("#view-title");
     if (t) t.textContent = titles[this.view] || "Painel";
@@ -199,18 +218,21 @@ const EstApp = {
       ["funcionarios", "Funcionários", Icons.user()],
       ["inteligencia", "Conheça seus clientes", Icons.spark()],
       ["campanhas", "Campanhas", Icons.megaphone()],
+      ["planos", "Planos", Icons.shield()],
       ["config", "Configurações", Icons.settings()],
     ];
+    const plano = Logic.planoDaCasa(this.est());
     return `<aside class="sidebar" id="sidebar">
       ${Brand.sideHead(this.est().nome)}
       <nav>${items
-        .map(
-          ([id, l, ic]) =>
-            `<a class="${this.view === id || (id === "inteligencia" && this.view === "chamar") ? "on" : ""}" href="#/${id}">${ic}<span>${l}</span></a>`
-        )
+        .map(([id, l, ic]) => {
+          const on = this.view === id || (id === "inteligencia" && this.view === "chamar");
+          const locked = !Logic.casaPode(this.est(), id);
+          return `<a class="${on ? "on" : ""}${locked ? " locked" : ""}" href="#/${id}">${ic}<span>${l}</span></a>`;
+        })
         .join("")}</nav>
       <div class="side-foot">
-        <p class="tiny muted">${this.esc(Store.session?.email || this.est()?.nome || "")}</p>
+        <p class="tiny muted">${this.esc(plano?.nome || "Sem plano")} · ${this.esc(Store.session?.email || this.est()?.nome || "")}</p>
         <a class="btn btn-ghost btn-sm btn-block" href="../index.php?sair=1">${Icons.logout()} Sair</a>
       </div>
     </aside>`;
@@ -236,13 +258,14 @@ const EstApp = {
       ["Quase na Saidera", r.quase, "#/inteligencia"],
       ["Sem voltar há 30 dias", r.inativos, "#/chamar"],
     ];
+    const atalhos = [
+      ["#/registrar", "btn-gold", "Gerar cupom QR"],
+      ["#/atender", "btn-navy", "Ler QR do cliente"],
+      ["#/saideras", "btn-ghost", "Baixar Saidera"],
+      ["#/campanhas", "btn-ghost", "Pedir campanha"],
+    ];
     return `${Brand.banner("secundario", "brand-banner")}
-    <div class="atalhos">
-      <a class="btn btn-gold btn-sm" href="#/registrar">Gerar cupom QR</a>
-      <a class="btn btn-navy btn-sm" href="#/atender">Ler QR do cliente</a>
-      <a class="btn btn-ghost btn-sm" href="#/saideras">Baixar Saidera</a>
-      <a class="btn btn-ghost btn-sm" href="#/campanhas">Pedir campanha</a>
-    </div>
+    ${atalhos.length ? `<div class="atalhos">${atalhos.map(([href, cls, lab]) => `<a class="btn ${cls} btn-sm" href="${href}">${lab}</a>`).join("")}</div>` : ""}
     ${pend.length ? `<p class="notice" style="margin-bottom:14px">${pend.length} campanha(s) sua(s) aguardando o admin. <a href="#/campanhas" style="color:#F5B800">Ver</a></p>` : ""}
     ${
       avisos.length
@@ -1017,6 +1040,44 @@ const EstApp = {
     </section>`;
   },
 
+  planos() {
+    const atual = Logic.planoDaCasa(this.est());
+    const lista = Store.all("planos").filter((p) => p.status === "ativo" && (p.aMostra || p.id === atual?.id));
+    const preco = (p) =>
+      p.preco != null ? "R$ " + Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "Sem preço definido";
+    const card = (p) => {
+      const meu = atual && p.id === atual.id;
+      const menus = (p.menus || []).map((id) => this.esc(Logic.labelMenuCasa(id))).join(", ");
+      return `<article class="panel" style="margin:0">
+        <div class="row between" style="gap:8px;align-items:flex-start">
+          <div>
+            <h3>${this.esc(p.nome)}</h3>
+            <p class="tiny muted">${this.esc(preco(p))}</p>
+          </div>
+          ${meu ? `<span class="badge badge-gold">Atual</span>` : `<span class="badge badge-ghost">À mostra</span>`}
+        </div>
+        <p class="small" style="margin:10px 0">${this.esc(p.descricao || "Sem descrição.")}</p>
+        <p class="tiny muted">Menus: ${menus || "—"}</p>
+        ${
+          meu
+            ? `<p class="tiny muted" style="margin-top:12px">Este é o plano da casa agora.</p>`
+            : `<button class="btn btn-gold" style="margin-top:12px" data-act="pln-escolher" data-id="${p.id}">Usar este plano</button>`
+        }
+      </article>`;
+    };
+    return `${
+      atual
+        ? `<section class="panel" style="margin-bottom:14px">
+      <p class="tiny muted">Plano atual</p>
+      <h3>${this.esc(atual.nome)}</h3>
+      <p class="small" style="margin-top:6px">${this.esc(atual.descricao || "Sem descrição.")}</p>
+    </section>`
+        : `<section class="panel" style="margin-bottom:14px"><p class="muted">A casa ainda não tem um plano. Escolha um à mostra ou peça ao admin para atribuir.</p></section>`
+    }
+    <p class="muted small" style="margin-bottom:12px">Só aparecem os planos que o admin deixou à mostra. Trocar o plano libera ou turva os menus na hora.</p>
+    ${lista.length ? `<div class="grid-2">${lista.map(card).join("")}</div>` : `<section class="panel"><p class="muted">Nenhum plano à mostra no momento.</p></section>`}`;
+  },
+
   config() {
     const est = this.est();
     const img = Logic.imagemEst(est);
@@ -1060,6 +1121,12 @@ const EstApp = {
       </div>
     </section>
     <section class="panel">
+      <h3>Plano da casa</h3>
+      <p class="small">${this.esc(Logic.planoDaCasa(est)?.nome || "Sem plano definido")}</p>
+      <p class="tiny muted" style="margin:6px 0 12px">O plano define quais menus ficam livres. Os outros continuam no menu, turvos. Só dá para trocar pelos planos à mostra.</p>
+      <a class="btn btn-ghost btn-sm" href="#/planos">Ver planos</a>
+    </section>
+    <section class="panel">
       <h3>Senha do gestor</h3>
       <div class="field"><span>Nova senha</span><input id="cfg-senha" type="password" placeholder="Vazio = manter"/></div>
       <button class="btn btn-gold" style="margin-top:12px" data-act="cfg-senha">Trocar senha</button>
@@ -1101,6 +1168,7 @@ const EstApp = {
   },
 
   async onAct(act, id, el) {
+    if (this.telaBloqueada()) return;
     if (act === "fun-toggle") {
       this.funNovo = !this.funNovo;
       this.render();
@@ -1212,6 +1280,13 @@ const EstApp = {
       await this.post("estabelecimentos/midia", { id: this.estId, promocao: this.val("#cfg-promo") }, "Promoção atualizada no app do cliente.");
       return;
     }
+    if (act === "pln-escolher") {
+      const p = Store.find("planos", id);
+      if (!p) return;
+      if (!confirm(`Passar a casa para o plano ${p.nome}? Os menus mudam na hora.`)) return;
+      await this.post("planos/escolher", { planoId: id }, `Plano ${p.nome} ativado.`);
+      return;
+    }
     if (act === "cfg-senha") {
       const senha = this.val("#cfg-senha");
       if (senha.length < 6) {
@@ -1224,6 +1299,7 @@ const EstApp = {
   },
 
   onClick(e) {
+    if (this.telaBloqueada() && e.target.closest("[data-plano-lock]")) return;
     const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico]");
     if (!t || t.disabled) return;
     if (t.closest("[data-menu], [data-close-menu], [data-close-modal], [data-href], [data-act]")) return;
@@ -1611,6 +1687,24 @@ const EstApp = {
 
   bind() {
     UI.fixButtons(this.root);
+    const lock = this.root.querySelector("[data-plano-lock]");
+    if (lock) {
+      let t;
+      const on = () => {
+        clearTimeout(t);
+        lock.classList.add("is-on");
+      };
+      const off = (ms) => {
+        clearTimeout(t);
+        if (ms) t = setTimeout(() => lock.classList.remove("is-on"), ms);
+        else lock.classList.remove("is-on");
+      };
+      lock.addEventListener("pointerenter", on);
+      lock.addEventListener("pointerleave", () => off(0));
+      lock.addEventListener("pointerdown", on);
+      lock.addEventListener("pointerup", () => off(1600));
+      lock.addEventListener("pointercancel", () => off(0));
+    }
     const buscaHead = this.root.querySelector("[data-jump-search]");
     buscaHead?.addEventListener("input", (e) => {
       if (this.view !== "clientes") return;

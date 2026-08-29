@@ -30,6 +30,8 @@ body.dash {
 .sidebar nav a:hover, .sidebar nav button:hover {
   background: #1c1c1c; color: var(--gold);
 }
+.sidebar nav a.locked { opacity: 0.5; }
+.sidebar nav a.locked.on { opacity: 1; }
 .side-foot { margin-top: auto; padding: 10px; }
 .dash-main { padding: 22px 26px 48px; min-width: 0; overflow-x: hidden; }
 .dash-main .brand-banner,
@@ -118,7 +120,63 @@ body.dash {
   border-color: #F5B800;
   outline: 2px solid #F5B800;
 }
-.check-list { display: grid; gap: 8px; max-height: 220px; overflow: auto; }
+.check-list { display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.plano-lock {
+  position: relative;
+  min-height: min(68vh, 640px);
+  overflow: hidden;
+  border-radius: 22px;
+}
+.plano-lock-body {
+  filter: blur(12px) saturate(0.55) brightness(0.72);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+.plano-lock-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 8, 0.28);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.plano-lock-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  opacity: 0.42;
+  transform: scale(0.94);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+.plano-lock-mark .brand-simbolo {
+  width: min(120px, 38vw);
+  height: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+}
+.plano-lock-msg {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream);
+  font-size: 0.95rem;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.plano-lock:hover .plano-lock-mark,
+.plano-lock.is-on .plano-lock-mark {
+  opacity: 1;
+  transform: scale(1);
+}
+.plano-lock:hover .plano-lock-msg,
+.plano-lock.is-on .plano-lock-msg {
+  opacity: 1;
+}
 .check-list label {
   display: flex; gap: 8px; align-items: center;
   background: #111; padding: 10px 12px; border-radius: 12px;

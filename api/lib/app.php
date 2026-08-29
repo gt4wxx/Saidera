@@ -56,6 +56,21 @@ function saidera_migrar(): void
           cliente_id BIGINT UNSIGNED NOT NULL,
           PRIMARY KEY (campanha_id, cliente_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        db()->exec('CREATE TABLE IF NOT EXISTS planos (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          nome VARCHAR(120) NOT NULL,
+          descricao TEXT,
+          preco DECIMAL(10,2) DEFAULT NULL,
+          menus_json JSON NOT NULL,
+          a_mostra TINYINT(1) NOT NULL DEFAULT 0,
+          status ENUM("ativo","inativo") NOT NULL DEFAULT "ativo",
+          criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        $cols = db()->query('SHOW COLUMNS FROM estabelecimentos')->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('plano_id', $cols, true)) {
+            db()->exec('ALTER TABLE estabelecimentos ADD COLUMN plano_id BIGINT UNSIGNED DEFAULT NULL');
+        }
+        garantir_planos();
     } catch (Throwable $e) {
         /* instalação antiga sem permissão de ALTER — o cadastro novo ainda grava o endereço composto */
     }
