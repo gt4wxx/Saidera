@@ -337,16 +337,27 @@ const UI = {
     }
     return `<div class="pwa-box" data-pwa-box>
       <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar o Saidera</button>
-      <p class="tiny muted" style="margin-top:8px">Chrome ou Edge. Abra pelo site, não pelo arquivo HTML.</p>
+      <p class="tiny muted" style="margin-top:8px">Opcional. Chrome ou Edge no celular ou no PC.</p>
     </div>`;
+  },
+
+  pwaCliente() {
+    return /entrar\.php|cliente\.php/.test(location.pathname);
+  },
+
+  pwaSwUrl() {
+    return this.pages() ? "../sw.js" : "sw.js";
   },
 
   pwaInit() {
     if (this._pwaReady) return;
     this._pwaReady = true;
     if ("serviceWorker" in navigator) {
-      const sw = this.pages() ? "../sw.js" : "sw.js";
-      navigator.serviceWorker.register(sw).catch(() => {});
+      if (this.pwaCliente()) {
+        navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
+      } else {
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      }
     }
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
@@ -359,8 +370,15 @@ const UI = {
     });
   },
 
+  async pwaPrepararInstalacao() {
+    if (!("serviceWorker" in navigator)) return;
+    await navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
+  },
+
   async pwaPedirInstalacao() {
     if (this.pwaStandalone()) return "standalone";
+    await this.pwaPrepararInstalacao();
+    if (!this._pwaPrompt) await new Promise((r) => setTimeout(r, 600));
     if (this._pwaPrompt) {
       this._pwaPrompt.prompt();
       const choice = await this._pwaPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
@@ -375,6 +393,7 @@ const UI = {
     const r = await this.pwaPedirInstalacao();
     if (r === "ios") this.toast("No iPhone: Compartilhar → Adicionar à Tela de Início.");
     else if (r === "unavailable") this.toast("No Chrome ou Edge: menu ⋮ → Instalar Saidera.");
+    else if (r === "accepted") this.toast("Saidera instalado. Abra pelo ícone se quiser.");
     return r;
   },
 };

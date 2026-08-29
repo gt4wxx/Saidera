@@ -23,6 +23,13 @@ $css = $css ?? [];
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
   <script>
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(function () {});
+    (function () {
+      if (!("serviceWorker" in navigator)) return;
+      <?php if (!empty($swCliente)): ?>
+      navigator.serviceWorker.register("../sw.js").catch(function () {});
+      <?php else: ?>
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+      <?php endif; ?>
+    })();
   </script>
 </head>

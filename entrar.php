@@ -44,8 +44,8 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
   <title>Saidera · Entrar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=16"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=16"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=17"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=17"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
   <link rel="manifest" href="manifest-cliente.webmanifest"/>
@@ -53,6 +53,9 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
+  <script>
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
+  </script>
 </head>
 <body>
   <main class="landing">
@@ -92,9 +95,9 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
     window.SAIDERA_CLIENTE_LOGADO = <?= $clienteLogado ? 'true' : 'false' ?>;
     window.SAIDERA_CASA_CONVITE = <?= json_encode($casa) ?>;
   </script>
-  <script src="assets/js/icons.js?v=16"></script>
-  <script src="assets/js/api.js?v=16"></script>
-  <script src="assets/js/ui.js?v=16"></script>
-  <script src="assets/js/entrar.js?v=16"></script>
+  <script src="assets/js/icons.js?v=17"></script>
+  <script src="assets/js/api.js?v=17"></script>
+  <script src="assets/js/ui.js?v=17"></script>
+  <script src="assets/js/entrar.js?v=17"></script>
 </body>
 </html>

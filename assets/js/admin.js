@@ -1086,6 +1086,11 @@ const AdminApp = {
         <h3>Senha do admin</h3>
         <div class="field"><span>Nova senha</span><input id="cfg-senha" type="password" placeholder="Deixe vazio para não trocar"/></div>
       </section>
+      <section class="panel">
+        <h3>App no celular</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">O painel do admin abre no computador, no navegador. Instalar o app é opcional.</p>
+        ${UI.pwaBox() || `<p class="tiny muted">Já está no app deste aparelho.</p>`}
+      </section>
     </div>
     <button class="btn btn-gold" style="margin-top:14px" data-act="cfg-salvar">Salvar configurações</button>`;
   },

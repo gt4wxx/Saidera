@@ -4,6 +4,7 @@ saidera_proteger('cliente');
 $titulo = 'Saidera · Cliente';
 $css = ['../assets/css/client.css'];
 $manifest = '../manifest-cliente.webmanifest';
+$swCliente = true;
 require __DIR__ . '/_cabecalho.php';
 $v = saidera_v();
 ?>

@@ -1144,6 +1144,11 @@ const EstApp = {
       <button class="btn btn-gold" style="margin-top:12px" data-act="cfg-senha">Trocar senha</button>
     </section>
     <section class="panel">
+      <h3>App no celular</h3>
+      <p class="tiny muted" style="margin:6px 0 10px">A casa abre o painel no computador, no navegador. Instalar o app é opcional.</p>
+      ${UI.pwaBox() || `<p class="tiny muted">Já está no app deste aparelho.</p>`}
+    </section>
+    <section class="panel">
       <h3>Suporte e salão</h3>
       ${(() => {
         const s = Logic.suporte();

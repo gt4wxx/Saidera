@@ -95,7 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
   <script>
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+    }
   </script>
 </head>
 <body>
