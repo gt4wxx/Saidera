@@ -205,8 +205,18 @@ function rota(string $method, string $path): void
         $row = $cur->fetch();
         if (!$row) fail('Estabelecimento não encontrado.');
         $tipo = in_array($in['tipo'] ?? '', ['bar', 'restaurante'], true) ? $in['tipo'] : $row['tipo'];
-        $status = isset($in['status']) ? (($in['status'] === 'inativo') ? 'inativo' : 'ativo') : $row['status'];
+        if ($u['papel'] === 'estabelecimento' && $eid !== gestor_est_id((int) $u['id'])) fail('Esta casa não é a sua.', 403);
+        $status = $u['papel'] === 'admin' && isset($in['status'])
+            ? (($in['status'] === 'inativo') ? 'inativo' : 'ativo')
+            : $row['status'];
         $end = aplicar_endereco_casa($in, $row, false);
+        if (array_key_exists('promocao', $in)) {
+            db()->prepare('UPDATE estabelecimentos SET promocao = ? WHERE id = ?')->execute([trim((string) $in['promocao']) ?: null, $eid]);
+        }
+        if ($u['papel'] === 'estabelecimento' && !empty($in['novaSenha'])) {
+            if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
+            db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);
+        }
         db()->prepare('UPDATE estabelecimentos SET nome = ?, tipo = ?, bairro = ?, meta_padrao = ?, horario = ?, endereco = ?, cep = ?, logradouro = ?, numero = ?, complemento = ?, cidade = ?, uf = ?, lat = ?, lng = ?, status = ? WHERE id = ?')
             ->execute([
                 trim($in['nome'] ?? $row['nome']),

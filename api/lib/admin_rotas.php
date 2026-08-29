@@ -135,6 +135,15 @@ function admin_rota(string $method, string $path, array $in): bool
         $u = auth_require(['estabelecimento', 'admin']);
         $fid = nid('fun', $in['id'] ?? '');
         if (!$fid) fail('Funcionário não encontrado.');
+        $st = db()->prepare('SELECT estabelecimento_id FROM funcionarios WHERE id = ?');
+        $st->execute([$fid]);
+        $funRow = $st->fetch();
+        if (!$funRow) fail('Funcionário não encontrado.');
+        if ($u['papel'] === 'estabelecimento') {
+            $meu = gestor_est_id((int) $u['id']);
+            if (!$meu || (int) $funRow['estabelecimento_id'] !== $meu) fail('Este funcionário não é da sua casa.');
+            $in['estabelecimentoId'] = pub('est', $meu);
+        }
         $eid = nid('est', $in['estabelecimentoId'] ?? '') ?: null;
         if ($eid) {
             db()->prepare('UPDATE funcionarios SET nome = ?, cargo = ?, status = ?, estabelecimento_id = ? WHERE id = ?')
@@ -163,9 +172,16 @@ function admin_rota(string $method, string $path, array $in): bool
     }
 
     if ($path === 'funcionarios/status') {
-        auth_require(['estabelecimento', 'admin']);
+        $u = auth_require(['estabelecimento', 'admin']);
         $fid = nid('fun', $in['id'] ?? '');
         if (!$fid) fail('Funcionário não encontrado.');
+        if ($u['papel'] === 'estabelecimento') {
+            $st = db()->prepare('SELECT estabelecimento_id FROM funcionarios WHERE id = ?');
+            $st->execute([$fid]);
+            $funRow = $st->fetch();
+            $meu = gestor_est_id((int) $u['id']);
+            if (!$funRow || !$meu || (int) $funRow['estabelecimento_id'] !== $meu) fail('Este funcionário não é da sua casa.');
+        }
         $status = ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo';
         db()->prepare('UPDATE funcionarios SET status = ? WHERE id = ?')->execute([$status, $fid]);
         $st = db()->prepare('SELECT usuario_id FROM funcionarios WHERE id = ?');
@@ -319,16 +335,20 @@ function admin_rota(string $method, string $path, array $in): bool
     }
 
     if ($path === 'tickets/cancelar') {
-        auth_require(['admin']);
+        $u = auth_require(['admin', 'estabelecimento']);
         $tid = nid('tkt', $in['id'] ?? '');
         if (!$tid) fail('Cupom não encontrado.');
-        $st = db()->prepare('SELECT codigo, usado FROM tickets WHERE id = ?');
+        $st = db()->prepare('SELECT codigo, usado, estabelecimento_id FROM tickets WHERE id = ?');
         $st->execute([$tid]);
         $t = $st->fetch();
         if (!$t) fail('Cupom não encontrado.');
+        if ($u['papel'] === 'estabelecimento') {
+            $eid = gestor_est_id((int) $u['id']);
+            if (!$eid || (int) $t['estabelecimento_id'] !== $eid) fail('Este cupom não é da sua casa.');
+        }
         if ((int) $t['usado']) fail('Este cupom já foi usado ou cancelado.');
         db()->prepare('UPDATE tickets SET usado = 1, usado_por = NULL, usado_em = NOW() WHERE id = ?')->execute([$tid]);
-        auditar('Admin cancelou cupom', $t['codigo']);
+        auditar($u['papel'] === 'admin' ? 'Admin cancelou cupom' : 'Casa cancelou cupom', $t['codigo']);
         admin_ok_store();
     }
 
@@ -343,44 +363,47 @@ function admin_rota(string $method, string $path, array $in): bool
     }
 
     if ($path === 'notificacoes/enviar') {
-        auth_require(['admin']);
+        $u = auth_require(['admin', 'estabelecimento']);
         $cli = nid('cli', $in['clienteId'] ?? '');
         $titulo = trim($in['titulo'] ?? '');
         $texto = trim($in['texto'] ?? '');
         if (!$cli) fail('Informe o cliente.');
         if (strlen($titulo) < 2) fail('Informe o título do aviso.');
+        if ($u['papel'] === 'estabelecimento') {
+            $eid = gestor_est_id((int) $u['id']);
+            if (!$eid || !cliente_da_casa($cli, $eid)) fail('Este cliente não frequenta a sua casa.');
+        }
         notificar($cli, $titulo, $texto ?: $titulo, 'sistema');
-        auditar('Admin enviou aviso', $titulo);
+        auditar($u['papel'] === 'admin' ? 'Admin enviou aviso' : 'Casa enviou aviso', $titulo);
         admin_ok_store();
     }
 
     if ($path === 'estabelecimentos/bebida') {
-        auth_require(['admin']);
-        $eid = nid('est', $in['estabelecimentoId'] ?? $in['id'] ?? '');
+        $u = auth_require(['admin', 'estabelecimento']);
+        $eid = casa_eid($u, $in);
         $bid = nid('beb', $in['bebidaId'] ?? '');
-        if (!$eid || !$bid) fail('Informe a casa e a bebida.');
+        if (!$bid) fail('Informe a bebida.');
         $meta = isset($in['meta']) && $in['meta'] !== '' && $in['meta'] !== null ? max(1, (int) $in['meta']) : null;
         $regra = in_array($in['regra'] ?? '', ['padrao', 'propria', 'patrocinio'], true) ? $in['regra'] : ($meta ? 'propria' : 'padrao');
         db()->prepare('INSERT INTO estabelecimento_bebidas (estabelecimento_id, bebida_id, meta, regra) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE meta = VALUES(meta), regra = VALUES(regra)')
             ->execute([$eid, $bid, $meta, $regra]);
-        auditar('Admin atualizou cardápio', pub('est', $eid) . ' · ' . pub('beb', $bid));
+        auditar($u['papel'] === 'admin' ? 'Admin atualizou cardápio' : 'Casa atualizou cardápio', pub('est', $eid) . ' · ' . pub('beb', $bid));
         admin_ok_store();
     }
 
     if ($path === 'estabelecimentos/bebida-remover') {
-        auth_require(['admin']);
-        $eid = nid('est', $in['estabelecimentoId'] ?? $in['id'] ?? '');
+        $u = auth_require(['admin', 'estabelecimento']);
+        $eid = casa_eid($u, $in);
         $bid = nid('beb', $in['bebidaId'] ?? '');
-        if (!$eid || !$bid) fail('Informe a casa e a bebida.');
+        if (!$bid) fail('Informe a bebida.');
         db()->prepare('DELETE FROM estabelecimento_bebidas WHERE estabelecimento_id = ? AND bebida_id = ?')->execute([$eid, $bid]);
-        auditar('Admin removeu bebida da casa', pub('est', $eid) . ' · ' . pub('beb', $bid));
+        auditar($u['papel'] === 'admin' ? 'Admin removeu bebida da casa' : 'Casa removeu bebida do cardápio', pub('est', $eid) . ' · ' . pub('beb', $bid));
         admin_ok_store();
     }
 
     if ($path === 'estabelecimentos/midia') {
-        auth_require(['admin']);
-        $eid = nid('est', $in['id'] ?? '');
-        if (!$eid) fail('Casa não encontrada.');
+        $u = auth_require(['admin', 'estabelecimento']);
+        $eid = casa_eid($u, $in);
         if (array_key_exists('promocao', $in)) {
             db()->prepare('UPDATE estabelecimentos SET promocao = ? WHERE id = ?')->execute([trim((string) $in['promocao']) ?: null, $eid]);
         }
@@ -388,7 +411,7 @@ function admin_rota(string $method, string $path, array $in): bool
         if ($campo === 'cartaz' || $campo === 'imagem') {
             salvar_midia_casa($eid, $campo, (string) ($in['dataUrl'] ?? ''));
         }
-        auditar('Admin atualizou vitrine da casa', (string) $eid);
+        auditar($u['papel'] === 'admin' ? 'Admin atualizou vitrine da casa' : 'Casa atualizou vitrine', (string) $eid);
         admin_ok_store();
     }
 

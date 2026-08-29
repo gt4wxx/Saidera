@@ -266,19 +266,20 @@ function bootstrap_store(array $u): array
         $est = db()->prepare('SELECT * FROM estabelecimentos WHERE id = ?');
         $est->execute([$eid]);
         $empty['estabelecimentos'] = [row_est($est->fetch())];
-        $st = db()->prepare('SELECT * FROM funcionarios WHERE estabelecimento_id = ?');
+        $st = db()->prepare('SELECT f.*, u.email FROM funcionarios f LEFT JOIN usuarios u ON u.id = f.usuario_id WHERE f.estabelecimento_id = ?');
         $st->execute([$eid]);
         $empty['funcionarios'] = array_map(fn($f) => [
             'id' => pub('fun', $f['id']),
             'nome' => $f['nome'],
             'cargo' => $f['cargo'],
+            'email' => $f['email'] ?? '',
             'estabelecimentoId' => pub('est', $f['estabelecimento_id']),
             'status' => $f['status'],
             'avatar' => $f['avatar'] ?: 'assets/brand/icon-192.png',
             'tampasHoje' => (int) $f['tampas_hoje'],
             'saiderasEntregues' => (int) $f['saideras_entregues'],
         ], $st->fetchAll());
-        $st = db()->prepare('SELECT * FROM tickets WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 40');
+        $st = db()->prepare('SELECT * FROM tickets WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 80');
         $st->execute([$eid]);
         $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), $st->fetchAll());
         $st = db()->prepare('SELECT * FROM saideras WHERE estabelecimento_id = ? ORDER BY conquistada_em DESC LIMIT 80');

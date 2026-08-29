@@ -206,10 +206,17 @@ const UI = {
         return;
       }
       const act = el.closest("[data-act]");
-      if (act && !act.disabled && window.AdminApp?.onAct) {
-        e.preventDefault();
-        window.AdminApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"), act);
-        return;
+      if (act && !act.disabled) {
+        if (window.EstApp?.onAct) {
+          e.preventDefault();
+          window.EstApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"), act);
+          return;
+        }
+        if (window.AdminApp?.onAct) {
+          e.preventDefault();
+          window.AdminApp.onAct(act.getAttribute("data-act"), act.getAttribute("data-id"), act);
+          return;
+        }
       }
       const href = el.closest("[data-href]");
       if (href) {

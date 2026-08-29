@@ -141,6 +141,30 @@ function gestor_est_id(int $uid): ?int
     return $r ? (int) $r['estabelecimento_id'] : null;
 }
 
+function casa_eid(array $u, array $in = []): int
+{
+    $pedido = nid('est', (string) ($in['estabelecimentoId'] ?? $in['id'] ?? ''));
+    if (($u['papel'] ?? '') === 'admin') {
+        if (!$pedido) fail('Informe o estabelecimento.');
+        return $pedido;
+    }
+    $meu = gestor_est_id((int) $u['id']);
+    if (!$meu) fail('Nenhuma casa vinculada a esta conta.', 403);
+    if ($pedido && $pedido !== $meu) fail('Esta casa não é a sua.', 403);
+    return $meu;
+}
+
+function cliente_da_casa(int $cliId, int $estId): bool
+{
+    $st = db()->prepare('SELECT 1 FROM (
+        SELECT cliente_id FROM progresso_tampas WHERE cliente_id = ? AND estabelecimento_id = ?
+        UNION SELECT cliente_id FROM consumos WHERE cliente_id = ? AND estabelecimento_id = ?
+        UNION SELECT cliente_id FROM saideras WHERE cliente_id = ? AND estabelecimento_id = ?
+    ) x LIMIT 1');
+    $st->execute([$cliId, $estId, $cliId, $estId, $cliId, $estId]);
+    return (bool) $st->fetch();
+}
+
 function parceiro_por_usuario(int $uid): ?array
 {
     $st = db()->prepare('SELECT * FROM parceiros WHERE usuario_id = ?');

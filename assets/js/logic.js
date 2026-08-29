@@ -404,18 +404,40 @@ const Logic = {
     };
   },
 
+  ultimaVisitaMs(cli, estId) {
+    if (cli?.ultimaVisitaIso) {
+      const n = new Date(cli.ultimaVisitaIso).getTime();
+      if (!Number.isNaN(n)) return n;
+    }
+    const cons = Store.all("consumos").filter((x) => x.clienteId === cli?.id && (!estId || x.estabelecimentoId === estId));
+    if (!cons.length) return 0;
+    return Math.max(...cons.map((x) => new Date(x.criadoEm).getTime()).filter((n) => !Number.isNaN(n)));
+  },
+
+  diasSemVisita(cli, estId) {
+    const ms = this.ultimaVisitaMs(cli, estId);
+    if (!ms) return null;
+    return Math.max(0, Math.floor((this.hoje().getTime() - ms) / 86400000));
+  },
+
+  ticketStatus(t) {
+    return t.status || (!t.usado ? "aberto" : t.usadoPor ? "usado" : "cancelado");
+  },
+
   inativosDoEst(estId) {
     const corte = this.hoje().getTime() - 30 * 86400000;
-    const doBar = this.clientesDoEst(estId);
-    const frios = doBar.filter((c) => !c.ultimaVisitaIso || new Date(c.ultimaVisitaIso).getTime() < corte);
-    const ids = new Set(frios.map((c) => c.id));
-    const extraBar = doBar.filter((c) => !ids.has(c.id));
-    extraBar.forEach((c) => ids.add(c.id));
-    const pool = [...frios, ...extraBar];
-    Store.all("clientes").forEach((c) => {
-      if (!ids.has(c.id)) pool.push(c);
+    return this.clientesDoEst(estId).filter((c) => {
+      const ms = this.ultimaVisitaMs(c, estId);
+      return !ms || ms < corte;
     });
-    return pool.slice(0, 80);
+  },
+
+  quaseSaideraEst(estId) {
+    return Store.all("tampas").filter((t) => t.estabelecimentoId === estId && t.meta - t.atual <= 2 && t.atual > 0);
+  },
+
+  aniversariantesEst(estId) {
+    return this.clientesDoEst(estId).filter((c) => this.ehAniversarianteMes(c));
   },
 
   publicoCampanha(cam) {
@@ -909,32 +931,53 @@ const Logic = {
 
   resumoEst(estId) {
     const cons = Store.all("consumos").filter((c) => c.estabelecimentoId === estId);
-    const hoje = cons.filter((c) => c.criadoEm.slice(0, 10) === "2026-08-19" || new Date(c.criadoEm).toDateString() === new Date().toDateString());
+    const hojeKey = this.hoje().toISOString().slice(0, 10);
+    const hoje = cons.filter((c) => (c.criadoEm || "").slice(0, 10) === hojeKey || new Date(c.criadoEm).toDateString() === this.hoje().toDateString());
     const sais = Store.all("saideras").filter((s) => s.estabelecimentoId === estId);
+    const tkts = Store.all("tickets").filter((t) => t.estabelecimentoId === estId);
     const byDrink = {};
     cons.forEach((c) => {
       byDrink[c.bebidaId] = (byDrink[c.bebidaId] || 0) + c.quantidade;
     });
     const drinks = Object.entries(byDrink)
-      .map(([id, q]) => ({ id, q, nome: this.bebida(id)?.nome }))
+      .map(([id, q]) => ({ id, q, nome: this.bebida(id)?.nome || "Bebida" }))
       .sort((a, b) => b.q - a.q);
     const total = drinks.reduce((a, d) => a + d.q, 0) || 1;
+    const mes = this.hoje().getMonth();
+    const ano = this.hoje().getFullYear();
+    const novos = this.clientesDoEst(estId).filter((c) => {
+      const raw = c.clienteDesde;
+      if (!raw) return false;
+      const d = raw.includes("/") ? new Date(raw.split("/").reverse().join("-")) : new Date(raw);
+      return !Number.isNaN(d.getTime()) && d.getMonth() === mes && d.getFullYear() === ano;
+    }).length;
     return {
-      clientesHoje: new Set(hoje.map((c) => c.clienteId)).size || 38,
-      tampasHoje: hoje.reduce((a, c) => a + c.quantidade, 0) || 126,
+      clientes: this.clientesDoEst(estId).length,
+      clientesHoje: new Set(hoje.map((c) => c.clienteId)).size,
+      tampasHoje: hoje.reduce((a, c) => a + (c.quantidade || 0), 0),
       saiderasGanhas: sais.length,
       saiderasUsadas: sais.filter((s) => s.status === "utilizada").length,
+      saiderasDisp: sais.filter((s) => s.status === "disponivel").length,
+      ticketsAbertos: tkts.filter((t) => this.ticketStatus(t) === "aberto").length,
+      inativos: this.inativosDoEst(estId).length,
+      quase: this.quaseSaideraEst(estId).length,
+      niver: this.aniversariantesEst(estId).length,
+      novos,
       drinks: drinks.slice(0, 5).map((d) => ({ ...d, pct: Math.round((d.q / total) * 100) })),
     };
   },
 
   semanaTampas(estId) {
-    const labels = ["Qui", "Sex", "Sáb", "Dom", "Seg", "Ter", "Qua"];
     const cons = Store.all("consumos").filter((c) => !estId || c.estabelecimentoId === estId);
-    const values = labels.map((_, i) => {
-      const day = (i + 4) % 7;
-      return cons.filter((c) => new Date(c.criadoEm).getDay() === day).reduce((a, c) => a + (c.quantidade || 0), 0);
-    });
+    const labels = [];
+    const values = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(this.hoje());
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      labels.push(d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""));
+      values.push(cons.filter((c) => (c.criadoEm || "").slice(0, 10) === key).reduce((a, c) => a + (c.quantidade || 0), 0));
+    }
     return { labels, values };
   },
 
