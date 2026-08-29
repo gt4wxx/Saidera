@@ -194,6 +194,14 @@ function rota(string $method, string $path): void
         ok(['store' => bootstrap_store($u)]);
     }
 
+    if ($path === 'perfil/foto' && $method === 'POST') {
+        $u = auth_require(['cliente']);
+        $cli = cliente_por_usuario((int) $u['id']);
+        salvar_avatar_cliente((int) $cli['id'], (string) ($in['dataUrl'] ?? ''));
+        auditar('Cliente atualizou a foto', $cli['codigo'] ?? '');
+        ok(['store' => bootstrap_store($u)]);
+    }
+
     if ($path === 'campanhas/aderir' && $method === 'POST') {
         $u = auth_require(['cliente']);
         $cli = cliente_por_usuario((int) $u['id']);

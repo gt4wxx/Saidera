@@ -176,7 +176,7 @@ const GarcomApp = {
     return `${this.top()}
       <div class="comanda-head">
         <div class="person">
-          <img src="${c.avatar}" alt="" class="avatar"/>
+          <img src="${Logic.avatarUrl(c.avatar)}" alt="" class="avatar"/>
           <div>
             <p class="tiny gold">COMANDA ABERTA</p>
             <h2>${c.primeiroNome}</h2>

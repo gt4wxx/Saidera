@@ -271,6 +271,10 @@ const Logic = {
     return /\/pages\//.test(location.pathname) ? `../${src}` : src;
   },
 
+  avatarUrl(src) {
+    return this.midiaUrl(src || "assets/brand/icon-192.png");
+  },
+
   imagemEst(est) {
     if (typeof est === "string") est = this.est(est);
     if (!est) return this.imagemPadraoEst();
@@ -300,6 +304,38 @@ const Logic = {
       img.onerror = () => {
         URL.revokeObjectURL(url);
         reject(new Error("Não foi possível ler esta imagem."));
+      };
+      img.src = url;
+    });
+  },
+
+  lerAvatarArquivo(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) {
+        reject(new Error("Escolha uma foto (JPG, PNG ou WEBP)."));
+        return;
+      }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const side = Math.min(img.width, img.height);
+        if (side < 40) {
+          reject(new Error("Essa foto está pequena demais."));
+          return;
+        }
+        const sx = Math.round((img.width - side) / 2);
+        const sy = Math.round((img.height - side) / 2);
+        const size = 400;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.84));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Não foi possível ler esta foto."));
       };
       img.src = url;
     });

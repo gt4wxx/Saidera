@@ -504,3 +504,8 @@ body.client-page .demo-fab {
 }
 .empty-cli { text-align: center; padding: 22px 18px; }
 .empty-cli h3 { margin-bottom: 8px; }
+.avatar-edit {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.avatar-edit img { object-fit: cover; }

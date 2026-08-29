@@ -518,6 +518,48 @@ function expirar_saideras(): void
     db()->exec("UPDATE saideras SET status = 'expirada' WHERE status = 'disponivel' AND expira_em < NOW()");
 }
 
+function apagar_upload_local(?string $path, string $pasta): void
+{
+    $path = (string) $path;
+    $prefixo = 'uploads/' . $pasta . '/';
+    if ($path === '' || strncmp($path, $prefixo, strlen($prefixo)) !== 0) return;
+    $full = dirname(__DIR__, 2) . '/' . $path;
+    if (is_file($full)) @unlink($full);
+}
+
+function salvar_avatar_cliente(int $cliId, string $dataUrl): string
+{
+    $st = db()->prepare('SELECT avatar FROM clientes WHERE id = ?');
+    $st->execute([$cliId]);
+    $old = (string) ($st->fetch()['avatar'] ?? '');
+    if ($dataUrl === '' || $dataUrl === 'null') {
+        db()->prepare('UPDATE clientes SET avatar = NULL WHERE id = ?')->execute([$cliId]);
+        apagar_upload_local($old, 'clientes');
+        return '';
+    }
+    if (!preg_match('#^data:image/(jpeg|jpg|png|webp);base64,#i', $dataUrl, $m)) {
+        fail('Envie uma foto JPG, PNG ou WebP.');
+    }
+    $raw = preg_replace('#^data:image/\w+;base64,#i', '', $dataUrl);
+    $bin = base64_decode($raw, true);
+    if (!$bin || strlen($bin) > 2500000) {
+        fail('Foto inválida ou maior que 2 MB.');
+    }
+    $dir = dirname(__DIR__, 2) . '/uploads/clientes';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        fail('Não foi possível criar a pasta de fotos.');
+    }
+    $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+    $name = $cliId . '-' . substr(bin2hex(random_bytes(4)), 0, 8) . '.' . $ext;
+    if (file_put_contents($dir . '/' . $name, $bin) === false) {
+        fail('Não foi possível gravar a foto.');
+    }
+    $path = 'uploads/clientes/' . $name;
+    db()->prepare('UPDATE clientes SET avatar = ? WHERE id = ?')->execute([$path, $cliId]);
+    apagar_upload_local($old, 'clientes');
+    return $path;
+}
+
 function salvar_midia_casa(int $eid, string $campo, string $dataUrl): string
 {
     if (!in_array($campo, ['cartaz', 'imagem'], true)) {

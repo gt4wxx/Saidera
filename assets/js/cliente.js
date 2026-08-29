@@ -42,6 +42,14 @@ const ClienteApp = {
       .replace(/"/g, "&quot;");
   },
 
+  foto(src) {
+    return Logic.avatarUrl(src);
+  },
+
+  temFoto(src) {
+    return Boolean(src && !/icon-192|brand\//i.test(src));
+  },
+
   vazio(titulo, texto, cta, href) {
     return `<div class="card pad empty-cli">
       <h3>${this.esc(titulo)}</h3>
@@ -177,7 +185,7 @@ const ClienteApp = {
       <div class="row">
         <button class="icon-btn" data-go="#/qr" title="Meu QR">${Icons.qr()}</button>
         <button class="icon-btn ${unread ? "dot-n" : ""}" data-go="#/notificacoes">${Icons.bell()}</button>
-        <img class="avatar" src="${me.avatar}" alt="${me.primeiroNome}" data-go="#/perfil"/>
+        <img class="avatar" src="${this.foto(me.avatar)}" alt="${this.esc(me.primeiroNome)}" data-go="#/perfil"/>
       </div>
     </div>${extra}`;
   },
@@ -754,8 +762,12 @@ const ClienteApp = {
     const r = painel.retrato;
     return `${this.top()}
       <div class="stack" style="align-items:center;text-align:center;margin:8px 0 18px">
-        <img class="avatar" src="${me.avatar}" style="width:86px;height:86px;border-radius:28px"/>
-        <h1>${me.nome}</h1>
+        <label class="avatar-edit">
+          <img class="avatar" src="${this.foto(me.avatar)}" style="width:86px;height:86px;border-radius:28px;object-fit:cover" alt=""/>
+          <span class="tiny gold">Trocar foto</span>
+          <input type="file" accept="image/*" hidden data-foto-cli/>
+        </label>
+        <h1>${this.esc(me.nome)}</h1>
         <p class="muted">${me.telefone} · ${me.email}</p>
         <p class="small muted">Nascimento ${me.nascimento} · ${me.cidade}</p>
         ${r?.frequencia ? `<p style="margin-top:8px">${this.badgeFreq(r.frequencia)}</p>` : ""}
@@ -800,6 +812,14 @@ const ClienteApp = {
     const me = this.me();
     return `${this.back("Meus dados")}
       <p class="muted" style="margin-bottom:14px">Isso aparece para as casas quando você pede e quando elas baixam a sua Saidera.</p>
+      <div class="stack" style="align-items:center;text-align:center;margin-bottom:16px">
+        <img class="avatar" src="${this.foto(me.avatar)}" style="width:96px;height:96px;border-radius:28px;object-fit:cover" alt=""/>
+        <label class="btn btn-gold btn-sm" style="margin-top:10px">
+          ${this.temFoto(me.avatar) ? "Trocar foto" : "Colocar minha foto"}
+          <input type="file" accept="image/*" hidden data-foto-cli/>
+        </label>
+        ${this.temFoto(me.avatar) ? `<button type="button" class="btn btn-ghost btn-sm" data-foto-off>Remover foto</button>` : ""}
+      </div>
       <div class="field"><span>Nome</span><input id="conta-nome" value="${this.esc(me.nome)}"/></div>
       <div class="field"><span>Telefone</span><input id="conta-tel" type="tel" value="${this.esc(me.telefone)}"/></div>
       <div class="field"><span>Nascimento</span><input id="conta-nasc" placeholder="dd/mm/aaaa" value="${this.esc(me.nascimento)}"/></div>
@@ -1041,6 +1061,13 @@ const ClienteApp = {
       el.addEventListener("click", () => this.copiar(el.getAttribute("data-copiar"), "Código copiado."))
     );
     this.root.querySelector("#conta-salvar")?.addEventListener("click", () => this.salvarConta());
+    this.root.querySelectorAll("[data-foto-cli]").forEach((el) =>
+      el.addEventListener("change", () => {
+        const f = el.files?.[0];
+        if (f) this.enviarFoto(f);
+      })
+    );
+    this.root.querySelector("[data-foto-off]")?.addEventListener("click", () => this.enviarFoto(""));
     if (this.view === "ler") this.iniciarScanCliente();
     if (this.view === "notificacoes") this.marcarLidas();
   },
@@ -1057,6 +1084,17 @@ const ClienteApp = {
       /* a caixa continua visível mesmo se o servidor falhar */
     }
     this._lidas = false;
+  },
+
+  async enviarFoto(file) {
+    try {
+      const dataUrl = file === "" ? "" : await Logic.lerAvatarArquivo(file);
+      const data = await API.post("perfil/foto", { dataUrl });
+      if (data?.store) Store.replace(data.store);
+      UI.toast(dataUrl ? "Foto atualizada." : "Foto removida.");
+    } catch (e) {
+      UI.toast(e.message || "Não deu para salvar a foto.");
+    }
   },
 
   async salvarConta() {

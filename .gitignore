@@ -3,3 +3,5 @@ uploads/*
 !uploads/.htaccess
 !uploads/casas/
 !uploads/casas/.htaccess
+!uploads/clientes/
+!uploads/clientes/.htaccess
