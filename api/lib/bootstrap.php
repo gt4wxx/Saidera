@@ -194,7 +194,7 @@ function bootstrap_store(array $u): array
         $st = db()->prepare('SELECT * FROM saideras WHERE cliente_id = ? ORDER BY conquistada_em DESC');
         $st->execute([$cli['id']]);
         $empty['saideras'] = array_map('row_saidera', $st->fetchAll());
-        $st = db()->prepare('SELECT * FROM consumos WHERE cliente_id = ? ORDER BY criado_em DESC LIMIT 40');
+        $st = db()->prepare('SELECT * FROM consumos WHERE cliente_id = ? ORDER BY criado_em DESC LIMIT 500');
         $st->execute([$cli['id']]);
         $empty['consumos'] = array_map(fn($c) => [
             'id' => pub('con', $c['id']),
@@ -295,7 +295,7 @@ function bootstrap_store(array $u): array
         $st = db()->prepare('SELECT * FROM progresso_tampas WHERE estabelecimento_id = ?');
         $st->execute([$eid]);
         $empty['tampas'] = array_map('row_tampa', $st->fetchAll());
-        $st = db()->prepare('SELECT * FROM consumos WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 80');
+        $st = db()->prepare('SELECT * FROM consumos WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 500');
         $st->execute([$eid]);
         $empty['consumos'] = array_map(fn($c) => [
             'id' => pub('con', $c['id']),

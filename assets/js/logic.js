@@ -910,7 +910,7 @@ const Logic = {
       usadas: sais.filter((s) => s.status === "utilizada").length,
       disponiveis: sais.filter((s) => s.status === "disponivel").length,
       estabelecimentos: ests.size,
-      favorita: prefs[0] ? this.bebida(prefs[0].id) : this.primeiraBebida(),
+      favorita: prefs[0] ? this.bebida(prefs[0].id) : null,
     };
   },
 
@@ -927,6 +927,132 @@ const Logic = {
       .filter((s) => s.estabelecimentoId === estId)
       .forEach((s) => ids.add(s.clienteId));
     return [...ids].map((id) => this.cliente(id)).filter(Boolean);
+  },
+
+  diaKey(iso) {
+    return String(iso || "").slice(0, 10);
+  },
+
+  freqLabel(f) {
+    return { alta: "Vem sempre", media: "Regular", baixa: "Pouca frequência", fria: "Sumiu" }[f] || "—";
+  },
+
+  retratoCliente(clienteId, estId) {
+    const c = this.cliente(clienteId);
+    if (!c) return null;
+    const cons = Store.all("consumos").filter((x) => x.clienteId === clienteId && (!estId || x.estabelecimentoId === estId));
+    const prefs = this.preferencias(clienteId, estId);
+    const tampasPedidas = prefs.reduce((a, p) => a + p.qtd, 0);
+    const dias = new Set(cons.map((x) => this.diaKey(x.criadoEm)).filter(Boolean));
+    const corte45 = this.hoje().getTime() - 45 * 86400000;
+    const visitas45 = [...dias].filter((d) => new Date(d + "T12:00:00").getTime() >= corte45).length;
+    const diasSem = this.diasSemVisita(c, estId);
+    let frequencia = "baixa";
+    if (diasSem == null || diasSem >= 30) frequencia = "fria";
+    else if (visitas45 >= 4 || tampasPedidas >= 8) frequencia = "alta";
+    else if (visitas45 >= 2) frequencia = "media";
+    const sais = Store.all("saideras").filter((s) => s.clienteId === clienteId && (!estId || s.estabelecimentoId === estId));
+    const tampas = Store.all("tampas").filter((t) => t.clienteId === clienteId && (!estId || t.estabelecimentoId === estId));
+    return {
+      ...c,
+      favorita: prefs[0] || null,
+      bebidas: prefs.map((p) => ({ ...p, pct: tampasPedidas ? Math.round((p.qtd / tampasPedidas) * 100) : 0 })),
+      pedidos: cons.length,
+      tampasPedidas,
+      visitas: dias.size,
+      visitas45,
+      diasSem,
+      frequencia,
+      frequenciaLabel: this.freqLabel(frequencia),
+      tampasAbertas: tampas.reduce((a, t) => a + (t.atual || 0), 0),
+      saideras: {
+        total: sais.length,
+        disp: sais.filter((s) => s.status === "disponivel").length,
+        usadas: sais.filter((s) => s.status === "utilizada").length,
+        expiradas: sais.filter((s) => s.status === "expirada").length,
+      },
+      mediaPorVisita: dias.size ? Math.round((tampasPedidas / dias.size) * 10) / 10 : 0,
+    };
+  },
+
+  painelCasa(estId) {
+    const r = this.resumoEst(estId);
+    const retratos = this.clientesDoEst(estId).map((c) => this.retratoCliente(c.id, estId)).filter(Boolean);
+    const freq = { alta: 0, media: 0, baixa: 0, fria: 0 };
+    retratos.forEach((x) => {
+      if (freq[x.frequencia] != null) freq[x.frequencia] += 1;
+    });
+    const cons = Store.all("consumos").filter((c) => c.estabelecimentoId === estId);
+    const byDrink = {};
+    const drinkCli = {};
+    cons.forEach((c) => {
+      byDrink[c.bebidaId] = (byDrink[c.bebidaId] || 0) + (c.quantidade || 0);
+      drinkCli[c.bebidaId] = drinkCli[c.bebidaId] || new Set();
+      drinkCli[c.bebidaId].add(c.clienteId);
+    });
+    const total = Object.values(byDrink).reduce((a, b) => a + b, 0) || 1;
+    const ranking = Object.entries(byDrink)
+      .map(([id, qtd]) => ({
+        id,
+        nome: this.bebida(id)?.nome || "Bebida",
+        qtd,
+        pct: Math.round((qtd / total) * 100),
+        clientes: (drinkCli[id] || new Set()).size,
+      }))
+      .sort((a, b) => b.qtd - a.qtd);
+    const weekday = [0, 0, 0, 0, 0, 0, 0];
+    cons.forEach((c) => {
+      const d = new Date(c.criadoEm);
+      if (!Number.isNaN(d.getTime())) weekday[d.getDay()] += c.quantidade || 0;
+    });
+    return {
+      ...r,
+      retratos,
+      freq,
+      ranking,
+      menosSai: ranking.length > 1 ? [...ranking].reverse().slice(0, Math.min(4, ranking.length)) : [],
+      topClientes: [...retratos].sort((a, b) => b.tampasPedidas - a.tampasPedidas).slice(0, 6),
+      weekday: { labels: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], values: weekday },
+      semana: this.semanaTampas(estId),
+    };
+  },
+
+  painelCliente(clienteId) {
+    const retrato = this.retratoCliente(clienteId);
+    const cons = Store.all("consumos").filter((c) => c.clienteId === clienteId);
+    const byEst = {};
+    cons.forEach((c) => {
+      byEst[c.estabelecimentoId] = (byEst[c.estabelecimentoId] || 0) + (c.quantidade || 0);
+    });
+    const total = Object.values(byEst).reduce((a, b) => a + b, 0) || 1;
+    const casas = Object.entries(byEst)
+      .map(([id, qtd]) => {
+        const r = this.retratoCliente(clienteId, id);
+        return {
+          id,
+          nome: this.est(id)?.nome || "Casa",
+          qtd,
+          pct: Math.round((qtd / total) * 100),
+          frequencia: r?.frequencia,
+          frequenciaLabel: r?.frequenciaLabel,
+          favorita: r?.favorita,
+          visitas: r?.visitas || 0,
+          tampasPedidas: r?.tampasPedidas || 0,
+        };
+      })
+      .sort((a, b) => b.qtd - a.qtd);
+    const weekday = [0, 0, 0, 0, 0, 0, 0];
+    cons.forEach((c) => {
+      const d = new Date(c.criadoEm);
+      if (!Number.isNaN(d.getTime())) weekday[d.getDay()] += c.quantidade || 0;
+    });
+    return {
+      retrato,
+      casas,
+      ranking: (retrato?.bebidas || []).map((p) => ({ nome: p.nome, qtd: p.qtd, pct: p.pct })),
+      weekday: { labels: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], values: weekday },
+      semana: this.semanaTampas(null, clienteId),
+    };
   },
 
   resumoEst(estId) {
@@ -967,8 +1093,10 @@ const Logic = {
     };
   },
 
-  semanaTampas(estId) {
-    const cons = Store.all("consumos").filter((c) => !estId || c.estabelecimentoId === estId);
+  semanaTampas(estId, clienteId) {
+    const cons = Store.all("consumos").filter(
+      (c) => (!estId || c.estabelecimentoId === estId) && (!clienteId || c.clienteId === clienteId)
+    );
     const labels = [];
     const values = [];
     for (let i = 6; i >= 0; i--) {

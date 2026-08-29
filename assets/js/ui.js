@@ -100,34 +100,98 @@ const UI = {
   },
 
   lineChart(values, labels = []) {
-    const w = 560, h = 160, p = 18;
+    const w = 560, h = 176, p = 22;
     if (!values.length) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
-    const max = Math.max(1, ...values) * 1.08;
-    const min = Math.min(0, ...values) * 0.82;
+    const max = Math.max(1, ...values) * 1.12;
+    const min = 0;
+    const last = values.length - 1;
     const pts = values.map((v, i) => {
-      const x = p + (i / (values.length - 1)) * (w - p * 2);
-      const y = h - p - ((v - min) / (max - min || 1)) * (h - p * 2);
-      return [x, y];
+      const x = p + (i / Math.max(1, last)) * (w - p * 2);
+      const y = h - p - ((v - min) / (max - min || 1)) * (h - p * 2 - 14);
+      return [x, y, v];
     });
-    const d = pts.map((pt, i) => (i ? "L" : "M") + pt.join(",")).join(" ");
+    const d = pts.map((pt, i) => (i ? "L" : "M") + pt[0] + "," + pt[1]).join(" ");
     const area = `${d} L${pts.at(-1)[0]},${h - p} L${pts[0][0]},${h - p} Z`;
-    const dots = pts.map((pt) => `<circle cx="${pt[0]}" cy="${pt[1]}" r="4" fill="#F5B800"/>`).join("");
-    const labs = labels
-      .map((l, i) => `<text x="${pts[i][0]}" y="${h - 2}" text-anchor="middle" fill="#8A8A8A" font-size="11" font-family="Manrope">${l}</text>`)
+    const uid = `cg${Math.random().toString(36).slice(2, 8)}`;
+    const dots = pts
+      .map((pt) => `<circle cx="${pt[0]}" cy="${pt[1]}" r="4.5" fill="#171717" stroke="#F5B800" stroke-width="2.5"><title>${pt[2]}</title></circle>`)
       .join("");
-    return `<svg class="chart-line" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      <path d="${area}" fill="rgba(245,184,0,0.12)"/>
-      <path d="${d}" fill="none" stroke="#F5B800" stroke-width="3" stroke-linejoin="round"/>
+    const labs = labels
+      .map((l, i) => `<text x="${pts[i][0]}" y="${h - 4}" text-anchor="middle" fill="#8A8A8A" font-size="11" font-weight="600">${l}</text>`)
+      .join("");
+    return `<svg class="chart-line" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F5B800" stop-opacity="0.38"/>
+          <stop offset="100%" stop-color="#F5B800" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${area}" fill="url(#${uid})"/>
+      <path d="${d}" fill="none" stroke="#F5B800" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
       ${dots}${labs}
     </svg>`;
   },
 
   bars(items) {
+    return this.rankBars(items);
+  },
+
+  rankBars(items) {
+    if (!items?.length) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
     return items
-      .map(
-        (it) => `<div class="bar-row"><div class="label">${it.nome}</div><div class="track"><i style="width:${it.pct}%"></i></div><div class="pct">${it.pct}%</div></div>`
-      )
+      .map((it, i) => {
+        const pct = Number(it.pct) || 0;
+        const extra = it.qtd != null ? `${it.qtd}` : it.q != null ? `${it.q}` : "";
+        return `<div class="rank-row">
+          <span class="rank-n">${i + 1}</span>
+          <div class="rank-body">
+            <div class="row between"><strong>${it.nome}</strong><span class="tiny muted">${extra ? extra + " · " : ""}${pct}%</span></div>
+            <div class="track tall"><i style="width:${Math.max(2, pct)}%;animation-delay:${i * 70}ms"></i></div>
+            ${it.clientes != null ? `<p class="tiny muted">${it.clientes} cliente${it.clientes === 1 ? "" : "s"}</p>` : ""}
+          </div>
+        </div>`;
+      })
       .join("");
+  },
+
+  donut(items, centro = "total") {
+    const list = (items || []).filter((x) => x.n > 0);
+    const total = list.reduce((a, x) => a + x.n, 0);
+    if (!total) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
+    const colors = ["#F5B800", "#1B3A5F", "#C4A35A", "#5c5c5c", "#8B1E3F"];
+    const r = 52;
+    const circ = 2 * Math.PI * r;
+    let acc = 0;
+    const rings = list
+      .map((it, i) => {
+        const frac = it.n / total;
+        const dash = frac * circ;
+        const rot = acc * 360 - 90;
+        acc += frac;
+        return `<circle class="donut-seg" cx="80" cy="80" r="${r}" fill="none" stroke="${it.cor || colors[i % colors.length]}" stroke-width="18" stroke-dasharray="${dash.toFixed(2)} ${(circ - dash).toFixed(2)}" transform="rotate(${rot} 80 80)"/>`;
+      })
+      .join("");
+    return `<div class="donut-wrap">
+      <div class="donut-svg">
+        <svg viewBox="0 0 160 160">${rings}<circle cx="80" cy="80" r="36" fill="#171717"/></svg>
+        <div class="donut-center"><b>${total}</b><span>${centro}</span></div>
+      </div>
+      <ul class="donut-leg">${list
+        .map((it, i) => `<li><i style="background:${it.cor || colors[i % colors.length]}"></i><span>${it.nome}</span><strong>${it.n}</strong></li>`)
+        .join("")}</ul>
+    </div>`;
+  },
+
+  heatRow(labels, values) {
+    const max = Math.max(1, ...(values || [0]));
+    return `<div class="heat-row">${(values || [])
+      .map((v, i) => {
+        const t = v / max;
+        const a = 0.22 + 0.78 * t;
+        const color = t > 0.4 ? "#171717" : "#F4E7C3";
+        return `<div class="heat-cell" style="background:rgba(245,184,0,${a.toFixed(2)});color:${color}"><b>${v}</b><span>${labels[i] || ""}</span></div>`;
+      })
+      .join("")}</div>`;
   },
 
   qrSvg(codigo) {

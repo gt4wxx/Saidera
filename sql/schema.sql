@@ -100,6 +100,14 @@ CREATE TABLE IF NOT EXISTS bebidas (
   cor VARCHAR(16) DEFAULT '#F5B800'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS parceiro_bebidas (
+  parceiro_id BIGINT UNSIGNED NOT NULL,
+  bebida_id BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (parceiro_id, bebida_id),
+  FOREIGN KEY (parceiro_id) REFERENCES parceiros(id) ON DELETE CASCADE,
+  FOREIGN KEY (bebida_id) REFERENCES bebidas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS estabelecimento_bebidas (
   estabelecimento_id BIGINT UNSIGNED NOT NULL,
   bebida_id BIGINT UNSIGNED NOT NULL,
@@ -243,7 +251,9 @@ CREATE TABLE IF NOT EXISTS avisos_estabelecimento (
 INSERT INTO config (k, v) VALUES
   ('cidade', 'Aracaju/SE'),
   ('meta_padrao_rede', '10'),
-  ('validade_saidera_dias', '15')
+  ('validade_saidera_dias', '15'),
+  ('suporte_whatsapp', ''),
+  ('suporte_email', '')
 ON DUPLICATE KEY UPDATE v = VALUES(v);
 
 SET FOREIGN_KEY_CHECKS = 1;

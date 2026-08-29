@@ -75,6 +75,23 @@ const EstApp = {
     return Number(v || 0).toLocaleString("pt-BR");
   },
 
+  badgeFreq(f) {
+    const lab = Logic.freqLabel(f);
+    return `<span class="badge freq-${f || "baixa"}">${this.esc(lab)}</span>`;
+  },
+
+  donutFreq(freq) {
+    return UI.donut(
+      [
+        { nome: "Vem sempre", n: freq.alta || 0, cor: "#F5B800" },
+        { nome: "Regular", n: freq.media || 0, cor: "#1B3A5F" },
+        { nome: "Pouca frequência", n: freq.baixa || 0, cor: "#C4A35A" },
+        { nome: "Sumiu (30 dias)", n: freq.fria || 0, cor: "#8B1E3F" },
+      ],
+      "clientes"
+    );
+  },
+
   chips(key, pares) {
     const cur = this[key] || "";
     return `<div class="chips">${pares.map(([v, lab]) => `<button type="button" class="chip ${cur === v ? "on" : ""}" data-filtro="${key}" data-val="${this.esc(v)}">${this.esc(lab)}</button>`).join("")}</div>`;
@@ -201,7 +218,8 @@ const EstApp = {
 
   dashboard() {
     const r = Logic.resumoEst(this.estId);
-    const week = Logic.semanaTampas(this.estId);
+    const painel = Logic.painelCasa(this.estId);
+    const week = painel.semana;
     const recent = this.recentes();
     const avisos = Logic.avisosDoEst(this.estId).slice(0, 5);
     const pend = Store.all("campanhas").filter(
@@ -249,10 +267,35 @@ const EstApp = {
         ${week.values.some((v) => v) ? UI.lineChart(week.values, week.labels) : `<p class="muted empty-msg">Ainda não há consumos nesta semana.</p>`}
       </section>
       <section class="panel">
-        <h3>Bebidas mais consumidas</h3>
-        ${r.drinks.length ? UI.bars(r.drinks) : `<p class="muted empty-msg">Nenhum consumo registrado ainda.</p>`}
+        <h3>Quem frequenta</h3>
+        ${this.donutFreq(painel.freq)}
       </section>
     </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <section class="panel">
+        <h3>O que mais sai</h3>
+        ${painel.ranking.length ? UI.rankBars(painel.ranking.slice(0, 5)) : `<p class="muted empty-msg">Nenhum pedido ainda.</p>`}
+      </section>
+      <section class="panel">
+        <h3>O que menos sai</h3>
+        ${painel.menosSai.length ? UI.rankBars(painel.menosSai) : `<p class="muted empty-msg">Ainda não há o que comparar.</p>`}
+      </section>
+    </div>
+    <section class="panel" style="margin-bottom:16px">
+      <h3>Movimento por dia da semana</h3>
+      ${painel.weekday.values.some((v) => v) ? UI.heatRow(painel.weekday.labels, painel.weekday.values) : `<p class="muted empty-msg">Sem tampas o bastante para ver o ritmo da semana.</p>`}
+    </section>
+    ${painel.topClientes.length ? `<section class="panel" style="margin-bottom:16px">
+      <div class="row between" style="margin-bottom:12px"><h3>Quem mais pede aqui</h3><a class="gold small" href="#/clientes">Ver todos</a></div>
+      <div class="grid-2">${painel.topClientes.map((c) => `<a class="insight-card" href="#/cliente/${c.id}">
+        <img src="${this.avatar(c.avatar)}" alt=""/>
+        <div>
+          <strong>${this.esc(c.nome)}</strong>
+          <p class="tiny muted">${this.esc(c.favorita?.nome || "Sem favorita ainda")} · ${this.n(c.tampasPedidas)} tampas · ${this.n(c.visitas)} visita${c.visitas === 1 ? "" : "s"}</p>
+          ${this.badgeFreq(c.frequencia)}
+        </div>
+      </a>`).join("")}</div>
+    </section>` : ""}
     ${abertos.length ? `<section class="panel" style="margin-bottom:16px"><div class="row between"><h3>Cupons QR abertos</h3><a class="gold small" href="#/registrar">Gerenciar</a></div>${abertos.slice(0, 5).map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>${this.esc(t.codigo)} · ${(t.itens || []).map((i) => i.quantidade + "× " + i.nome).join(", ")}</span><button class="btn btn-ghost btn-sm" data-ver-ticket="${t.id}">Imprimir</button></div>`).join("")}</section>` : ""}
     <section class="panel">
       <div class="row between" style="margin-bottom:12px"><h3>Clientes recentes</h3><a class="gold small" href="#/clientes">Ver lista</a></div>
@@ -261,7 +304,11 @@ const EstApp = {
   },
 
   recentes() {
-    const list = Logic.clientesDoEst(this.estId).slice(0, 8);
+    const list = Logic.clientesDoEst(this.estId)
+      .map((c) => Logic.retratoCliente(c.id, this.estId))
+      .filter(Boolean)
+      .sort((a, b) => String(b.ultimaVisita || "").localeCompare(String(a.ultimaVisita || "")))
+      .slice(0, 8);
     if (!list.length) return `<p class="muted">Ainda não há clientes nesta casa.</p>`;
     return list
       .map((c) => {
@@ -269,13 +316,14 @@ const EstApp = {
         const disp = Logic.saiderasDisponiveis(c.id, this.estId);
         const action = disp.length
           ? `<a class="btn btn-gold btn-sm" href="#/saideras">Baixar com o ID</a>`
-          : `<a class="btn btn-dark btn-sm" href="#/registrar">Gerar QR</a>`;
+          : `<a class="btn btn-dark btn-sm" href="#/cliente/${c.id}">Ver ficha</a>`;
         return `<div class="row between" style="padding:12px 0;border-top:1px solid #2a2a2a">
           <div class="person">
             <img src="${this.avatar(c.avatar)}" alt=""/>
             <div>
-              <strong>${this.esc(c.primeiroNome || c.nome)}</strong>
-              <p class="small muted">${t ? `${t.atual}/${t.meta}` : "Sem Tampas ainda"}${c.ultimaVisita ? " · " + this.esc(c.ultimaVisita) : ""}</p>
+              <strong>${this.esc(c.nome)}</strong>
+              <p class="small muted">${this.esc(c.favorita?.nome || "Sem favorita ainda")} · ${this.n(c.tampasPedidas)} tampas · ${this.n(c.visitas)} visita${c.visitas === 1 ? "" : "s"}${t ? ` · cartela ${t.atual}/${t.meta}` : ""}</p>
+              <p class="tiny muted" style="margin-top:4px">${this.badgeFreq(c.frequencia)}${c.ultimaVisita ? ` · última ${this.esc(c.ultimaVisita)}` : ""}</p>
             </div>
           </div>
           <div class="row">
@@ -321,6 +369,8 @@ const EstApp = {
     else if (this.cliFiltro === "saidera") {
       const ids = new Set(Store.all("saideras").filter((s) => s.estabelecimentoId === this.estId && s.status === "disponivel").map((s) => s.clienteId));
       list = list.filter((c) => ids.has(c.id));
+    } else if (["alta", "media", "baixa", "fria"].includes(this.cliFiltro)) {
+      list = list.filter((c) => Logic.retratoCliente(c.id, this.estId)?.frequencia === this.cliFiltro);
     }
     if (!q) return list;
     return list.filter((c) => [c.nome, c.codigo, c.email, c.telefone, c.primeiroNome].some((v) => (v || "").toLowerCase().includes(q)));
@@ -339,19 +389,18 @@ const EstApp = {
     const to = start + slice.length;
     const rows = slice
       .map((c) => {
-        const prefs = Logic.preferencias(c.id, this.estId);
-        const fav = prefs[0] ? Logic.bebida(prefs[0].id) : Logic.bebida(c.bebidaFavoritaId);
+        const r = Logic.retratoCliente(c.id, this.estId) || {};
         const p = Store.all("tampas").find((t) => t.clienteId === c.id && t.estabelecimentoId === this.estId);
-        const sais = Store.all("saideras").filter((s) => s.clienteId === c.id && s.estabelecimentoId === this.estId);
-        const disp = sais.filter((s) => s.status === "disponivel").length;
-        const dias = Logic.diasSemVisita(c, this.estId);
+        const disp = r.saideras?.disp || 0;
         return `<tr data-href="#/cliente/${c.id}">
           <td><div class="person"><img src="${this.avatar(c.avatar)}" alt=""/><div><strong>${this.esc(c.nome)}</strong><p class="tiny muted">${this.esc(c.codigo)}</p></div></div></td>
-          <td>${this.esc(fav?.nome || "—")}</td>
+          <td>${this.badgeFreq(r.frequencia)}</td>
+          <td>${this.esc(r.favorita?.nome || "—")}</td>
+          <td>${this.n(r.pedidos || 0)}</td>
+          <td>${this.n(r.tampasPedidas || 0)} <p class="tiny muted">${this.n(r.visitas || 0)} visita${r.visitas === 1 ? "" : "s"}</p></td>
           <td>${p ? p.atual + "/" + p.meta : "—"}</td>
-          <td>${sais.length}</td>
-          <td>${this.esc(c.ultimaVisita || "—")}${dias != null ? `<p class="tiny muted">${dias} dia${dias === 1 ? "" : "s"}</p>` : ""}</td>
-          <td>${disp ? `<span class="badge badge-green">Saidera</span>` : `<span class="badge badge-ghost">${this.esc(c.status)}</span>`}</td>
+          <td>${this.n(r.saideras?.total || 0)}${disp ? `<p class="tiny muted">${disp} pronta${disp === 1 ? "" : "s"}</p>` : ""}</td>
+          <td>${this.esc(c.ultimaVisita || "—")}${r.diasSem != null ? `<p class="tiny muted">${r.diasSem} dia${r.diasSem === 1 ? "" : "s"}</p>` : ""}</td>
         </tr>`;
       })
       .join("");
@@ -359,11 +408,11 @@ const EstApp = {
       ? `${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.cliQuery.trim()}”`
       : `${from}–${to} de ${list.length} clientes com movimento nesta casa`;
     return `<section class="panel">
-      ${this.chips("cliFiltro", [["", "Todos"], ["quase", "Quase Saidera"], ["saidera", "Com Saidera"], ["niver", "Aniversário"], ["inativo", "Inativos"]])}
+      ${this.chips("cliFiltro", [["", "Todos"], ["alta", "Vem sempre"], ["media", "Regular"], ["baixa", "Pouca frequência"], ["fria", "Sumiu"], ["quase", "Quase Saidera"], ["saidera", "Com Saidera"], ["niver", "Aniversário"], ["inativo", "Inativos"]])}
       <p class="muted small" style="margin:12px 0">${busca}</p>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Favorita</th><th>Tampas</th><th>Saideras</th><th>Última visita</th><th>Status</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="6" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
+        <thead><tr><th>Cliente</th><th>Frequência</th><th>Favorita</th><th>Pedidos</th><th>Tampas pedidas</th><th>Cartela</th><th>Saideras</th><th>Última visita</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="8" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
       </table></div>
       ${this.pager(page, pages, "Páginas de clientes")}
     </section>`;
@@ -372,11 +421,17 @@ const EstApp = {
   perfilCliente() {
     const c = Logic.cliente(this.params.id);
     if (!c) return `<p>Cliente não encontrado.</p>`;
-    const prefs = Logic.preferencias(c.id, this.estId);
+    const r = Logic.retratoCliente(c.id, this.estId);
     const sais = Store.all("saideras").filter((s) => s.clienteId === c.id && s.estabelecimentoId === this.estId);
     const hist = Store.all("consumos")
       .filter((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId)
-      .slice(0, 12);
+      .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")))
+      .slice(0, 16);
+    const donutBebidas = (r?.bebidas || []).slice(0, 5).map((p, i) => ({
+      nome: p.nome,
+      n: p.qtd,
+      cor: ["#F5B800", "#1B3A5F", "#C4A35A", "#8B1E3F", "#5c5c5c"][i],
+    }));
     return `<div class="grid-2">
       <section class="panel">
         <div class="person" style="margin-bottom:16px">
@@ -384,16 +439,21 @@ const EstApp = {
           <div>
             <h2>${this.esc(c.nome)}</h2>
             <p class="muted small">Cliente desde ${this.esc(c.clienteDesde || "—")} · ${this.esc(c.codigo)}</p>
+            ${this.badgeFreq(r?.frequencia)}
           </div>
         </div>
-        <p>Última visita: <strong>${this.esc(c.ultimaVisita || "—")}</strong>${(() => { const d = Logic.diasSemVisita(c, this.estId); return d != null ? ` <span class="tiny muted">(${d} dia${d === 1 ? "" : "s"})</span>` : ""; })()}</p>
+        <p>Bebida que mais pede: <strong>${this.esc(r?.favorita?.nome || "Ainda sem pedido nesta casa")}</strong>${r?.favorita ? ` <span class="tiny muted">(${this.n(r.favorita.qtd)} tampas · ${r.bebidas[0]?.pct || 0}%)</span>` : ""}</p>
+        <p>Última visita: <strong>${this.esc(c.ultimaVisita || "—")}</strong>${r?.diasSem != null ? ` <span class="tiny muted">(${r.diasSem} dia${r.diasSem === 1 ? "" : "s"} sem voltar)</span>` : ""}</p>
         <p>Nascimento: <strong>${this.esc(c.nascimento || "—")}</strong></p>
         <p>Telefone: <strong>${this.esc(c.telefone || "—")}</strong></p>
         <p>E-mail: <strong>${this.esc(c.email || "—")}</strong></p>
         <div class="kpis" style="margin-top:16px">
-          <div class="kpi"><b>${sais.length}</b><span>Conquistadas</span></div>
-          <div class="kpi"><b>${sais.filter((s) => s.status === "utilizada").length}</b><span>Utilizadas</span></div>
-          <div class="kpi"><b>${sais.filter((s) => s.status === "disponivel").length}</b><span>Disponíveis</span></div>
+          <div class="kpi"><b>${this.n(r?.visitas || 0)}</b><span>Visitas</span></div>
+          <div class="kpi"><b>${this.n(r?.pedidos || 0)}</b><span>Pedidos</span></div>
+          <div class="kpi"><b>${this.n(r?.tampasPedidas || 0)}</b><span>Tampas pedidas</span></div>
+          <div class="kpi"><b>${this.n(r?.mediaPorVisita || 0)}</b><span>Média por visita</span></div>
+          <div class="kpi"><b>${this.n(r?.saideras?.total || 0)}</b><span>Saideras</span></div>
+          <div class="kpi"><b>${this.n(r?.saideras?.disp || 0)}</b><span>Prontas para baixar</span></div>
         </div>
         <div class="row wrap" style="gap:8px;margin-top:14px">
           <a class="btn btn-gold grow" href="#/registrar">Gerar cupom</a>
@@ -403,22 +463,23 @@ const EstApp = {
         </div>
       </section>
       <section class="panel">
-        <h3>Preferências</h3>
-        ${prefs
-          .slice(0, 6)
-          .map(
-            (p, i) => `<div class="row between" style="padding:8px 0"><span>${p.nome}</span><strong>${p.qtd} consumos ${i === 0 ? "· favorita" : ""}</strong></div>`
-          )
-          .join("") || "<p class='muted'>Sem histórico ainda.</p>"}
-        <h3 style="margin-top:18px">Histórico</h3>
-        ${hist
-          .map(
-            (h) =>
-              `<div class="row between" style="padding:8px 0;border-top:1px solid #2a2a2a"><span>${Logic.fmtDateShort(h.criadoEm)}</span><strong>+${h.quantidade} ${Logic.bebida(h.bebidaId)?.nome || "Bebida"}</strong></div>`
-          )
-          .join("")}
+        <h3>O que ${this.esc(c.primeiroNome || c.nome)} pede aqui</h3>
+        ${donutBebidas.length ? UI.donut(donutBebidas, "tampas") : `<p class="muted empty-msg">Ainda sem pedidos nesta casa.</p>`}
+        <h3 style="margin-top:18px">Ranking das bebidas dele</h3>
+        ${r?.bebidas?.length ? UI.rankBars(r.bebidas.slice(0, 6)) : `<p class="muted empty-msg">Sem ranking ainda.</p>`}
       </section>
-    </div>`;
+    </div>
+    <section class="panel" style="margin-top:16px">
+      <h3>Histórico nesta casa</h3>
+      ${hist.length
+        ? hist
+            .map(
+              (h) =>
+                `<div class="row between" style="padding:8px 0;border-top:1px solid #2a2a2a"><span>${Logic.fmtDateShort(h.criadoEm)}</span><strong>+${h.quantidade} ${this.esc(Logic.bebida(h.bebidaId)?.nome || "Bebida")}</strong></div>`
+            )
+            .join("")
+        : `<p class="muted empty-msg">Nenhum consumo registrado ainda.</p>`}
+    </section>`;
   },
 
   ensureTicketQtys() {
@@ -709,7 +770,8 @@ const EstApp = {
   },
 
   inteligencia() {
-    const r = Logic.resumoEst(this.estId);
+    const painel = Logic.painelCasa(this.estId);
+    const r = painel;
     const inativos = Logic.inativosDoEst(this.estId).slice(0, 8);
     const quase = Logic.quaseSaideraEst(this.estId).slice(0, 8);
     const niver = Logic.aniversariantesEst(this.estId).slice(0, 8);
@@ -718,52 +780,91 @@ const EstApp = {
         ["Clientes da casa", r.clientes],
         ["Novos neste mês", r.novos],
         ["Vieram hoje", r.clientesHoje],
+        ["Vem sempre", r.freq.alta],
+        ["Pouca frequência", r.freq.baixa],
+        ["Sumiu (30 dias)", r.freq.fria],
         ["Próximos da Saidera", r.quase],
         ["Aniversariantes do mês", r.niver],
-        ["Sem voltar há 30 dias", r.inativos],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${this.n(v)}</b></div>`)
         .join("")}
     </div>
     <div class="grid-2">
       <section class="panel">
-        <h3>Bebidas mais pedidas aqui</h3>
-        ${r.drinks.length ? UI.bars(r.drinks) : `<p class="muted empty-msg">Ainda não há consumos para montar o ranking.</p>`}
+        <h3>Quem frequenta</h3>
+        ${this.donutFreq(painel.freq)}
       </section>
+      <section class="panel">
+        <h3>Tampas nos últimos 7 dias</h3>
+        ${painel.semana.values.some((v) => v) ? UI.lineChart(painel.semana.values, painel.semana.labels) : `<p class="muted empty-msg">Ainda não há consumos nesta semana.</p>`}
+      </section>
+    </div>
+    <div class="grid-2" style="margin-top:14px">
+      <section class="panel">
+        <h3>O que mais sai</h3>
+        ${painel.ranking.length ? UI.rankBars(painel.ranking.slice(0, 6)) : `<p class="muted empty-msg">Ainda não há consumos para montar o ranking.</p>`}
+      </section>
+      <section class="panel">
+        <h3>O que menos sai</h3>
+        ${painel.menosSai.length ? UI.rankBars(painel.menosSai) : `<p class="muted empty-msg">Ainda não há o que comparar.</p>`}
+      </section>
+    </div>
+    <section class="panel" style="margin-top:14px">
+      <h3>Movimento por dia da semana</h3>
+      ${painel.weekday.values.some((v) => v) ? UI.heatRow(painel.weekday.labels, painel.weekday.values) : `<p class="muted empty-msg">Sem tampas o bastante para ver o ritmo da semana.</p>`}
+    </section>
+    ${painel.topClientes.length ? `<section class="panel" style="margin-top:14px">
+      <div class="row between" style="margin-bottom:12px"><h3>Quem mais pede aqui</h3><a class="gold small" href="#/clientes">Ver lista</a></div>
+      <div class="grid-2">${painel.topClientes.map((c) => `<a class="insight-card" href="#/cliente/${c.id}">
+        <img src="${this.avatar(c.avatar)}" alt=""/>
+        <div>
+          <strong>${this.esc(c.nome)}</strong>
+          <p class="tiny muted">${this.esc(c.favorita?.nome || "Sem favorita ainda")} · ${this.n(c.tampasPedidas)} tampas · ${this.n(c.visitas)} visita${c.visitas === 1 ? "" : "s"} · média ${c.mediaPorVisita}</p>
+          ${this.badgeFreq(c.frequencia)}
+        </div>
+      </a>`).join("")}</div>
+    </section>` : ""}
+    <div class="grid-2" style="margin-top:14px">
       <section class="panel">
         <h3>Próximos da Saidera</h3>
         ${quase.length
           ? quase.map((t) => {
             const c = Logic.cliente(t.clienteId);
-            return `<div class="row between" style="padding:8px 0"><div><strong>${this.esc(c?.primeiroNome || c?.nome || "—")}</strong><p class="tiny muted">${this.esc(Logic.bebida(t.bebidaId)?.nome || "Bebida")} ${t.atual}/${t.meta}</p></div>
+            const retrato = Logic.retratoCliente(t.clienteId, this.estId);
+            return `<div class="row between" style="padding:8px 0"><div><strong>${this.esc(c?.nome || "—")}</strong><p class="tiny muted">${this.esc(retrato?.favorita?.nome || Logic.bebida(t.bebidaId)?.nome || "Bebida")} · cartela ${t.atual}/${t.meta} · ${this.n(retrato?.visitas || 0)} visitas</p></div>
               <div class="table-actions"><a class="btn btn-ghost btn-sm" href="#/cliente/${t.clienteId}">Ficha</a><button type="button" class="btn btn-gold btn-sm" data-solicitar="quase">Acelerar</button></div></div>`;
           }).join("")
           : `<p class="muted empty-msg">Ninguém a 2 Tampas ou menos da Saidera.</p>`}
       </section>
-    </div>
-    <div class="grid-2" style="margin-top:14px">
       <section class="panel">
         <h3>Aniversariantes do mês</h3>
         ${niver.length
-          ? niver.map((c) => `<div class="row between" style="padding:8px 0"><a href="#/cliente/${c.id}">${this.esc(c.nome)}</a><span class="muted small">${this.esc(c.nascimento)}</span></div>`).join("")
+          ? niver.map((c) => {
+            const retrato = Logic.retratoCliente(c.id, this.estId);
+            return `<div class="row between" style="padding:8px 0"><div><a href="#/cliente/${c.id}">${this.esc(c.nome)}</a><p class="tiny muted">${this.esc(retrato?.favorita?.nome || "Sem favorita")} · ${this.badgeFreq(retrato?.frequencia)}</p></div><span class="muted small">${this.esc(c.nascimento)}</span></div>`;
+          }).join("")
           : `<p class="muted empty-msg">Nenhum aniversariante cadastrado neste mês.</p>`}
         <button class="btn btn-gold btn-sm btn-block" style="margin-top:12px" data-solicitar="aniversario">Pedir campanha de aniversário</button>
       </section>
-      <section class="panel">
-        <h3>Sem voltar há 30 dias</h3>
-        ${inativos.length
-          ? inativos.map((c) => {
-            const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
-            const dias = Logic.diasSemVisita(c, this.estId);
-            return `<div class="row between" style="padding:8px 0">
-              <div><strong>${this.esc(c.nome)}</strong><p class="tiny muted">${this.esc(Logic.bebida(t?.bebidaId)?.nome || "—")} · ${t ? t.atual + "/" + t.meta : "sem Tampas"} · ${dias != null ? `há ${dias} dia${dias === 1 ? "" : "s"}` : "sem data"}</p></div>
-              <a class="btn btn-ghost btn-sm" href="#/cliente/${c.id}">Ficha</a>
-            </div>`;
-          }).join("")
-          : `<p class="muted empty-msg">Todos os clientes desta casa voltaram recentemente.</p>`}
-        <a class="btn btn-gold btn-block" style="margin-top:12px" href="#/chamar">Montar chamar de volta</a>
-      </section>
-    </div>`;
+    </div>
+    <section class="panel" style="margin-top:14px">
+      <h3>Sem voltar há 30 dias</h3>
+      ${inativos.length
+        ? `<div class="grid-2">${inativos.map((c) => {
+          const retrato = Logic.retratoCliente(c.id, this.estId);
+          const t = Store.all("tampas").find((x) => x.clienteId === c.id && x.estabelecimentoId === this.estId);
+          return `<a class="insight-card" href="#/cliente/${c.id}">
+            <img src="${this.avatar(c.avatar)}" alt=""/>
+            <div>
+              <strong>${this.esc(c.nome)}</strong>
+              <p class="tiny muted">${this.esc(retrato?.favorita?.nome || "—")} · ${t ? `cartela ${t.atual}/${t.meta}` : "sem cartela"} · ${retrato?.diasSem != null ? `há ${retrato.diasSem} dia${retrato.diasSem === 1 ? "" : "s"}` : "sem data"}</p>
+              ${this.badgeFreq(retrato?.frequencia)}
+            </div>
+          </a>`;
+        }).join("")}</div>`
+        : `<p class="muted empty-msg">Todos os clientes desta casa voltaram recentemente.</p>`}
+      <a class="btn btn-gold btn-block" style="margin-top:12px" href="#/chamar">Montar chamar de volta</a>
+    </section>`;
   },
 
   chamar() {
@@ -802,7 +903,7 @@ const EstApp = {
               <input type="checkbox" value="${c.id}" ${sel.has(c.id) ? "checked" : ""}/>
               <div>
                 <strong>${this.esc(c.nome)}</strong>
-                <p class="tiny muted">${this.esc(Logic.bebida(t?.bebidaId)?.nome || "—")} · ${dias != null ? `última visita há ${dias} dia${dias === 1 ? "" : "s"}` : "sem visita registrada"}</p>
+                <p class="tiny muted">${this.esc(Logic.retratoCliente(c.id, this.estId)?.favorita?.nome || Logic.bebida(t?.bebidaId)?.nome || "—")} · ${dias != null ? `última visita há ${dias} dia${dias === 1 ? "" : "s"}` : "sem visita registrada"} · ${this.esc(Logic.freqLabel(Logic.retratoCliente(c.id, this.estId)?.frequencia))}</p>
               </div>
             </label>`;
           })

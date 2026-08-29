@@ -23,6 +23,41 @@ const ClienteApp = {
     return Logic.cliente(Store.demo().clienteId);
   },
 
+  badgeFreq(f) {
+    return `<span class="badge freq-${f || "baixa"}">${Logic.freqLabel(f)}</span>`;
+  },
+
+  cardRitmo(compacto = false) {
+    const me = this.me();
+    const painel = Logic.painelCliente(me.id);
+    const r = painel.retrato;
+    if (!r || !r.tampasPedidas) return "";
+    const donutBebidas = painel.ranking.slice(0, 4).map((p, i) => ({
+      nome: p.nome,
+      n: p.qtd,
+      cor: ["#F5B800", "#1B3A5F", "#C4A35A", "#8B1E3F"][i],
+    }));
+    if (compacto) {
+      return `<article class="card pad" style="margin:14px 0" data-go="#/historico">
+        <p class="tiny muted">Seu ritmo</p>
+        <h3 style="margin:4px 0 8px">${r.favorita?.nome || "Suas bebidas"}</h3>
+        <p class="small muted">${r.tampasPedidas} tampas · ${r.visitas} visita${r.visitas === 1 ? "" : "s"} · ${r.frequenciaLabel}</p>
+        ${this.badgeFreq(r.frequencia)}
+        <p class="tiny gold" style="margin-top:8px">Ver meu histórico ›</p>
+      </article>`;
+    }
+    return `
+      <div class="grid-3" style="margin-bottom:12px">
+        <div class="kpi"><b>${r.visitas}</b><span>Visitas</span></div>
+        <div class="kpi"><b>${r.pedidos}</b><span>Pedidos</span></div>
+        <div class="kpi"><b>${r.mediaPorVisita}</b><span>Média por visita</span></div>
+      </div>
+      ${donutBebidas.length ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">O que você mais pede</p>${UI.donut(donutBebidas, "tampas")}</div>` : ""}
+      ${painel.ranking.length ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">Ranking das suas bebidas</p>${UI.rankBars(painel.ranking.slice(0, 5))}</div>` : ""}
+      ${painel.casas.length ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">Onde você mais vai</p>${UI.rankBars(painel.casas.slice(0, 5))}</div>` : ""}
+    `;
+  },
+
   route() {
     const raw = (location.hash || "#/home").slice(1);
     const parts = raw.split("/").filter(Boolean);
@@ -253,6 +288,7 @@ const ClienteApp = {
         <button class="icon-btn gold" data-go="#/mapa">${Icons.pin()}</button>
       </div>
       ${this.heroCard()}
+      ${this.cardRitmo(true)}
       <div class="row between" style="margin-bottom:10px" id="lista-bares">
         <div>
           <h2>${titulo}</h2>
@@ -433,6 +469,17 @@ const ClienteApp = {
       <div class="card" style="margin:10px 0 18px">${drinks}</div>
       <h2>Seu progresso aqui</h2>
       <div style="margin-top:10px">${prog || `<p class="muted">Você ainda não acumulou Tampas neste bar.</p>`}</div>
+      ${(() => {
+        const retrato = Logic.retratoCliente(me.id, e.id);
+        if (!retrato?.tampasPedidas) return "";
+        return `<div class="card pad" style="margin-top:14px">
+          <p class="tiny muted">Sua relação com esta casa</p>
+          <h3 style="margin:6px 0">${retrato.favorita?.nome || "Suas bebidas"}</h3>
+          <p class="small muted">${retrato.tampasPedidas} tampas pedidas · ${retrato.visitas} visita${retrato.visitas === 1 ? "" : "s"} · média ${retrato.mediaPorVisita} por visita</p>
+          <p style="margin-top:8px">${this.badgeFreq(retrato.frequencia)}</p>
+          ${retrato.bebidas.length ? `<div style="margin-top:12px">${UI.rankBars(retrato.bebidas.slice(0, 4))}</div>` : ""}
+        </div>`;
+      })()}
       <div class="row" style="gap:8px;margin-top:16px">
         <button class="btn btn-gold grow" data-go="#/ler">Ler QR da casa</button>
         <button class="btn btn-dark" data-go="#/qr">Meu QR</button>
@@ -455,7 +502,13 @@ const ClienteApp = {
         return { t, e, b, disp, showAtual, falta, quase, tipo };
       })
       .filter((x) => filtro === "todos" || (filtro === "quase" && x.quase) || (filtro === "disp" && x.disp.length));
+    const retrato = Logic.retratoCliente(me.id);
     return `${this.top(`<h1>Minhas Tampas</h1><p class="muted" style="margin:4px 0 12px">Progresso por bar e por bebida.</p>`)}
+      ${retrato?.tampasPedidas ? `<div class="card pad" style="margin-bottom:14px">
+        <p class="tiny muted">Você mais pede</p>
+        <h2 style="margin:4px 0">${retrato.favorita?.nome || "—"}</h2>
+        <p class="small muted">${retrato.tampasPedidas} tampas em ${retrato.visitas} visita${retrato.visitas === 1 ? "" : "s"} · ${retrato.frequenciaLabel}</p>
+      </div>` : ""}
       <div class="pill-tabs" style="margin-bottom:14px">
         <button class="${filtro === "todos" ? "on" : ""}" data-go="#/tampas/todos">Todos</button>
         <button class="${filtro === "quase" ? "on" : ""}" data-go="#/tampas/quase">Quase lá</button>
@@ -608,12 +661,15 @@ const ClienteApp = {
   perfil() {
     const me = this.me();
     const m = Logic.metricasCliente(me.id);
+    const painel = Logic.painelCliente(me.id);
+    const r = painel.retrato;
     return `${this.top()}
       <div class="stack" style="align-items:center;text-align:center;margin:8px 0 18px">
         <img class="avatar" src="${me.avatar}" style="width:86px;height:86px;border-radius:28px"/>
         <h1>${me.nome}</h1>
         <p class="muted">${me.telefone} · ${me.email}</p>
         <p class="small muted">Nascimento ${me.nascimento} · ${me.cidade}</p>
+        ${r?.frequencia ? `<p style="margin-top:8px">${this.badgeFreq(r.frequencia)}</p>` : ""}
         <div class="row" style="gap:8px;justify-content:center;margin-top:10px">
           <button class="btn btn-gold btn-sm" data-go="#/ler">Ler QR da casa</button>
           <button class="btn btn-dark btn-sm" data-go="#/qr">Meu QR</button>
@@ -625,9 +681,11 @@ const ClienteApp = {
         <div class="kpi"><b>${m.estabelecimentos}</b><span>Bares</span></div>
       </div>
       <div class="card pad" style="margin-bottom:12px">
-        <p class="tiny muted">Bebida favorita</p>
-        <h2>${m.favorita?.nome || "Heineken"}</h2>
+        <p class="tiny muted">Bebida que você mais pede</p>
+        <h2>${r?.favorita?.nome || "Ainda sem pedidos"}</h2>
+        ${r?.favorita ? `<p class="small muted" style="margin-top:6px">${r.favorita.qtd} tampas · ${r.bebidas[0]?.pct || 0}% do que você pede</p>` : `<p class="small muted" style="margin-top:6px">Leia o QR da casa para começar a montar o seu retrato.</p>`}
       </div>
+      ${this.cardRitmo()}
       ${["Histórico", "Preferências", "Privacidade", "Notificações"]
         .map(
           (l, i) =>
@@ -650,14 +708,44 @@ const ClienteApp = {
 
   historico() {
     const me = this.me();
-    const cons = Store.all("consumos").filter((c) => c.clienteId === me.id).slice(0, 20);
+    const painel = Logic.painelCliente(me.id);
+    const r = painel.retrato;
+    const cons = Store.all("consumos")
+      .filter((c) => c.clienteId === me.id)
+      .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")))
+      .slice(0, 30);
     return `${this.back("Histórico")}
-      ${cons
-        .map((c) => `<div class="card pad" style="margin-bottom:8px">
+      ${r?.tampasPedidas ? `<div class="card pad" style="margin-bottom:12px">
+        <p class="tiny muted">Seu retrato</p>
+        <h2 style="margin:4px 0">${r.favorita?.nome || "Suas bebidas"}</h2>
+        <p class="small muted">${r.tampasPedidas} tampas · ${r.visitas} visita${r.visitas === 1 ? "" : "s"} · média ${r.mediaPorVisita}</p>
+        <p style="margin-top:8px">${this.badgeFreq(r.frequencia)}</p>
+      </div>` : ""}
+      ${painel.semana.values.some((v) => v) ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">Seus últimos 7 dias</p>${UI.lineChart(painel.semana.values, painel.semana.labels)}</div>` : ""}
+      ${painel.weekday.values.some((v) => v) ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">Quando você mais sai</p>${UI.heatRow(painel.weekday.labels, painel.weekday.values)}</div>` : ""}
+      ${painel.ranking.length ? `<div class="card pad" style="margin-bottom:12px"><p class="tiny muted" style="margin-bottom:8px">O que você mais pede</p>${UI.rankBars(painel.ranking.slice(0, 6))}</div>` : ""}
+      ${painel.casas.length ? `<div class="card pad" style="margin-bottom:12px">
+        <p class="tiny muted" style="margin-bottom:8px">Onde você mais vai</p>
+        ${painel.casas
+          .map(
+            (c) => `<button class="insight-card" style="width:100%;margin:8px 0;text-align:left" data-go="#/est/${c.id}">
+              <div>
+                <strong>${c.nome}</strong>
+                <p class="tiny muted">${c.favorita?.nome || "Sem favorita"} · ${c.tampasPedidas} tampas · ${c.visitas} visita${c.visitas === 1 ? "" : "s"}</p>
+                ${this.badgeFreq(c.frequencia)}
+              </div>
+            </button>`
+          )
+          .join("")}
+      </div>` : ""}
+      ${cons.length
+        ? cons
+            .map((c) => `<div class="card pad" style="margin-bottom:8px">
           <div class="row between"><strong>+${c.quantidade} ${Logic.bebida(c.bebidaId)?.nome || "Bebida"}</strong><span class="small muted">${Logic.fmtDateShort(c.criadoEm)}</span></div>
-          <p class="small muted">${Logic.est(c.estabelecimentoId).nome}</p>
+          <p class="small muted">${Logic.est(c.estabelecimentoId)?.nome || "Casa"}</p>
         </div>`)
-        .join("")}`;
+            .join("")
+        : `<p class="muted">Ainda não há pedidos no seu histórico. Leia o QR da casa para começar.</p>`}`;
   },
 
   ler() {
