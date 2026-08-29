@@ -44,8 +44,8 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
   <title>Saidera · Entrar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=17"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=17"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=18"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=18"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
   <link rel="manifest" href="manifest-cliente.webmanifest"/>
@@ -65,18 +65,19 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
       <p class="tiny muted" style="margin:0 auto 16px;text-align:center;max-width:42ch">O cliente entra pelo app. Sem conta, cadastre e instale. Com o app, abra pelo ícone.</p>
     </header>
     <section class="card pad" id="entrar-card" style="max-width:440px;margin:0 auto 24px">
-      <div class="entrar-tabs">
-        <button type="button" class="chip on" data-entrar-tab="login">Entrar</button>
-        <button type="button" class="chip" data-entrar-tab="cadastro">Cadastrar</button>
+      <div class="entrar-tabs" id="entrar-tabs">
+        <a class="chip on" href="#login" data-entrar-tab="login">Entrar</a>
+        <a class="chip" href="#cadastro" data-entrar-tab="cadastro">Cadastrar</a>
       </div>
-      <form id="form-login">
+      <form id="form-login" class="entrar-pane on">
         <h2 style="margin:12px 0">Entrar</h2>
         <div class="field"><span>E-mail</span><input name="email" type="email" required autocomplete="username"/></div>
         <div class="field" style="margin-top:10px"><span>Senha</span><input name="senha" type="password" required autocomplete="current-password"/></div>
         <p class="tiny" id="login-erro" style="color:#f87171;margin-top:8px"></p>
         <button type="submit" class="btn btn-gold btn-block" style="margin-top:12px">Entrar</button>
+        <p class="tiny muted" style="margin-top:12px;text-align:center">Não tem conta? <a href="#cadastro" data-entrar-tab="cadastro" style="color:#F5B800">Cadastrar</a></p>
       </form>
-      <form id="form-cadastro" hidden>
+      <form id="form-cadastro" class="entrar-pane">
         <h2 style="margin:12px 0">Criar conta</h2>
         <p class="tiny muted" style="margin-bottom:12px">Você recebe um QR pessoal (SDR-…) para quando o garçom precisar.</p>
         <div class="field"><span>Nome</span><input name="nome" required/></div>
@@ -87,6 +88,7 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
         <div class="field" style="margin-top:10px"><span>Bairro</span><input name="bairro"/></div>
         <p class="tiny" id="cad-erro" style="color:#f87171;margin-top:8px"></p>
         <button type="submit" class="btn btn-gold btn-block" style="margin-top:12px">Cadastrar e instalar</button>
+        <p class="tiny muted" style="margin-top:12px;text-align:center">Já tem conta? <a href="#login" data-entrar-tab="login" style="color:#F5B800">Entrar</a></p>
       </form>
       <div id="entrar-status" hidden></div>
     </section>
@@ -95,9 +97,9 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
     window.SAIDERA_CLIENTE_LOGADO = <?= $clienteLogado ? 'true' : 'false' ?>;
     window.SAIDERA_CASA_CONVITE = <?= json_encode($casa) ?>;
   </script>
-  <script src="assets/js/icons.js?v=17"></script>
-  <script src="assets/js/api.js?v=17"></script>
-  <script src="assets/js/ui.js?v=17"></script>
-  <script src="assets/js/entrar.js?v=17"></script>
+  <script src="assets/js/icons.js?v=18"></script>
+  <script src="assets/js/api.js?v=18"></script>
+  <script src="assets/js/ui.js?v=18"></script>
+  <script src="assets/js/entrar.js?v=18"></script>
 </body>
 </html>

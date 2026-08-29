@@ -514,4 +514,16 @@ body.client-page .demo-fab {
   gap: 8px;
   margin-bottom: 4px;
 }
-.entrar-tabs .chip { flex: 1; justify-content: center; }
+.entrar-tabs .chip {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+.entrar-pane { display: none; }
+.entrar-pane.on { display: block; }
+#form-cadastro[hidden],
+#form-login[hidden] { display: none !important; }

@@ -7,21 +7,46 @@ const EntrarApp = {
     if (casa) localStorage.setItem("saidera_casa_convite", casa);
     this.bindTabs();
     this.bindForms();
-    if (location.hash === "#cadastro") this.tab("cadastro");
+    this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
+    window.addEventListener("hashchange", () => {
+      this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
+    });
     await this.decidir();
   },
 
   tab(id) {
-    document.querySelectorAll("[data-entrar-tab]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-entrar-tab") === id));
+    const qual = id === "cadastro" ? "cadastro" : "login";
+    document.querySelectorAll("[data-entrar-tab]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-entrar-tab") === qual));
     const login = document.getElementById("form-login");
     const cad = document.getElementById("form-cadastro");
-    if (login) login.hidden = id !== "login";
-    if (cad) cad.hidden = id !== "cadastro";
+    const tabs = document.getElementById("entrar-tabs");
+    const status = document.getElementById("entrar-status");
+    if (tabs) tabs.hidden = false;
+    if (status) {
+      status.hidden = true;
+      status.innerHTML = "";
+    }
+    if (login) {
+      login.classList.toggle("on", qual === "login");
+      login.hidden = qual !== "login";
+    }
+    if (cad) {
+      cad.classList.toggle("on", qual === "cadastro");
+      cad.hidden = qual !== "cadastro";
+    }
+    if (location.hash !== `#${qual}`) {
+      history.replaceState(null, "", `#${qual}`);
+    }
   },
 
   bindTabs() {
     document.querySelectorAll("[data-entrar-tab]").forEach((b) => {
-      b.addEventListener("click", () => this.tab(b.getAttribute("data-entrar-tab")));
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        const id = b.getAttribute("data-entrar-tab") || "login";
+        location.hash = id;
+        this.tab(id);
+      });
     });
   },
 
@@ -46,7 +71,7 @@ const EntrarApp = {
     const box = document.getElementById("entrar-status");
     const login = document.getElementById("form-login");
     const cad = document.getElementById("form-cadastro");
-    const tabs = document.querySelector(".entrar-tabs");
+    const tabs = document.getElementById("entrar-tabs");
     if (html) {
       if (login) login.hidden = true;
       if (cad) cad.hidden = true;
@@ -57,7 +82,7 @@ const EntrarApp = {
       box.hidden = true;
       box.innerHTML = "";
       if (tabs) tabs.hidden = false;
-      this.tab("login");
+      this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
     }
     card?.scrollIntoView({ behavior: "smooth", block: "start" });
   },
@@ -77,7 +102,8 @@ const EntrarApp = {
       location.replace("pages/cliente.php");
       return;
     }
-    if (!UI.pwaStandalone() && (me?.papel === "cliente" || window.SAIDERA_CLIENTE_LOGADO)) {
+    const instalar = new URLSearchParams(location.search).get("instalar") === "1";
+    if (instalar && !UI.pwaStandalone() && (me?.papel === "cliente" || window.SAIDERA_CLIENTE_LOGADO)) {
       await this.depoisDeAuth();
     }
   },
@@ -96,7 +122,6 @@ const EntrarApp = {
       await this.depoisDeAuth();
     } catch (e) {
       this.erro("login-erro", e.message || "E-mail ou senha inválidos.");
-      this.tab("cadastro");
     }
   },
 
@@ -144,14 +169,14 @@ const EntrarApp = {
     if (motivo === "ios") {
       this.status(`<h2>Instalar no iPhone</h2>
         <p class="notice">Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>. Depois abra pelo ícone Saidera. O painel não abre no Safari.</p>
-        <button type="button" class="btn btn-ghost btn-block" style="margin-top:14px" id="voltar-login">Voltar ao login</button>`);
+        <button type="button" class="btn btn-ghost btn-block" style="margin-top:14px" id="voltar-login">Voltar</button>`);
       document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
       return;
     }
     if (motivo === "unavailable") {
       this.status(`<h2>Abra o app</h2>
         <p class="muted" style="margin:10px 0 14px">O cliente não entra pelo navegador. Se o Saidera já está no celular, toque no ícone. Senão, no Chrome: menu ⋮ → Instalar Saidera.</p>
-        <button type="button" class="btn btn-ghost btn-block" id="voltar-login">Voltar ao login</button>`);
+        <button type="button" class="btn btn-ghost btn-block" id="voltar-login">Voltar</button>`);
       document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin(true));
       return;
     }

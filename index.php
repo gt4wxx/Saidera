@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="field" style="margin-top:10px"><span>Senha</span><input name="senha" type="password" required autocomplete="current-password"/></div>
         <p class="tiny" id="login-erro" style="color:#f87171;margin-top:8px"><?= h($erroLogin) ?></p>
         <button type="submit" class="btn btn-gold btn-block" style="margin-top:12px">Entrar</button>
-        <p class="tiny muted" style="margin-top:14px;text-align:center">Cliente? <a href="entrar.php" style="color:#F5B800">Entre pelo app</a></p>
+        <p class="tiny muted" style="margin-top:14px;text-align:center">Cliente? <a href="entrar.php#login" style="color:#F5B800">Entrar</a> · <a href="entrar.php#cadastro" style="color:#F5B800">Cadastrar</a></p>
       </form>
     </section>
   </main>
