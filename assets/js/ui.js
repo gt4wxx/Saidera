@@ -11,6 +11,25 @@ const Brand = {
   src(file) {
     return `${this.brandDir()}/${file}`;
   },
+  abs(file) {
+    return new URL(this.src(file), location.href).href;
+  },
+  async dataUrl(file) {
+    const abs = this.abs(file);
+    try {
+      const res = await fetch(abs, { credentials: "same-origin" });
+      if (!res.ok) return abs;
+      const blob = await res.blob();
+      return await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(blob);
+      });
+    } catch {
+      return abs;
+    }
+  },
   img(file, cls = "", alt = "Saidera") {
     return `<img class="${cls}" src="${this.src(file)}" alt="${alt}"/>`;
   },
@@ -218,8 +237,9 @@ const UI = {
       .join("")}</div>`;
   },
 
-  qrApp({ url, casa = "", size = 220 } = {}) {
-    const qr = window.QR?.svg ? QR.svg(url, size, { logo: true }) : this.qrSvg(url);
+  qrApp({ url, casa = "", size = 220, logoSrc } = {}) {
+    const icon = logoSrc || (window.Brand ? Brand.abs("10_app_icon_amarelo.png") : "");
+    const qr = window.QR?.svg ? QR.svg(url, size, { logo: true, logoSrc: icon }) : this.qrSvg(url);
     const casaTxt = String(casa || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -227,10 +247,7 @@ const UI = {
     return `<div class="qr-app">
       <div class="qr-app-brand">${Brand.horizontal("brand-h brand-h-qr")}</div>
       <p class="qr-app-kicker">Cadastre-se e baixe o app</p>
-      <div class="qr-app-frame">
-        ${qr}
-        <span class="qr-app-badge" aria-hidden="true">${Brand.markGold(48)}</span>
-      </div>
+      <div class="qr-app-frame">${qr}</div>
       <h3 class="qr-app-title">Leia e entre no Saidera</h3>
       ${casaTxt ? `<p class="qr-app-casa">${casaTxt}</p>` : ""}
       <p class="qr-app-sub">Quem não tem o app cai no cadastro. Quem já tem abre o Saidera.</p>

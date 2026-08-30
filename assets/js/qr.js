@@ -46,15 +46,33 @@ const QR = {
 
   svg(text, size = 188, opts = {}) {
     if (typeof qrcode !== "function") return "";
-    const level = opts.level || (opts.logo ? "H" : "M");
+    const level = opts.level || (opts.logo || opts.logoSrc ? "H" : "M");
     const qr = qrcode(0, level);
     qr.addData(String(text), "Byte");
     qr.make();
     const raw = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
-    return raw
+    let out = raw
       .replace(/fill="black"/g, 'fill="#171717"')
       .replace(/fill="white"/g, 'fill="#FFF9E8"')
-      .replace("<svg", `<svg width="${size}" height="${size}" class="qr-real"`);
+      .replace("<svg", `<svg width="${size}" height="${size}" class="qr-real" xmlns:xlink="http://www.w3.org/1999/xlink"`);
+    if (opts.logoSrc) {
+      const m = out.match(/viewBox="([^"]+)"/);
+      const p = m ? m[1].split(/\s+/).map(Number) : [0, 0, size, size];
+      const w = p[2] || size;
+      const h = p[3] || size;
+      const s = Math.min(w, h) * 0.22;
+      const x = (w - s) / 2;
+      const y = (h - s) / 2;
+      const pad = s * 0.14;
+      const href = String(opts.logoSrc).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+      out = out.replace(
+        "</svg>",
+        `<rect x="${x - pad}" y="${y - pad}" width="${s + pad * 2}" height="${s + pad * 2}" rx="${s * 0.2}" fill="#FFF9E8"/>` +
+          `<image href="${href}" xlink:href="${href}" x="${x}" y="${y}" width="${s}" height="${s}" preserveAspectRatio="xMidYMid meet"/>` +
+          `</svg>`
+      );
+    }
+    return out;
   },
 
   erroCamera(err) {
