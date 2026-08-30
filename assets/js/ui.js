@@ -358,6 +358,10 @@ const UI = {
     return /entrar\.php|cliente\.php/.test(location.pathname);
   },
 
+  pages() {
+    return Brand.pages();
+  },
+
   pwaSwUrl() {
     return this.pages() ? "../sw.js" : "sw.js";
   },
