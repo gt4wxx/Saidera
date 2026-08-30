@@ -1440,7 +1440,7 @@ const EstApp = {
     }
     const casa = this.esc(this.est()?.nome || "");
     const [brand, icon] = await Promise.all([
-      Brand.dataUrl("03_logo_horizontal.png"),
+      Brand.dataUrl("03_logo_horizontal.png", true),
       Brand.dataUrl("10_app_icon_amarelo.png"),
     ]);
     const qr = QR.svg(url, 320, { logo: true, logoSrc: icon });

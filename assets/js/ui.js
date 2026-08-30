@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "36");
+    return String(window.SAIDERA_V || "37");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -18,11 +18,14 @@ const Brand = {
   src(file) {
     return this.cache(`${this.brandDir()}/${file}`);
   },
-  abs(file) {
-    return new URL(this.src(file), location.href).href;
+  kitSrc(file) {
+    return this.cache(`${this.kitDir()}/${file}`);
   },
-  async dataUrl(file) {
-    const abs = this.abs(file);
+  abs(file, fromKit = false) {
+    return new URL(fromKit ? this.kitSrc(file) : this.src(file), location.href).href;
+  },
+  async dataUrl(file, fromKit = false) {
+    const abs = this.abs(file, fromKit);
     try {
       const res = await fetch(abs, { credentials: "same-origin" });
       if (!res.ok) return abs;
@@ -50,10 +53,10 @@ const Brand = {
     return `<img class="brand-simbolo" src="${this.src("02_simbolo_logo.png")}" alt="Saideira" width="${size}" height="${size}"/>`;
   },
   horizontal(cls = "brand-h") {
-    return this.img("03_logo_horizontal.png", cls);
+    return `<img class="${cls}" src="${this.kitSrc("03_logo_horizontal.png")}" alt="Saideira"/>`;
   },
   principal(cls = "brand-principal") {
-    return this.img("03_logo_horizontal.png", cls);
+    return `<img class="${cls}" src="${this.kitSrc("01_logo_principal.png")}" alt="Saideira"/>`;
   },
   banner(tipo, cls = "brand-banner") {
     const file =
