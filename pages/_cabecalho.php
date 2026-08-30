@@ -15,13 +15,14 @@ $css = $css ?? [];
 <?php foreach ($css as $href): ?>
   <link rel="stylesheet" href="<?= htmlspecialchars($href) ?>?v=<?= $v ?>"/>
 <?php endforeach; ?>
-  <link rel="icon" type="image/png" href="../assets/brand/icon-192.png"/>
+  <link rel="icon" type="image/png" href="../assets/brand/icon-192.png?v=<?= $v ?>"/>
   <meta name="theme-color" content="#171717"/>
+  <script>window.SAIDERA_V = <?= json_encode($v) ?>;</script>
 <?php if (!empty($swCliente)): ?>
-  <link rel="apple-touch-icon" href="../assets/brand/apple-touch.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="../assets/brand/apple-touch.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="../assets/brand/icon-192.png"/>
-  <link rel="manifest" href="<?= htmlspecialchars($manifest ?? '../manifest-cliente.webmanifest') ?>"/>
+  <link rel="apple-touch-icon" href="../assets/brand/apple-touch.png?v=<?= $v ?>"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/brand/apple-touch.png?v=<?= $v ?>"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="../assets/brand/icon-192.png?v=<?= $v ?>"/>
+  <link rel="manifest" href="<?= htmlspecialchars($manifest ?? '../manifest-cliente.webmanifest') ?>?v=<?= $v ?>"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saideira"/>

@@ -1,5 +1,10 @@
 <?php
 
+function saidera_v(): string
+{
+    return '36';
+}
+
 function saidera_https(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;

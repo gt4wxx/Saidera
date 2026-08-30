@@ -8,8 +8,15 @@ const Brand = {
   kitDir() {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
+  v() {
+    return String(window.SAIDERA_V || "36");
+  },
+  cache(url) {
+    if (!url || /[?&]v=/.test(url)) return url;
+    return `${url}${url.includes("?") ? "&" : "?"}v=${this.v()}`;
+  },
   src(file) {
-    return `${this.brandDir()}/${file}`;
+    return this.cache(`${this.brandDir()}/${file}`);
   },
   abs(file) {
     return new URL(this.src(file), location.href).href;
@@ -55,7 +62,7 @@ const Brand = {
         : tipo === "secundario"
           ? "08_banner_secundario.png"
           : "07_banner_principal.png";
-    return `<img class="${cls}" src="${this.kitDir()}/${file}" alt="Saideira"/>`;
+    return `<img class="${cls}" src="${this.cache(`${this.kitDir()}/${file}`)}" alt="Saideira"/>`;
   },
   sideHead(role) {
     return `<div class="brand-side pad">
@@ -517,7 +524,7 @@ const UI = {
   pwaFolhaIos() {
     document.getElementById("pwa-ios-folha")?.remove();
     const safari = this.pwaIosSafari();
-    const icon = this.pages() ? "../assets/brand/apple-touch.png" : "assets/brand/apple-touch.png";
+    const icon = this.src("apple-touch.png");
     const bg = document.createElement("div");
     bg.id = "pwa-ios-folha";
     bg.className = "pwa-ios-bg";

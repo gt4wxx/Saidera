@@ -1,4 +1,4 @@
-const CACHE = "saidera-pwa-v7";
+const CACHE = "saidera-pwa-v8";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

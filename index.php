@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erroLogin = 'Não foi possível conectar ao banco. Confira a instalação.';
     }
 }
+$v = saidera_v();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -85,10 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Saideira</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=35"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=35"/>
-  <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=<?= h($v) ?>"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=<?= h($v) ?>"/>
+  <link rel="icon" type="image/png" href="assets/brand/icon-192.png?v=<?= h($v) ?>"/>
   <meta name="theme-color" content="#171717"/>
+  <script>window.SAIDERA_V = <?= json_encode($v) ?>;</script>
 </head>
 <body>
   <main class="landing">
@@ -109,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
     </section>
   </main>
-  <script src="assets/js/icons.js?v=35"></script>
-  <script src="assets/js/ui.js?v=35"></script>
+  <script src="assets/js/icons.js?v=<?= h($v) ?>"></script>
+  <script src="assets/js/ui.js?v=<?= h($v) ?>"></script>
   <script>
     document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Saideira</span>`;
   </script>

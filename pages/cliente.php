@@ -12,7 +12,7 @@ $v = saidera_v();
   <div id="app">
     <div id="cli-boot" style="min-height:100dvh;display:grid;place-items:center;background:#0e0e0e;padding:28px;text-align:center">
       <div>
-        <img src="../assets/brand/03_logo_horizontal.png" alt="Saideira" style="width:min(220px,72vw);margin:0 auto 18px"/>
+        <img src="../assets/brand/03_logo_horizontal.png?v=<?= $v ?>" alt="Saideira" style="width:min(220px,72vw);margin:0 auto 18px"/>
         <p id="cli-boot-msg" style="color:#c4b8a4;font-size:14px">Abrindo seu painel…</p>
       </div>
     </div>

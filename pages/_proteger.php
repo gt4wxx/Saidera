@@ -3,11 +3,6 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/api/lib/app.php';
 
-function saidera_v(): string
-{
-    return '35';
-}
-
 function saidera_proteger(string $papel): void
 {
     if (!saidera_instalado()) {

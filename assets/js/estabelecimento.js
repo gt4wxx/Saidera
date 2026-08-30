@@ -78,7 +78,7 @@ const EstApp = {
   },
 
   avatar(src) {
-    if (!src) return "../assets/brand/icon-192.png";
+    if (!src) return Brand.src("icon-192.png");
     return Logic.midiaUrl(src);
   },
 

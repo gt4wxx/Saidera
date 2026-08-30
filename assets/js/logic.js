@@ -394,8 +394,15 @@ const Logic = {
 
   midiaUrl(src) {
     if (!src) return src;
-    if (/^(https?:|data:|\/|\.\.\/)/i.test(src)) return src;
-    return /\/pages\//.test(location.pathname) ? `../${src}` : src;
+    if (/^(https?:|data:)/i.test(src)) return src;
+    let url = src;
+    if (!/^(?:\/|\.\.\/)/i.test(src)) {
+      url = /\/pages\//.test(location.pathname) ? `../${src}` : src;
+    }
+    if (/assets\/brand\/|Saidera_Kit_Marca\//i.test(url) && window.Brand?.cache) {
+      return Brand.cache(url);
+    }
+    return url;
   },
 
   avatarUrl(src) {

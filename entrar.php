@@ -35,23 +35,25 @@ if ($eu && ($eu['papel'] ?? '') !== 'cliente') {
 
 $clienteLogado = $eu && ($eu['papel'] ?? '') === 'cliente';
 $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
+$v = saidera_v();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <script src="assets/js/pwa-captura.js?v=35"></script>
+  <script>window.SAIDERA_V = <?= json_encode($v) ?>;</script>
+  <script src="assets/js/pwa-captura.js?v=<?= $v ?>"></script>
   <title>Saideira · Entrar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=35"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=35"/>
-  <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
-  <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="assets/brand/icon-192.png"/>
-  <link rel="manifest" href="manifest-cliente.webmanifest"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=<?= $v ?>"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=<?= $v ?>"/>
+  <link rel="icon" type="image/png" href="assets/brand/icon-192.png?v=<?= $v ?>"/>
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch.png?v=<?= $v ?>"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png?v=<?= $v ?>"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="assets/brand/icon-192.png?v=<?= $v ?>"/>
+  <link rel="manifest" href="manifest-cliente.webmanifest?v=<?= $v ?>"/>
   <meta name="theme-color" content="#171717"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -97,9 +99,9 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
     window.SAIDERA_CLIENTE_LOGADO = <?= $clienteLogado ? 'true' : 'false' ?>;
     window.SAIDERA_CASA_CONVITE = <?= json_encode($casa) ?>;
   </script>
-  <script src="assets/js/icons.js?v=35"></script>
-  <script src="assets/js/api.js?v=35"></script>
-  <script src="assets/js/ui.js?v=35"></script>
-  <script src="assets/js/entrar.js?v=35"></script>
+  <script src="assets/js/icons.js?v=<?= $v ?>"></script>
+  <script src="assets/js/api.js?v=<?= $v ?>"></script>
+  <script src="assets/js/ui.js?v=<?= $v ?>"></script>
+  <script src="assets/js/entrar.js?v=<?= $v ?>"></script>
 </body>
 </html>
