@@ -13,11 +13,17 @@ const AdminApp = {
     tamCasa: "", tamQuase: "",
     saiStatus: "", saiCasa: "",
     tktStatus: "", tktCasa: "",
+    dashFaixa: "7",
+    dashCasa: "",
   },
   novo: {},
   camDispId: "",
   dispCanal: "",
   camPrefill: null,
+  dashFaixa: 7,
+  dashDia: "",
+  dashBairro: "",
+  geo: null,
   aud: { bairros: [], ests: [], bebidaId: "", dias: 90, canal: "push" },
   audPronto: false,
 
@@ -48,6 +54,12 @@ const AdminApp = {
     UI.bindGlobal();
     this.root = document.getElementById("app");
     this.prepararAud();
+    try {
+      this.geo = JSON.parse(sessionStorage.getItem("saidera_admin_geo") || "null");
+      if (this.geo) Logic.aplicarDistancias(this.geo);
+    } catch {
+      this.geo = null;
+    }
     Store.on(() => this.render());
     window.addEventListener("hashchange", () => this.route());
     this.route();
@@ -174,6 +186,18 @@ const AdminApp = {
     return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
   },
 
+  idadeDe(br) {
+    const iso = this.nascIso(br);
+    if (!iso) return null;
+    const d = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return null;
+    const hoje = new Date();
+    let n = hoje.getFullYear() - d.getFullYear();
+    const m = hoje.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < d.getDate())) n -= 1;
+    return n >= 0 && n < 130 ? n : null;
+  },
+
   bairrosReais() {
     const set = new Set();
     Store.all("clientes").forEach((c) => c.bairro && set.add(c.bairro));
@@ -245,8 +269,10 @@ const AdminApp = {
   dashboard() {
     const c = this.contagens();
     const r = Logic.resumoRede();
-    const semana = Store.data?.meta?.semana || r.semana;
-    const bairros = Store.data?.meta?.bairros || r.bairros;
+    const faixa = Number(this.f.dashFaixa || this.dashFaixa || 7);
+    const casaId = this.f.dashCasa || "";
+    const semana = Logic.semanaTampas(casaId || null, null, faixa);
+    const bairros = (r.bairros || []).map((b) => ({ ...b, on: this.dashBairro === (b.chave || b.nome) }));
     const pendentes = Store.all("campanhas").filter((x) => this.camStatus(x) === "pendente");
     const cuponsAbertos = Store.all("tickets").filter((t) => this.ticketStatus(t) === "aberto");
     const quase = Store.all("tampas").filter((t) => t.meta - t.atual <= 2 && t.atual > 0);
@@ -261,20 +287,51 @@ const AdminApp = {
       ["Cupons QR abertos", cuponsAbertos.length, "#/tickets"],
       ["Quase na Saideira", quase.length, "#/tampas"],
     ];
+    const perto = this.geo
+      ? Store.all("estabelecimentos")
+          .filter((e) => e.status === "ativo" && e.temDistancia)
+          .sort((a, b) => (a.distanciaKm || 99) - (b.distanciaKm || 99))
+          .slice(0, 6)
+      : [];
+    const diaCons = this.dashDia
+      ? Store.all("consumos").filter((x) => Logic.consumoNoDia(x, this.dashDia) && (!casaId || x.estabelecimentoId === casaId))
+      : [];
+    const cliBairro = this.dashBairro
+      ? Store.all("clientes").filter((x) => (x.bairro || "Outros") === this.dashBairro)
+      : [];
     return `${Brand.banner("principal", "brand-banner-hero")}
-      <p class="tiny muted" style="margin-bottom:12px">Números do banco. Toque num KPI para abrir o menu.</p>
+      <p class="tiny muted" style="margin-bottom:12px">Toque num KPI, num ponto do gráfico ou num bairro. Use a localização para ver as casas perto de você.</p>
       <div class="kpis">${kpis.map(([l, v, href]) => `<a class="kpi kpi-go" href="${href}"><span>${l}</span><b>${this.n(v)}</b></a>`).join("")}</div>
       <div class="atalhos">
         <a class="btn btn-gold btn-sm" href="#/campanhas">Nova campanha</a>
         <a class="btn btn-navy btn-sm" href="#/disparos">Validar disparos</a>
         <a class="btn btn-ghost btn-sm" href="#/tickets">Cupons QR</a>
-        <a class="btn btn-ghost btn-sm" href="#/config">Configurações</a>
+        <button type="button" class="btn btn-ghost btn-sm" data-act="admin-geo">${this.geo ? "Atualizar localização" : "Ativar localização"}</button>
       </div>
+      ${this.geo ? `<p class="tiny muted" style="margin:8px 0 12px">Localização ligada${perto[0] ? " · casa mais perto: " + this.esc(perto[0].nome) + " (" + perto[0].distanciaKm + " km)" : ""}.</p>` : ""}
       ${pendentes.length ? `<p class="notice" style="margin-bottom:14px">${pendentes.length} campanha(s) aguardando validação. <a href="#/disparos" style="color:#F5B800">Ir para disparos</a></p>` : ""}
       ${cuponsAbertos.length ? `<section class="panel" style="margin-bottom:14px"><h3>Cupons QR abertos</h3>${cuponsAbertos.slice(0, 6).map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>${this.esc(t.codigo)} · ${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")}</span><a class="btn btn-ghost btn-sm" href="#/tickets">Ver</a></div>`).join("")}</section>` : ""}
+      ${perto.length ? `<section class="panel" style="margin-bottom:14px"><h3>Casas perto de você</h3>${perto.map((e) => `<a class="row between" href="#/casa/${e.id}" style="padding:8px 0;border-bottom:1px solid #2a2a2a;color:inherit;text-decoration:none"><span>${this.esc(e.nome)}</span><span class="tiny muted">${e.distanciaKm} km · ${this.esc(e.bairro || "")}</span></a>`).join("")}</section>` : ""}
       <div class="grid-2">
-        <section class="panel"><h3>Tampas nos últimos 7 dias</h3>${semana.values?.some((v) => v) ? UI.lineChart(semana.values, semana.labels) : this.empty("Ainda não há consumos registrados.")}</section>
-        <section class="panel"><h3>Saideiras por bairro</h3>${bairros.length ? UI.bars(bairros) : this.empty("Nenhuma Saideira conquistada ainda.")}</section>
+        <section class="panel">
+          <h3>Tampas nos últimos ${faixa} dias</h3>
+          <div class="row wrap" style="gap:8px;align-items:center;margin-bottom:8px">
+            ${this.chips("dashFaixa", [["7", "7 dias"], ["14", "14 dias"], ["30", "30 dias"]])}
+            <select data-filtro-sel="dashCasa" style="margin-left:auto;min-width:160px">
+              <option value="">Toda a rede</option>
+              ${Store.all("estabelecimentos").map((e) => `<option value="${e.id}" ${casaId === e.id ? "selected" : ""}>${this.esc(e.nome)}</option>`).join("")}
+            </select>
+          </div>
+          ${semana.values?.some((v) => v) ? UI.lineChart(semana.values, semana.labels, semana.keys, this.dashDia) : this.empty("Ainda não há consumos registrados.")}
+          ${this.dashDia ? `<p class="tiny muted" style="margin-top:10px">${diaCons.length} consumo(s) em ${this.esc(this.dashDia)}. <button type="button" class="btn btn-ghost btn-sm" data-dash-dia="">Limpar dia</button></p>
+            ${diaCons.slice(0, 8).map((x) => `<a href="#/cliente/${x.clienteId}" class="row between" style="padding:6px 0;color:inherit;text-decoration:none"><span>+${x.quantidade} ${this.esc(Logic.bebida(x.bebidaId)?.nome || "")} · ${this.esc(Logic.cliente(x.clienteId)?.nome || "")}</span></a>`).join("")}` : `<p class="tiny muted" style="margin-top:8px">Toque num ponto para ver o dia.</p>`}
+        </section>
+        <section class="panel">
+          <h3>Saideiras por bairro</h3>
+          ${bairros.length ? UI.bars(bairros) : this.empty("Nenhuma Saideira conquistada ainda.")}
+          ${this.dashBairro ? `<p class="tiny muted" style="margin-top:10px">${cliBairro.length} cliente(s) em ${this.esc(this.dashBairro)}. <button type="button" class="btn btn-ghost btn-sm" data-dash-bairro="">Limpar</button></p>
+            ${cliBairro.slice(0, 8).map((x) => `<a href="#/cliente/${x.id}" style="display:block;padding:6px 0;color:inherit">${this.esc(x.nome)}</a>`).join("")}` : `<p class="tiny muted" style="margin-top:8px">Toque numa barra para filtrar o bairro.</p>`}
+        </section>
       </div>
       <section class="panel" style="margin-top:14px">
         <h3>Últimos eventos</h3>
@@ -323,7 +380,9 @@ const AdminApp = {
           <td class="table-actions">
             <a class="btn btn-ghost btn-sm" href="#/casa/${e.id}">Ficha</a>
             <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar</button>
+            <button class="btn btn-ghost btn-sm" data-act="entrar-conta" data-papel="estabelecimento" data-id="${e.id}">Entrar</button>
             <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
+            <button class="btn btn-danger btn-sm" data-act="est-excluir" data-id="${e.id}">Excluir</button>
           </td>
         </tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhuma casa cadastrada.")}
@@ -331,7 +390,7 @@ const AdminApp = {
   },
 
   clientes() {
-    let list = this.filtrar(Store.all("clientes"), this.q.cli, ["nome", "codigo", "email", "bairro", "telefone"]);
+    let list = this.filtrar(Store.all("clientes"), this.q.cli, ["nome", "codigo", "email", "bairro", "telefone", "cidade"]);
     if (this.f.cliStatus) list = list.filter((c) => c.status === this.f.cliStatus);
     const form = `<div class="form-grid">
         <div class="field"><span>Nome</span><input id="nc-nome"/></div>
@@ -346,12 +405,12 @@ const AdminApp = {
     <section class="panel">
       ${this.toolbar("q-cli", "cli", "Filtrar por nome, código ou e-mail", this.chips("cliStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]]))}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Código</th><th>Contato</th><th>Bairro</th><th>Tampas</th><th>Saideiras</th><th>Última visita</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Código</th><th>Contato</th><th>Onde mora</th><th>Tampas</th><th>Saideiras</th><th>Última visita</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((c) => `<tr>
           <td><div class="person"><img src="${this.avatar(c.avatar)}" alt=""/><strong>${this.esc(c.nome)}</strong></div></td>
           <td>${this.esc(c.codigo)}</td>
           <td>${this.esc(c.email || "—")}<p class="tiny muted">${this.esc(c.telefone || "")}</p></td>
-          <td>${this.esc(c.bairro || "—")}</td>
+          <td>${this.esc(c.bairro || "—")}${c.cidade ? `<p class="tiny muted">${this.esc(c.cidade)}</p>` : ""}</td>
           <td>${c.tampasTotal != null ? this.n(c.tampasTotal) : "—"}</td>
           <td>${c.saiderasTotal != null ? this.n(c.saiderasTotal) : "—"}</td>
           <td>${this.esc(c.ultimaVisita || "—")}</td>
@@ -359,7 +418,9 @@ const AdminApp = {
           <td class="table-actions">
             <a class="btn btn-ghost btn-sm" href="#/cliente/${c.id}">Ficha</a>
             <button class="btn btn-ghost btn-sm" data-act="cli-editar" data-id="${c.id}">Editar</button>
+            <button class="btn btn-ghost btn-sm" data-act="entrar-conta" data-papel="cliente" data-id="${c.id}">Entrar</button>
             <button class="btn btn-ghost btn-sm" data-act="cli-status" data-id="${c.id}">${c.status === "ativo" ? "Desativar" : "Ativar"}</button>
+            <button class="btn btn-danger btn-sm" data-act="cli-excluir" data-id="${c.id}">Excluir</button>
           </td>
         </tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhum cliente cadastrado.")}
@@ -399,7 +460,9 @@ const AdminApp = {
           <td>${this.badge(f.status)}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" data-act="fun-editar" data-id="${f.id}">Editar</button>
+            <button class="btn btn-ghost btn-sm" data-act="entrar-conta" data-papel="funcionario" data-id="${f.id}">Entrar</button>
             <button class="btn btn-ghost btn-sm" data-act="fun-status" data-id="${f.id}">${f.status === "ativo" ? "Desativar" : "Ativar"}</button>
+            <button class="btn btn-danger btn-sm" data-act="fun-excluir" data-id="${f.id}">Excluir</button>
           </td>
         </tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhum funcionário cadastrado.")}
@@ -436,7 +499,9 @@ const AdminApp = {
       <div class="table-actions" style="margin-top:12px">
         <a class="btn btn-gold btn-sm" href="#/parceiro/${p.id}">Ficha</a>
         <button class="btn btn-ghost btn-sm" data-act="par-editar" data-id="${p.id}">Editar</button>
+        <button class="btn btn-ghost btn-sm" data-act="entrar-conta" data-papel="parceiro" data-id="${p.id}">Entrar</button>
         <button class="btn btn-ghost btn-sm" data-act="par-status" data-id="${p.id}">${p.status === "ativo" ? "Desativar" : "Ativar"}</button>
+        <button class="btn btn-danger btn-sm" data-act="par-excluir" data-id="${p.id}">Excluir</button>
       </div>
     </article>`;
     }).join("") : `<section class="panel">${this.empty("Nenhum parceiro cadastrado.")}</section>`}</div>`;
@@ -457,8 +522,10 @@ const AdminApp = {
     <section class="panel" style="margin-bottom:14px">
       <p class="tiny muted">${this.esc(p.categoria || "Sem categoria")} · ${this.esc(p.email || "sem login")}${p.selo ? " · " + this.esc(p.selo) : ""}</p>
       <div class="table-actions wrap" style="margin-top:12px">
+        <button class="btn btn-gold btn-sm" data-act="entrar-conta" data-papel="parceiro" data-id="${p.id}">Entrar na conta</button>
         <button class="btn btn-ghost btn-sm" data-act="par-editar" data-id="${p.id}">Editar cadastro</button>
         <button class="btn btn-ghost btn-sm" data-act="par-status" data-id="${p.id}">${p.status === "ativo" ? "Desativar" : "Ativar"}</button>
+        <button class="btn btn-danger btn-sm" data-act="par-excluir" data-id="${p.id}">Excluir</button>
       </div>
     </section>
     <section class="panel" style="margin-bottom:14px">
@@ -919,30 +986,41 @@ const AdminApp = {
     if (!c) return `<section class="panel">${this.empty("Cliente não encontrado.")}<a class="btn btn-ghost" href="#/clientes">Voltar</a></section>`;
     const tampas = Store.all("tampas").filter((t) => t.clienteId === c.id);
     const sais = Store.all("saideras").filter((s) => s.clienteId === c.id);
-    const cons = Store.all("consumos").filter((x) => x.clienteId === c.id).slice(0, 12);
+    const consTodos = Store.all("consumos").filter((x) => x.clienteId === c.id);
+    const cons = consTodos.slice(0, 16);
     const tkts = Store.all("tickets").filter((t) => t.usadoPor === c.id);
+    const avisos = Store.all("notificacoes").filter((n) => n.clienteId === c.id).slice(0, 8);
+    const casasIds = [...Logic.idsCasasDoCliente(c.id)];
+    const fav = Logic.bebida(c.bebidaFavoritaId || c.prefs?.bebidaFavoritaId);
+    const prefs = c.prefs || {};
+    const idade = this.idadeDe(c.nascimento);
     return `<div class="kpis">
-      <div class="kpi"><span>Código QR</span><b>${this.esc(c.codigo)}</b></div>
-      <div class="kpi"><span>Tampas em aberto</span><b>${this.n(tampas.reduce((a, t) => a + t.atual, 0))}</b></div>
-      <div class="kpi"><span>Saideiras</span><b>${this.n(sais.length)}</b></div>
-      <div class="kpi"><span>Status</span><b>${this.esc(c.status)}</b></div>
+      <a class="kpi kpi-go" href="#/tampas"><span>Tampas em aberto</span><b>${this.n(tampas.reduce((a, t) => a + t.atual, 0))}</b></a>
+      <a class="kpi kpi-go" href="#/saideras"><span>Saideiras</span><b>${this.n(sais.length)}</b></a>
+      <div class="kpi"><span>Casas</span><b>${this.n(casasIds.length)}</b></div>
+      <div class="kpi"><span>Consumos</span><b>${this.n(consTodos.length)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
       <div class="person" style="margin-bottom:12px">
         <img src="${this.avatar(c.avatar)}" alt=""/>
         <div>
           <h3>${this.esc(c.nome)}</h3>
-          <p class="tiny muted">${this.esc(c.email || "sem e-mail")} · ${this.esc(c.telefone || "sem telefone")} · ${this.esc(c.bairro || "sem bairro")}</p>
-          <p class="tiny muted">Cliente desde ${this.esc(c.clienteDesde || "—")} · última visita ${this.esc(c.ultimaVisita || "—")}</p>
+          <p class="tiny muted">${this.esc(c.email || "sem e-mail")} · ${this.esc(c.telefone || "sem telefone")}</p>
+          <p class="tiny muted">${this.esc(c.bairro || "sem bairro")}${c.cidade ? " · " + this.esc(c.cidade) : ""} · QR ${this.esc(c.codigo)}</p>
+          <p class="tiny muted">Desde ${this.esc(c.clienteDesde || "—")} · última visita ${this.esc(c.ultimaVisita || "—")}${c.nascimento ? " · nasc. " + this.esc(c.nascimento) : ""}${idade != null ? " · " + idade + " anos" : ""}</p>
+          <p class="tiny muted">Favorita: ${this.esc(fav?.nome || "—")} · avisos ${prefs.push === false ? "off" : "on"} · e-mail ${prefs.email === false ? "off" : "on"} · WhatsApp ${prefs.whatsapp ? "on" : "off"} · perfil ${prefs.perfilPublico === false ? "privado" : "público"}</p>
         </div>
       </div>
+      ${casasIds.length ? `<p class="tiny muted" style="margin-bottom:10px">Frequenta: ${casasIds.map((id) => `<a href="#/casa/${id}" style="color:#F5B800">${this.esc(Logic.est(id)?.nome || id)}</a>`).join(" · ")}</p>` : ""}
       <div class="table-actions wrap">
-        <button class="btn btn-gold btn-sm" data-act="cli-aviso" data-id="${c.id}">Enviar aviso</button>
-        <button class="btn btn-navy btn-sm" data-act="sai-conceder" data-id="${c.id}">Conceder Saideira</button>
+        <button class="btn btn-gold btn-sm" data-act="entrar-conta" data-papel="cliente" data-id="${c.id}">Entrar na conta</button>
+        <button class="btn btn-navy btn-sm" data-act="cli-aviso" data-id="${c.id}">Enviar aviso</button>
+        <button class="btn btn-ghost btn-sm" data-act="sai-conceder" data-id="${c.id}">Conceder Saideira</button>
         <button class="btn btn-ghost btn-sm" data-act="tam-ajustar-cli" data-id="${c.id}">Ajustar Tampas</button>
         <button class="btn btn-ghost btn-sm" data-act="cli-qr" data-id="${c.id}">Novo código QR</button>
         <button class="btn btn-ghost btn-sm" data-act="cli-editar" data-id="${c.id}">Editar cadastro</button>
         <button class="btn btn-ghost btn-sm" data-act="cli-status" data-id="${c.id}">${c.status === "ativo" ? "Desativar acesso" : "Reativar acesso"}</button>
+        <button class="btn btn-danger btn-sm" data-act="cli-excluir" data-id="${c.id}">Excluir</button>
       </div>
     </section>
     <div class="grid-2">
@@ -965,7 +1043,11 @@ const AdminApp = {
       <h3>Consumos recentes</h3>
       ${cons.length ? cons.map((x) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>+${x.quantidade} ${this.esc(Logic.bebida(x.bebidaId)?.nome || "Bebida")} · ${this.esc(Logic.est(x.estabelecimentoId)?.nome || "")}</span><span class="muted small">${Logic.fmtDate(x.criadoEm)}</span></div>`).join("") : this.empty("Nenhum consumo.")}
       ${tkts.length ? `<p class="tiny muted" style="margin-top:14px">Cupons lidos: ${tkts.map((t) => t.codigo).join(", ")}</p>` : ""}
-    </section>`;
+    </section>
+    ${avisos.length ? `<section class="panel" style="margin-top:14px">
+      <h3>Avisos no app</h3>
+      ${avisos.map((n) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>${this.esc(n.titulo || n.texto || n.mensagem || "Aviso")}</span><span class="muted small">${Logic.fmtDate(n.criadoEm || n.em)}</span></div>`).join("")}
+    </section>` : ""}`;
   },
 
   fichaCasa() {
@@ -994,9 +1076,11 @@ const AdminApp = {
         <div class="field" style="margin:0;min-width:220px"><span>Plano desta casa</span>
           <select id="casa-plano">${Store.all("planos").map((p) => `<option value="${p.id}" ${e.planoId === p.id ? "selected" : ""}>${this.esc(p.nome)}${p.aMostra ? "" : " (só admin)"}</option>`).join("")}</select>
         </div>
-        <button class="btn btn-gold btn-sm" data-act="casa-plano" data-id="${e.id}">Salvar plano</button>
+        <button class="btn btn-gold btn-sm" data-act="entrar-conta" data-papel="estabelecimento" data-id="${e.id}">Entrar na casa</button>
+        <button class="btn btn-navy btn-sm" data-act="casa-plano" data-id="${e.id}">Salvar plano</button>
         <button class="btn btn-ghost btn-sm" data-act="est-editar" data-id="${e.id}">Editar endereço</button>
         <button class="btn btn-ghost btn-sm" data-act="est-status" data-id="${e.id}">${e.status === "ativo" ? "Desativar" : "Ativar"}</button>
+        <button class="btn btn-danger btn-sm" data-act="est-excluir" data-id="${e.id}">Excluir</button>
       </div>
       <p class="tiny muted" style="margin-top:12px">Link do app desta casa (QR na mesa): <span style="word-break:break-all;color:#F5B800">${this.esc(Logic.urlEntrarCliente(e.id))}</span></p>
     </section>
@@ -1249,6 +1333,24 @@ const AdminApp = {
         this.render();
       })
     );
+    const dashClick = (sel, campo) => {
+      this.root.querySelectorAll(sel).forEach((el) => {
+        const aplicar = () => {
+          const atual = el.getAttribute(sel.slice(1, -1)) || "";
+          this[campo] = this[campo] === atual ? "" : atual;
+          this.render();
+        };
+        el.addEventListener("click", aplicar);
+        el.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            aplicar();
+          }
+        });
+      });
+    };
+    dashClick("[data-dash-dia]", "dashDia");
+    dashClick("[data-dash-bairro]", "dashBairro");
     this.ligarCep(this.root, "#ne-cep", { rua: "#ne-rua", bairro: "#ne-bairro", cidade: "#ne-cidade", uf: "#ne-uf" });
     this.root.querySelector("#casa-cartaz-file")?.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
@@ -1297,6 +1399,60 @@ const AdminApp = {
   },
 
   async onAct(act, id, el) {
+    if (act === "admin-geo") {
+      try {
+        this.geo = await UI.pedirLocalizacao();
+        sessionStorage.setItem("saidera_admin_geo", JSON.stringify(this.geo));
+        Logic.aplicarDistancias(this.geo);
+        this.render();
+        UI.toast("Localização ligada. As casas perto de você aparecem no dashboard.");
+      } catch (e) {
+        UI.toast(e.message || "Não deu para ativar a localização.");
+      }
+      return;
+    }
+    if (act === "entrar-conta") {
+      const papel = el?.getAttribute("data-papel") || "";
+      try {
+        const data = await API.post("admin/entrar-conta", { papel, id });
+        const pag = data?.session?.pagina;
+        if (!pag) {
+          UI.toast("Conta aberta, mas sem página de destino.");
+          return;
+        }
+        location.href = /\/pages\//.test(location.pathname) ? `../${pag}` : pag;
+      } catch (e) {
+        UI.toast(e.message || "Não deu para entrar nesta conta.");
+      }
+      return;
+    }
+    if (act === "cli-excluir") {
+      const c = Store.find("clientes", id);
+      if (!c || !confirm(`Excluir ${c.nome}? O acesso some; o histórico fica para auditoria.`)) return;
+      const data = await this.post("clientes/excluir", { id }, "Cliente excluído.");
+      if (data && this.view === "cliente") location.hash = "#/clientes";
+      return;
+    }
+    if (act === "est-excluir") {
+      const e = Store.find("estabelecimentos", id);
+      if (!e || !confirm(`Excluir ${e.nome}? A casa some do app do cliente.`)) return;
+      const data = await this.post("estabelecimentos/excluir", { id }, "Casa excluída.");
+      if (data && this.view === "casa") location.hash = "#/estabelecimentos";
+      return;
+    }
+    if (act === "fun-excluir") {
+      const f = Store.find("funcionarios", id);
+      if (!f || !confirm(`Excluir ${f.nome}? O login do garçom deixa de funcionar.`)) return;
+      await this.post("funcionarios/excluir", { id }, "Funcionário excluído.");
+      return;
+    }
+    if (act === "par-excluir") {
+      const p = Store.find("parceiros", id);
+      if (!p || !confirm(`Excluir ${p.nome}? O login do parceiro deixa de funcionar.`)) return;
+      const data = await this.post("parceiros/excluir", { id }, "Parceiro excluído.");
+      if (data && this.view === "parceiro") location.hash = "#/parceiros";
+      return;
+    }
     if (act === "pln-criar") {
       const data = await this.post("planos", {
         nome: this.val("#npn-nome"),
@@ -1453,6 +1609,7 @@ const AdminApp = {
         <div class="field"><span>Nova senha</span><input name="senha" type="password" placeholder="Vazio = manter"/></div>
         <div class="field"><span>Telefone</span><input name="telefone" value="${this.esc(c.telefone || "")}"/></div>
         <div class="field"><span>Bairro</span><input name="bairro" value="${this.esc(c.bairro || "")}"/></div>
+        <div class="field"><span>Cidade</span><input name="cidade" value="${this.esc(c.cidade || "")}"/></div>
         <div class="field"><span>Nascimento</span><input name="nascimento" type="date" value="${this.nascIso(c.nascimento)}"/></div>
         <div class="field"><span>Bebida favorita</span><select name="bebidaFavoritaId"><option value="">—</option>${bebs}</select></div>
       `, async (box) => {
@@ -1460,7 +1617,7 @@ const AdminApp = {
         const data = await this.post("clientes/salvar", {
           id: c.id, nome: g("nome"), email: g("email"), senha: g("senha"), telefone: g("telefone"),
           bairro: g("bairro"), nascimento: g("nascimento"), bebidaFavoritaId: g("bebidaFavoritaId"),
-          cidade: c.cidade,
+          cidade: g("cidade") || c.cidade,
         }, "Cliente atualizado.");
         return Boolean(data);
       });

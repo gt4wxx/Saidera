@@ -5,6 +5,70 @@ function admin_rota(string $method, string $path, array $in): bool
     if ($method !== 'POST') return false;
     $u = null;
 
+    if ($path === 'admin/voltar') {
+        auth_start();
+        $aid = (int) ($_SESSION['admin_uid'] ?? 0);
+        if (!$aid) fail('Não há painel de admin para voltar.');
+        $st = db()->prepare("SELECT * FROM usuarios WHERE id = ? AND ativo = 1 AND papel = 'admin'");
+        $st->execute([$aid]);
+        $admin = $st->fetch();
+        if (!$admin) fail('Admin original não encontrado.');
+        $_SESSION['uid'] = $aid;
+        unset($_SESSION['admin_uid']);
+        session_regenerate_id(true);
+        ok(['session' => session_payload($admin)]);
+    }
+
+    if ($path === 'admin/entrar-conta') {
+        $admin = auth_require(['admin']);
+        $papel = (string) ($in['papel'] ?? '');
+        $pub = (string) ($in['id'] ?? '');
+        $uid = 0;
+        $rotulo = '';
+        if ($papel === 'cliente') {
+            $id = nid('cli', $pub);
+            $st = db()->prepare('SELECT usuario_id, nome FROM clientes WHERE id = ?');
+            $st->execute([$id]);
+            $row = $st->fetch();
+            $uid = (int) ($row['usuario_id'] ?? 0);
+            $rotulo = (string) ($row['nome'] ?? '');
+        } elseif ($papel === 'funcionario') {
+            $id = nid('fun', $pub);
+            $st = db()->prepare('SELECT usuario_id, nome FROM funcionarios WHERE id = ?');
+            $st->execute([$id]);
+            $row = $st->fetch();
+            $uid = (int) ($row['usuario_id'] ?? 0);
+            $rotulo = (string) ($row['nome'] ?? '');
+        } elseif ($papel === 'parceiro') {
+            $id = nid('par', $pub);
+            $st = db()->prepare('SELECT usuario_id, nome FROM parceiros WHERE id = ?');
+            $st->execute([$id]);
+            $row = $st->fetch();
+            $uid = (int) ($row['usuario_id'] ?? 0);
+            $rotulo = (string) ($row['nome'] ?? '');
+        } elseif ($papel === 'estabelecimento') {
+            $id = nid('est', $pub);
+            $st = db()->prepare('SELECT g.usuario_id, e.nome FROM estabelecimento_gestores g JOIN estabelecimentos e ON e.id = g.estabelecimento_id WHERE g.estabelecimento_id = ? LIMIT 1');
+            $st->execute([$id]);
+            $row = $st->fetch();
+            $uid = (int) ($row['usuario_id'] ?? 0);
+            $rotulo = (string) ($row['nome'] ?? '');
+        } else {
+            fail('Informe o tipo da conta.');
+        }
+        if (!$uid) fail('Esta conta ainda não tem login. Cadastre e-mail e senha primeiro.');
+        $st = db()->prepare('SELECT * FROM usuarios WHERE id = ? AND ativo = 1');
+        $st->execute([$uid]);
+        $alvo = $st->fetch();
+        if (!$alvo) fail('Esta conta está inativa ou sem usuário.');
+        if (($alvo['papel'] ?? '') === 'admin') fail('Não é possível entrar como outro admin.');
+        $_SESSION['admin_uid'] = (int) $admin['id'];
+        $_SESSION['uid'] = $uid;
+        session_regenerate_id(true);
+        auditar('Admin entrou na conta', ($alvo['papel'] ?? $papel) . ' · ' . $rotulo);
+        ok(['session' => session_payload($alvo)]);
+    }
+
     if ($path === 'estabelecimentos/status') {
         auth_require(['admin']);
         $eid = nid('est', $in['id'] ?? '');
@@ -93,6 +157,19 @@ function admin_rota(string $method, string $path, array $in): bool
         admin_ok_store();
     }
 
+    if ($path === 'clientes/excluir') {
+        auth_require(['admin']);
+        $cli = nid('cli', $in['id'] ?? '');
+        if (!$cli) fail('Cliente não encontrado.');
+        $st = db()->prepare('SELECT usuario_id, nome FROM clientes WHERE id = ?');
+        $st->execute([$cli]);
+        $c = $st->fetch();
+        if (!$c) fail('Cliente não encontrado.');
+        db()->prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?')->execute([$c['usuario_id']]);
+        auditar('Cliente excluído pelo admin', $c['nome']);
+        admin_ok_store();
+    }
+
     if ($path === 'parceiros/salvar') {
         auth_require(['admin']);
         $pid = nid('par', $in['id'] ?? '');
@@ -128,6 +205,21 @@ function admin_rota(string $method, string $path, array $in): bool
         $status = ($in['status'] ?? '') === 'inativo' ? 'inativo' : 'ativo';
         db()->prepare('UPDATE parceiros SET status = ? WHERE id = ?')->execute([$status, $pid]);
         auditar($status === 'ativo' ? 'Parceiro reativado' : 'Parceiro desativado', (string) $pid);
+        admin_ok_store();
+    }
+
+    if ($path === 'parceiros/excluir') {
+        auth_require(['admin']);
+        $pid = nid('par', $in['id'] ?? '');
+        if (!$pid) fail('Parceiro não encontrado.');
+        db()->prepare("UPDATE parceiros SET status = 'inativo' WHERE id = ?")->execute([$pid]);
+        $st = db()->prepare('SELECT usuario_id, nome FROM parceiros WHERE id = ?');
+        $st->execute([$pid]);
+        $p = $st->fetch();
+        if (!empty($p['usuario_id'])) {
+            db()->prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?')->execute([$p['usuario_id']]);
+        }
+        auditar('Parceiro excluído pelo admin', (string) ($p['nome'] ?? $pid));
         admin_ok_store();
     }
 
@@ -189,6 +281,21 @@ function admin_rota(string $method, string $path, array $in): bool
         $uid = $st->fetch()['usuario_id'] ?? null;
         if ($uid) db()->prepare('UPDATE usuarios SET ativo = ? WHERE id = ?')->execute([$status === 'ativo' ? 1 : 0, $uid]);
         auditar($status === 'ativo' ? 'Funcionário reativado' : 'Funcionário desativado', (string) $fid);
+        admin_ok_store();
+    }
+
+    if ($path === 'funcionarios/excluir') {
+        auth_require(['admin']);
+        $fid = nid('fun', $in['id'] ?? '');
+        if (!$fid) fail('Funcionário não encontrado.');
+        db()->prepare("UPDATE funcionarios SET status = 'inativo' WHERE id = ?")->execute([$fid]);
+        $st = db()->prepare('SELECT usuario_id, nome FROM funcionarios WHERE id = ?');
+        $st->execute([$fid]);
+        $f = $st->fetch();
+        if (!empty($f['usuario_id'])) {
+            db()->prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?')->execute([$f['usuario_id']]);
+        }
+        auditar('Funcionário excluído pelo admin', (string) ($f['nome'] ?? $fid));
         admin_ok_store();
     }
 

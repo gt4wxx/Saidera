@@ -437,6 +437,7 @@ function bootstrap_store(array $u): array
         'tampasHoje' => (int) $f['tampas_hoje'],
         'saiderasEntregues' => (int) $f['saideras_entregues'],
     ], db()->query('SELECT f.*, u.email FROM funcionarios f JOIN usuarios u ON u.id = f.usuario_id ORDER BY f.nome')->fetchAll());
+    $empty['notificacoes'] = sync_notificacoes(db()->query('SELECT * FROM notificacoes ORDER BY criado_em DESC LIMIT 200')->fetchAll());
     return $empty;
 }
 
@@ -450,6 +451,7 @@ function session_payload(array $u): array
         'funcionarioId' => null,
         'parceiroId' => null,
         'pagina' => saidera_pagina_papel($u['papel']),
+        'impersonando' => !empty($_SESSION['admin_uid']),
     ];
     if ($u['papel'] === 'cliente') {
         $c = cliente_por_usuario((int) $u['id']);
@@ -463,6 +465,11 @@ function session_payload(array $u): array
     } elseif ($u['papel'] === 'estabelecimento') {
         $eid = gestor_est_id((int) $u['id']);
         $out['estabelecimentoId'] = $eid ? pub('est', $eid) : null;
+        if ($eid) {
+            $st = db()->prepare('SELECT nome FROM estabelecimentos WHERE id = ?');
+            $st->execute([$eid]);
+            $out['nome'] = $st->fetch()['nome'] ?? '';
+        }
     } elseif ($u['papel'] === 'parceiro') {
         $p = parceiro_por_usuario((int) $u['id']);
         $out['parceiroId'] = $p ? pub('par', $p['id']) : null;

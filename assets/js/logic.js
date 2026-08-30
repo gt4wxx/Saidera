@@ -184,8 +184,8 @@ const Logic = {
     const maxB = Math.max(1, ...Object.values(porBairro));
     const bairros = Object.entries(porBairro)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([nome, n]) => ({ nome, pct: Math.round((n / maxB) * 100) }));
+      .slice(0, 8)
+      .map(([nome, n]) => ({ nome, chave: nome, qtd: n, pct: Math.round((n / maxB) * 100) }));
     const semana = this.semanaTampas();
     return {
       estabelecimentos: ests.length,

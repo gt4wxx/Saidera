@@ -49,6 +49,7 @@ function auth_login(string $email, string $senha): array
     }
     auth_start();
     session_regenerate_id(true);
+    unset($_SESSION['admin_uid']);
     $_SESSION['uid'] = (int) $u['id'];
     return $u;
 }

@@ -25,6 +25,7 @@ const Store = {
       return false;
     }
     this.session = me;
+    if (window.UI?.pintarImpersonar) UI.pintarImpersonar();
     try {
       const boot = await API.get("bootstrap");
       this.data = boot;

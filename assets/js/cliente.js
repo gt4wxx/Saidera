@@ -19,16 +19,16 @@ const ClienteApp = {
   async boot() {
     this.root = document.getElementById("app");
     const msg = document.getElementById("cli-boot-msg");
-    if (!UI.pwaStandalone() && !UI.pwaCelular()) {
-      location.replace("../entrar.php");
-      return;
-    }
     const aviso = setTimeout(() => {
       if (msg) msg.textContent = "Ainda carregando. Confira a internet do celular.";
     }, 4000);
     try {
       const ok = await Store.init({ papel: "cliente" });
       if (!ok) return;
+      if (!Store.session?.impersonando && !UI.pwaStandalone() && !UI.pwaCelular()) {
+        location.replace("../entrar.php");
+        return;
+      }
       UI.bindGlobal();
       if (this.geo) Logic.aplicarDistancias(this.geo);
       Store.on(() => this.render());

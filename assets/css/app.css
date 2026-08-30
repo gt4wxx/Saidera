@@ -384,6 +384,27 @@ table.data tr:hover td { background: rgba(255,255,255,0.03); }
 table.data tr[data-href] { cursor: pointer; }
 
 .chart-line { width: 100%; height: 180px; display: block; }
+.chart-line path[stroke] {
+  stroke-dasharray: 900;
+  animation: drawLine 1s ease both;
+}
+@keyframes drawLine {
+  from { stroke-dashoffset: 900; }
+  to { stroke-dashoffset: 0; }
+}
+.chart-hit circle[stroke] { transition: r .15s ease; }
+.chart-hit:hover circle[stroke], .chart-hit.on circle[stroke] { r: 6.5; }
+.rank-hit { cursor: pointer; border-radius: 14px; padding: 6px 4px; transition: background .15s ease, transform .15s ease; }
+.rank-hit:hover, .rank-hit.on { background: #1c1c1c; transform: translateX(2px); }
+.impersonar-bar {
+  position: sticky; top: 0; z-index: 90;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #F5B800; color: #171717; font-weight: 750; font-size: 0.92rem;
+}
+.impersonar-bar .btn { flex-shrink: 0; }
+.kpi { transition: transform .16s ease, outline .16s ease; }
+a.kpi-go:hover, .kpi:hover { transform: translateY(-3px); }
 .bar-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
 .bar-row .label { width: 92px; font-size: 0.82rem; font-weight: 600; }
 .bar-row .track, .track { flex: 1; height: 10px; background: #2a2a2a; border-radius: 99px; overflow: hidden; }

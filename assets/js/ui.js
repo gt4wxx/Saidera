@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "41");
+    return String(window.SAIDERA_V || "42");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -131,7 +131,7 @@ const UI = {
     return `<div class="photo"><img src="${src}" alt="${alt}" onerror="this.onerror=null;this.src='${fb}'"/></div>`;
   },
 
-  lineChart(values, labels = [], keys = []) {
+  lineChart(values, labels = [], keys = [], selected = "") {
     const w = 560, h = 176, p = 22;
     if (!values.length) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
     const max = Math.max(1, ...values) * 1.12;
@@ -152,7 +152,8 @@ const UI = {
         const title = `${labels[i] || ""} · ${pt[2]} tampas`;
         const dot = `<circle cx="${pt[0]}" cy="${pt[1]}" r="4.5" fill="#171717" stroke="#F5B800" stroke-width="2.5"><title>${title}</title></circle>`;
         if (!key) return dot;
-        return `<g data-dash-dia="${key}" class="chart-hit" style="cursor:pointer"><circle cx="${pt[0]}" cy="${pt[1]}" r="16" fill="transparent"/><title>${title} — clique para ver o dia</title>${dot}</g>`;
+        const on = selected && key === selected ? " on" : "";
+        return `<g data-dash-dia="${key}" class="chart-hit${on}" style="cursor:pointer"><circle cx="${pt[0]}" cy="${pt[1]}" r="16" fill="transparent"/><title>${title} — clique para ver o dia</title>${dot}</g>`;
       })
       .join("");
     const labs = labels
@@ -184,7 +185,12 @@ const UI = {
       .map((it, i) => {
         const pct = Number(it.pct) || 0;
         const extra = it.qtd != null ? `${it.qtd}` : it.q != null ? `${it.q}` : "";
-        return `<div class="rank-row">
+        const chave = String(it.chave || it.nome || "").replace(/"/g, "");
+        const on = it.on ? " on" : "";
+        const hit = it.clicavel !== false && chave
+          ? ` role="button" tabindex="0" data-dash-bairro="${chave}"`
+          : "";
+        return `<div class="rank-row rank-hit${on}"${hit}>
           <span class="rank-n">${i + 1}</span>
           <div class="rank-body">
             <div class="row between"><strong>${it.nome}</strong><span class="tiny muted">${extra ? extra + " · " : ""}${pct}%</span></div>
@@ -379,6 +385,11 @@ const UI = {
         return;
       }
       const act = el.closest("[data-act]");
+      if (act && act.getAttribute("data-act") === "admin-voltar") {
+        e.preventDefault();
+        this.voltarAdmin();
+        return;
+      }
       if (act && !act.disabled) {
         if (window.EstApp?.onAct) {
           e.preventDefault();
@@ -427,6 +438,43 @@ const UI = {
       }
     });
     this.pwaInit();
+    this.pintarImpersonar();
+  },
+
+  pintarImpersonar() {
+    document.getElementById("impersonar-bar")?.remove();
+    document.body.classList.remove("has-impersonar");
+    if (!window.Store?.session?.impersonando) return;
+    const nome = Store.session.nome || Store.session.email || "esta conta";
+    const papel = Store.session.papel === "funcionario"
+      ? "garçom"
+      : Store.session.papel === "estabelecimento"
+        ? "casa"
+        : Store.session.papel || "conta";
+    const bar = document.createElement("div");
+    bar.id = "impersonar-bar";
+    bar.className = "impersonar-bar";
+    bar.innerHTML = `<span>Você está vendo como ${this.escHtml(nome)} (${papel}).</span>
+      <button type="button" class="btn btn-navy btn-sm" data-act="admin-voltar">Voltar ao admin</button>`;
+    document.body.prepend(bar);
+    document.body.classList.add("has-impersonar");
+  },
+
+  escHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+  },
+
+  async voltarAdmin() {
+    try {
+      const data = await API.post("admin/voltar", {});
+      const pag = data?.session?.pagina || "pages/admin.php";
+      location.href = /\/pages\//.test(location.pathname) ? `../${pag}` : pag;
+    } catch (e) {
+      this.toast(e.message || "Não deu para voltar ao admin.");
+    }
   },
 
   pedirLocalizacao() {
