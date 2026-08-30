@@ -45,6 +45,59 @@ const Store = {
     if (emit) this.emit();
   },
 
+  applySync(sync, emit = true) {
+    if (!sync || !this.data) return false;
+    const same = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+    let mudou = false;
+    const setList = (key, list) => {
+      if (same(this.data[key], list)) return;
+      this.data[key] = list;
+      mudou = true;
+    };
+    ["tickets", "saideras", "tampas"].forEach((key) => {
+      if (Array.isArray(sync[key])) setList(key, sync[key]);
+    });
+    if (Array.isArray(sync.consumos)) {
+      const byId = new Map((this.data.consumos || []).map((x) => [x.id, x]));
+      sync.consumos.forEach((x) => byId.set(x.id, x));
+      const next = [...byId.values()].sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+      setList("consumos", next);
+    }
+    if (Array.isArray(sync.notificacoes) && !same(this.data.notificacoes, sync.notificacoes)) {
+      this.data.notificacoes = sync.notificacoes;
+    }
+    if (mudou && emit) this.emit();
+    return mudou;
+  },
+
+  aplicarResposta(data) {
+    if (!data) return;
+    if (data.sync) this.applySync(data.sync);
+    else if (data.store) this.replace(data.store);
+  },
+
+  startLive(ms = 3000) {
+    if (this._live) return;
+    this._live = true;
+    const puxar = async () => {
+      if (document.hidden || this._liveBusy || !this.data) return;
+      this._liveBusy = true;
+      try {
+        const sync = await API.get("sync");
+        this.applySync(sync);
+      } catch {
+        /* próxima rodada */
+      } finally {
+        this._liveBusy = false;
+      }
+    };
+    this._liveTimer = setInterval(puxar, ms);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) puxar();
+    });
+    setTimeout(puxar, 1200);
+  },
+
   save(emit = true) {
     if (emit) this.emit();
   },

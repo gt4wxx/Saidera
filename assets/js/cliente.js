@@ -32,6 +32,7 @@ const ClienteApp = {
       UI.bindGlobal();
       if (this.geo) Logic.aplicarDistancias(this.geo);
       Store.on(() => this.render());
+      Store.startLive();
       window.addEventListener("hashchange", () => this.route());
       this.route();
     } catch (e) {

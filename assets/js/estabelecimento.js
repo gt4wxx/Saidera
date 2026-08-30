@@ -31,6 +31,7 @@ const EstApp = {
     this.syncDrink();
     this.root.addEventListener("click", (e) => this.onClick(e));
     Store.on(() => this.render());
+    Store.startLive();
     window.addEventListener("hashchange", () => this.route());
     this.route();
   },
@@ -246,7 +247,7 @@ const EstApp = {
   async post(path, body, msg) {
     try {
       const data = await API.post(path, body);
-      if (data?.store) Store.replace(data.store);
+      Store.aplicarResposta(data);
       if (msg) UI.toast(msg);
       return data;
     } catch (e) {

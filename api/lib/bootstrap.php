@@ -230,7 +230,7 @@ function bootstrap_store(array $u): array
         ], db()->query("SELECT * FROM parceiros WHERE status = 'ativo'")->fetchAll());
         $st = db()->prepare('SELECT * FROM tickets WHERE usado_por = ? ORDER BY usado_em DESC LIMIT 10');
         $st->execute([$cli['id']]);
-        $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), $st->fetchAll());
+        $empty['tickets'] = tickets_pub_lista($st->fetchAll());
         return $empty;
     }
 
@@ -289,7 +289,7 @@ function bootstrap_store(array $u): array
         ], $st->fetchAll());
         $st = db()->prepare('SELECT * FROM tickets WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 80');
         $st->execute([$eid]);
-        $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), $st->fetchAll());
+        $empty['tickets'] = tickets_pub_lista($st->fetchAll());
         $st = db()->prepare('SELECT * FROM saideras WHERE estabelecimento_id = ? ORDER BY conquistada_em DESC LIMIT 80');
         $st->execute([$eid]);
         $empty['saideras'] = array_map('row_saidera', $st->fetchAll());
@@ -417,7 +417,7 @@ function bootstrap_store(array $u): array
     $empty['auditoria'] = array_map(fn($a) => [
         'em' => iso($a['em']), 'acao' => $a['acao'], 'detalhe' => $a['detalhe'],
     ], db()->query('SELECT * FROM auditoria ORDER BY em DESC LIMIT 120')->fetchAll());
-    $empty['tickets'] = array_map(fn($t) => ticket_pub((int) $t['id']), db()->query('SELECT id FROM tickets ORDER BY criado_em DESC LIMIT 250')->fetchAll());
+    $empty['tickets'] = tickets_pub_lista(db()->query('SELECT * FROM tickets ORDER BY criado_em DESC LIMIT 250')->fetchAll());
     try {
         $empty['planos'] = array_map('row_plano', db()->query(
             'SELECT p.*, (SELECT COUNT(*) FROM estabelecimentos e WHERE e.plano_id = p.id) casas FROM planos p ORDER BY p.nome'
@@ -470,5 +470,81 @@ function session_payload(array $u): array
     } else {
         $out['nome'] = 'Admin';
     }
+    return $out;
+}
+
+function sync_consumos(array $rows): array
+{
+    return array_map(fn($c) => [
+        'id' => pub('con', $c['id']),
+        'clienteId' => pub('cli', $c['cliente_id']),
+        'estabelecimentoId' => pub('est', $c['estabelecimento_id']),
+        'bebidaId' => pub('beb', $c['bebida_id']),
+        'quantidade' => (int) $c['quantidade'],
+        'criadoEm' => iso($c['criado_em']),
+    ], $rows);
+}
+
+function sync_notificacoes(array $rows): array
+{
+    return array_map(fn($n) => [
+        'id' => pub('ntf', $n['id']),
+        'clienteId' => pub('cli', $n['cliente_id']),
+        'titulo' => $n['titulo'],
+        'texto' => $n['texto'],
+        'tipo' => $n['tipo'],
+        'lida' => (bool) $n['lida'],
+        'campanhaId' => $n['campanha_id'] ? pub('cam', $n['campanha_id']) : null,
+        'criadoEm' => iso($n['criado_em']),
+    ], $rows);
+}
+
+function sync_vivo(array $u): array
+{
+    expirar_saideras();
+    $out = ['tickets' => [], 'saideras' => [], 'tampas' => [], 'consumos' => [], 'notificacoes' => []];
+
+    if ($u['papel'] === 'cliente') {
+        $cli = cliente_por_usuario((int) $u['id']);
+        if (!$cli) return $out;
+        $id = (int) $cli['id'];
+        $st = db()->prepare('SELECT * FROM saideras WHERE cliente_id = ? ORDER BY conquistada_em DESC');
+        $st->execute([$id]);
+        $out['saideras'] = array_map('row_saidera', $st->fetchAll());
+        $st = db()->prepare('SELECT * FROM progresso_tampas WHERE cliente_id = ?');
+        $st->execute([$id]);
+        $out['tampas'] = array_map('row_tampa', $st->fetchAll());
+        $st = db()->prepare('SELECT * FROM consumos WHERE cliente_id = ? ORDER BY criado_em DESC LIMIT 80');
+        $st->execute([$id]);
+        $out['consumos'] = sync_consumos($st->fetchAll());
+        $st = db()->prepare('SELECT * FROM tickets WHERE usado_por = ? ORDER BY usado_em DESC LIMIT 10');
+        $st->execute([$id]);
+        $out['tickets'] = tickets_pub_lista($st->fetchAll());
+        $st = db()->prepare('SELECT * FROM notificacoes WHERE cliente_id = ? ORDER BY criado_em DESC LIMIT 30');
+        $st->execute([$id]);
+        $out['notificacoes'] = sync_notificacoes($st->fetchAll());
+        return $out;
+    }
+
+    $eid = 0;
+    if ($u['papel'] === 'estabelecimento') $eid = (int) gestor_est_id((int) $u['id']);
+    if ($u['papel'] === 'funcionario') {
+        $f = funcionario_por_usuario((int) $u['id']);
+        $eid = (int) ($f['estabelecimento_id'] ?? 0);
+    }
+    if (!$eid) return $out;
+
+    $st = db()->prepare('SELECT * FROM tickets WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 80');
+    $st->execute([$eid]);
+    $out['tickets'] = tickets_pub_lista($st->fetchAll());
+    $st = db()->prepare('SELECT * FROM saideras WHERE estabelecimento_id = ? ORDER BY conquistada_em DESC LIMIT 80');
+    $st->execute([$eid]);
+    $out['saideras'] = array_map('row_saidera', $st->fetchAll());
+    $st = db()->prepare('SELECT * FROM progresso_tampas WHERE estabelecimento_id = ?');
+    $st->execute([$eid]);
+    $out['tampas'] = array_map('row_tampa', $st->fetchAll());
+    $st = db()->prepare('SELECT * FROM consumos WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 80');
+    $st->execute([$eid]);
+    $out['consumos'] = sync_consumos($st->fetchAll());
     return $out;
 }

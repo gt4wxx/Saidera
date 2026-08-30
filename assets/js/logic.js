@@ -1053,14 +1053,19 @@ const Logic = {
 
   async criarTicket({ estabelecimentoId, itens }) {
     const data = await API.post("tickets", { estabelecimentoId, itens });
-    if (data.store) Store.replace(data.store);
+    Store.aplicarResposta(data);
+    if (data.ticket && !data.sync) {
+      const list = Store.all("tickets").filter((t) => t.id !== data.ticket.id);
+      Store.data.tickets = [data.ticket, ...list];
+      Store.save();
+    }
     return data.ticket;
   },
 
   async resgatarTicket(codigo) {
     try {
       const data = await API.post("tickets/resgatar", { codigo });
-      if (data.store) Store.replace(data.store);
+      Store.aplicarResposta(data);
       return { ok: true, ticket: data.ticket, est: data.est, ganhas: data.ganhas, novas: data.novas };
     } catch (e) {
       return { ok: false, erro: e.message };
@@ -1070,7 +1075,7 @@ const Logic = {
   async entregarSaideraPorCodigo(codigo, estabelecimentoId, funcionarioId) {
     try {
       const data = await API.post("saideras/entregar", { codigo, estabelecimentoId, funcionarioId });
-      if (data.store) Store.replace(data.store);
+      Store.aplicarResposta(data);
       return { ok: true, saidera: data.saidera };
     } catch (e) {
       return { ok: false, erro: e.message };
@@ -1080,7 +1085,7 @@ const Logic = {
   async entregarSaidera(saideraId, funcionarioId) {
     try {
       const data = await API.post("saideras/entregar", { saideraId, funcionarioId });
-      if (data.store) Store.replace(data.store);
+      Store.aplicarResposta(data);
       return data.saidera;
     } catch {
       return null;
@@ -1089,7 +1094,7 @@ const Logic = {
 
   async registrarConsumo(payload) {
     const data = await API.post("consumos", payload);
-    if (data.store) Store.replace(data.store);
+    Store.aplicarResposta(data);
     return data.resultado;
   },
 

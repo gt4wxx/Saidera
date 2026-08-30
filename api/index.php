@@ -82,6 +82,11 @@ function rota(string $method, string $path): void
         ok(bootstrap_store($u));
     }
 
+    if ($path === 'sync' && $method === 'GET') {
+        $u = auth_require(['cliente', 'estabelecimento', 'funcionario']);
+        ok(sync_vivo($u));
+    }
+
     if ($path === 'clientes/codigo' && $method === 'GET') {
         auth_require(['funcionario', 'estabelecimento', 'admin']);
         $c = cliente_por_codigo($in['q'] ?? '');
@@ -100,7 +105,7 @@ function rota(string $method, string $path): void
         if (!$cli || !$est || !$beb) fail('Dados incompletos.');
         $fun = nid('fun', $in['funcionarioId'] ?? '') ?: (funcionario_por_usuario((int) $u['id'])['id'] ?? null);
         $res = registrar_consumo($cli, $est, $beb, (int) ($in['quantidade'] ?? 1), $fun ? (int) $fun : null);
-        ok(['resultado' => $res, 'store' => bootstrap_store($u)]);
+        ok(['resultado' => $res, 'sync' => sync_vivo($u)]);
     }
 
     if ($path === 'tickets' && $method === 'POST') {
@@ -108,14 +113,14 @@ function rota(string $method, string $path): void
         $est = nid('est', $in['estabelecimentoId'] ?? '') ?: gestor_est_id((int) $u['id']);
         if (!$est) fail('Estabelecimento não encontrado.');
         $t = criar_ticket((int) $est, $in['itens'] ?? []);
-        ok(['ticket' => $t, 'store' => bootstrap_store($u)]);
+        ok(['ticket' => $t, 'sync' => $u['papel'] === 'admin' ? null : sync_vivo($u), 'store' => $u['papel'] === 'admin' ? bootstrap_store($u) : null]);
     }
 
     if ($path === 'tickets/resgatar' && $method === 'POST') {
         $u = auth_require(['cliente']);
         $cli = cliente_por_usuario((int) $u['id']);
         $res = resgatar_ticket($in['codigo'] ?? '', (int) $cli['id']);
-        ok($res + ['store' => bootstrap_store($u)]);
+        ok($res + ['sync' => sync_vivo($u)]);
     }
 
     if ($path === 'saideras/entregar' && $method === 'POST') {
@@ -133,7 +138,7 @@ function rota(string $method, string $path): void
         } else {
             $res = entregar_saidera_codigo($in['codigo'] ?? '', (int) $est, $fun ? (int) $fun : null);
         }
-        ok(['saidera' => $res, 'store' => bootstrap_store($u)]);
+        ok(['saidera' => $res, 'sync' => $u['papel'] === 'admin' ? null : sync_vivo($u), 'store' => $u['papel'] === 'admin' ? bootstrap_store($u) : null]);
     }
 
     if ($path === 'notificacoes/ler' && $method === 'POST') {

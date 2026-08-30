@@ -419,28 +419,53 @@ function criar_ticket(int $estId, array $itens): array
     return ticket_pub($tid);
 }
 
-function ticket_pub(int $id): array
+function ticket_row_pub(array $row, array $itens = []): array
 {
-    $t = db()->prepare('SELECT * FROM tickets WHERE id = ?');
-    $t->execute([$id]);
-    $row = $t->fetch();
-    $itens = db()->prepare('SELECT bebida_id, nome, quantidade FROM ticket_itens WHERE ticket_id = ?');
-    $itens->execute([$id]);
+    $id = (int) $row['id'];
     return [
         'id' => pub('tkt', $id),
         'codigo' => $row['codigo'],
         'estabelecimentoId' => pub('est', $row['estabelecimento_id']),
-        'itens' => array_map(fn($i) => [
-            'bebidaId' => pub('beb', $i['bebida_id']),
-            'nome' => $i['nome'],
-            'quantidade' => (int) $i['quantidade'],
-        ], $itens->fetchAll()),
+        'itens' => $itens,
         'usado' => (bool) $row['usado'],
         'usadoPor' => $row['usado_por'] ? pub('cli', $row['usado_por']) : null,
         'usadoEm' => iso($row['usado_em']),
         'criadoEm' => iso($row['criado_em']),
         'status' => !$row['usado'] ? 'aberto' : ($row['usado_por'] ? 'usado' : 'cancelado'),
     ];
+}
+
+function tickets_pub_lista(array $rows): array
+{
+    if (!$rows) return [];
+    $ids = array_map(fn($r) => (int) $r['id'], $rows);
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $it = db()->prepare("SELECT ticket_id, bebida_id, nome, quantidade FROM ticket_itens WHERE ticket_id IN ($in)");
+    $it->execute($ids);
+    $by = [];
+    foreach ($it->fetchAll() as $i) {
+        $by[(int) $i['ticket_id']][] = [
+            'bebidaId' => pub('beb', $i['bebida_id']),
+            'nome' => $i['nome'],
+            'quantidade' => (int) $i['quantidade'],
+        ];
+    }
+    return array_map(fn($row) => ticket_row_pub($row, $by[(int) $row['id']] ?? []), $rows);
+}
+
+function ticket_pub(int $id): array
+{
+    $t = db()->prepare('SELECT * FROM tickets WHERE id = ?');
+    $t->execute([$id]);
+    $row = $t->fetch();
+    if (!$row) return [];
+    $itens = db()->prepare('SELECT bebida_id, nome, quantidade FROM ticket_itens WHERE ticket_id = ?');
+    $itens->execute([$id]);
+    return ticket_row_pub($row, array_map(fn($i) => [
+        'bebidaId' => pub('beb', $i['bebida_id']),
+        'nome' => $i['nome'],
+        'quantidade' => (int) $i['quantidade'],
+    ], $itens->fetchAll()));
 }
 
 function resgatar_ticket(string $codigo, int $cliId): array

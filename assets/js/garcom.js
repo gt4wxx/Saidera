@@ -30,6 +30,7 @@ const GarcomApp = {
       this.recentes = [];
     }
     Store.on(() => this.render());
+    Store.startLive();
     this.render();
   },
 
