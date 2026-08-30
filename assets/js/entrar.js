@@ -1,53 +1,21 @@
 const EntrarApp = {
   async boot() {
-    UI.bindGlobal();
-    document.getElementById("landing-brand").innerHTML =
-      `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Cliente</span>`;
+    try {
+      UI.bindGlobal();
+      const brand = document.getElementById("landing-brand");
+      if (brand && window.Brand) {
+        brand.innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Cliente</span>`;
+      }
+    } catch {
+      /* a tela de login/cadastro já está no HTML */
+    }
     const casa = window.SAIDERA_CASA_CONVITE || new URLSearchParams(location.search).get("casa") || "";
-    if (casa) localStorage.setItem("saidera_casa_convite", casa);
-    this.bindTabs();
+    if (casa) try { localStorage.setItem("saidera_casa_convite", casa); } catch { /* ok */ }
     this.bindForms();
-    this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
-    window.addEventListener("hashchange", () => {
-      this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
-    });
+    if (location.hash === "#cadastro" || location.hash === "#form-cadastro") {
+      document.getElementById("form-cadastro")?.scrollIntoView();
+    }
     await this.decidir();
-  },
-
-  tab(id) {
-    const qual = id === "cadastro" ? "cadastro" : "login";
-    document.querySelectorAll("[data-entrar-tab]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-entrar-tab") === qual));
-    const login = document.getElementById("form-login");
-    const cad = document.getElementById("form-cadastro");
-    const tabs = document.getElementById("entrar-tabs");
-    const status = document.getElementById("entrar-status");
-    if (tabs) tabs.hidden = false;
-    if (status) {
-      status.hidden = true;
-      status.innerHTML = "";
-    }
-    if (login) {
-      login.classList.toggle("on", qual === "login");
-      login.hidden = qual !== "login";
-    }
-    if (cad) {
-      cad.classList.toggle("on", qual === "cadastro");
-      cad.hidden = qual !== "cadastro";
-    }
-    if (location.hash !== `#${qual}`) {
-      history.replaceState(null, "", `#${qual}`);
-    }
-  },
-
-  bindTabs() {
-    document.querySelectorAll("[data-entrar-tab]").forEach((b) => {
-      b.addEventListener("click", (e) => {
-        e.preventDefault();
-        const id = b.getAttribute("data-entrar-tab") || "login";
-        location.hash = id;
-        this.tab(id);
-      });
-    });
   },
 
   bindForms() {
@@ -67,24 +35,21 @@ const EntrarApp = {
   },
 
   status(html) {
-    const card = document.getElementById("entrar-card");
     const box = document.getElementById("entrar-status");
     const login = document.getElementById("form-login");
-    const cad = document.getElementById("form-cadastro");
-    const tabs = document.getElementById("entrar-tabs");
+    const cadastro = document.getElementById("cadastro");
+    if (!box) return;
     if (html) {
       if (login) login.hidden = true;
-      if (cad) cad.hidden = true;
-      if (tabs) tabs.hidden = true;
+      if (cadastro) cadastro.hidden = true;
       box.hidden = false;
       box.innerHTML = html;
     } else {
       box.hidden = true;
       box.innerHTML = "";
-      if (tabs) tabs.hidden = false;
-      this.tab(location.hash === "#cadastro" ? "cadastro" : "login");
+      if (login) login.hidden = false;
+      if (cadastro) cadastro.hidden = false;
     }
-    card?.scrollIntoView({ behavior: "smooth", block: "start" });
   },
 
   async decidir() {
@@ -150,7 +115,7 @@ const EntrarApp = {
     }
     this.status(`<h2>Instalar o Saidera</h2>
       <p class="muted" style="margin:10px 0 14px">O painel do cliente só abre no app. Confirme a instalação no celular.</p>
-      <p class="tiny muted" id="entrar-inst-msg">Abrindo o convite de instalar…</p>`);
+      <p class="tiny muted">Abrindo o convite de instalar…</p>`);
     const outcome = await UI.pwaPedirInstalacao();
     if (outcome === "standalone") {
       location.replace("pages/cliente.php");
@@ -158,8 +123,8 @@ const EntrarApp = {
     }
     if (outcome === "accepted") {
       this.status(`<h2>Pronto</h2>
-        <p class="muted" style="margin:10px 0 14px">O Saidera foi instalado. Abra pelo ícone na tela inicial — o app abre sozinho neste aparelho.</p>
-        <p class="tiny muted">Se a tela do navegador continuar aberta, feche e toque no ícone Saidera.</p>`);
+        <p class="muted" style="margin:10px 0 14px">O Saidera foi instalado. Abra pelo ícone na tela inicial.</p>
+        <p class="tiny muted">Se esta tela continuar aberta, feche e toque no ícone Saidera.</p>`);
       return;
     }
     await this.cancelarInstalacao(outcome);
@@ -168,7 +133,7 @@ const EntrarApp = {
   async cancelarInstalacao(motivo) {
     if (motivo === "ios") {
       this.status(`<h2>Instalar no iPhone</h2>
-        <p class="notice">Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>. Depois abra pelo ícone Saidera. O painel não abre no Safari.</p>
+        <p class="notice">Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>. Depois abra pelo ícone Saidera.</p>
         <button type="button" class="btn btn-ghost btn-block" style="margin-top:14px" id="voltar-login">Voltar</button>`);
       document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
       return;
@@ -194,7 +159,6 @@ const EntrarApp = {
       window.SAIDERA_CLIENTE_LOGADO = false;
     }
     this.status("");
-    this.tab("login");
   },
 };
 
