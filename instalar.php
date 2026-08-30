@@ -68,6 +68,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Instalar Saideira</title>
+  <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <meta name="theme-color" content="#171717"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <script src="assets/js/pwa-captura.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});
+    }
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet"/>
   <style>
     body { font-family: Manrope, system-ui, sans-serif; background: #0e0e0e; color: #FFF9E8; margin: 0; padding: 32px 16px; }

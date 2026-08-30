@@ -8,6 +8,8 @@ window.addEventListener("appinstalled", () => {
   window.SaideraPwa.installed = true;
 });
 if ("serviceWorker" in navigator) {
-  const sw = /\/pages\//.test(location.pathname) ? "../sw.js" : "sw.js";
-  navigator.serviceWorker.register(sw).catch(() => {});
+  const nasPages = /\/pages\//.test(location.pathname);
+  const sw = nasPages ? "../sw.js" : "sw.js";
+  const scope = nasPages ? "../" : "./";
+  navigator.serviceWorker.register(sw, { scope: scope }).catch(() => {});
 }

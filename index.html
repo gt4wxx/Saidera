@@ -4,7 +4,16 @@
   <meta charset="UTF-8"/>
   <meta http-equiv="refresh" content="0;url=index.php"/>
   <title>Saideira</title>
-  <script>location.replace("index.php");</script>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
+  <meta name="theme-color" content="#171717"/>
+  <script src="assets/js/pwa-captura.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});
+    }
+    location.replace("index.php");
+  </script>
 </head>
 <body>
   <p><a href="index.php">Entrar na Saideira</a></p>

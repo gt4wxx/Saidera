@@ -53,12 +53,18 @@ $v = saidera_v();
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png?v=<?= $v ?>"/>
   <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png?v=<?= $v ?>"/>
   <link rel="apple-touch-icon" sizes="192x192" href="assets/brand/icon-192.png?v=<?= $v ?>"/>
-  <link rel="manifest" href="manifest-cliente.webmanifest?v=<?= $v ?>"/>
+  <link rel="manifest" href="manifest-cliente.webmanifest"/>
   <meta name="theme-color" content="#171717"/>
+  <meta name="description" content="Fidelização para a noite de Aracaju. Cliente, casa, garçom e parceiro no mesmo app."/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saideira"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});
+    }
+  </script>
 </head>
 <body>
   <main class="landing">

@@ -89,8 +89,23 @@ $v = saidera_v();
   <link rel="stylesheet" href="assets/css/app.css?v=<?= h($v) ?>"/>
   <link rel="stylesheet" href="assets/css/client.css?v=<?= h($v) ?>"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png?v=<?= h($v) ?>"/>
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch.png?v=<?= h($v) ?>"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png?v=<?= h($v) ?>"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="assets/brand/icon-192.png?v=<?= h($v) ?>"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
   <meta name="theme-color" content="#171717"/>
+  <meta name="description" content="Fidelização para a noite de Aracaju. Cliente, casa, garçom e parceiro no mesmo app."/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Saideira"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <script>window.SAIDERA_V = <?= json_encode($v) ?>;</script>
+  <script src="assets/js/pwa-captura.js?v=<?= h($v) ?>"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});
+    }
+  </script>
 </head>
 <body>
   <main class="landing">

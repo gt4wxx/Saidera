@@ -20,4 +20,5 @@ DirectoryIndex index.php index.html
   RewriteRule ^index\.html$ index.php [R=302,L]
   RewriteRule ^pages/([a-z]+)\.html$ pages/$1.php [R=302,L]
   RewriteRule ^api/(?!index\.php).+$ api/index.php [QSA,L]
+  RewriteRule ^manifest\.json$ manifest.webmanifest [L]
 </IfModule>

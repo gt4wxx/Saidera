@@ -1,3 +1,11 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"/><meta http-equiv="refresh" content="0;url=cliente.php"/><script>location.replace("cliente.php"+location.hash);</script></head>
+<html lang="pt-BR"><head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="refresh" content="0;url=cliente.php"/>
+  <link rel="manifest" href="../manifest-cliente.webmanifest"/>
+  <link rel="icon" type="image/png" href="../assets/brand/icon-192.png"/>
+  <meta name="theme-color" content="#171717"/>
+  <script src="../assets/js/pwa-captura.js"></script>
+  <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("../sw.js",{scope:"../"}).catch(function(){});location.replace("cliente.php"+location.hash);</script>
+</head>
 <body><p><a href="cliente.php">Abrir app</a></p></body></html>
