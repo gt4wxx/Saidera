@@ -266,7 +266,7 @@ const UI = {
       }
       if (el.closest("[data-pwa-install]")) {
         e.preventDefault();
-        this.pwaInstall();
+        this.pwaAbrirPermissao();
         return;
       }
       const act = el.closest("[data-act]");
@@ -352,73 +352,67 @@ const UI = {
   pwaInit() {
     if (this._pwaReady) return;
     this._pwaReady = true;
-    if ("serviceWorker" in navigator) {
-      if (this.pwaCliente()) {
-        navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
-      } else {
-        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
-      }
+    if ("serviceWorker" in navigator && this.pwaCliente()) {
+      navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
     }
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       this._pwaPrompt = e;
+      if (window.SaideraPwa) window.SaideraPwa.ev = e;
     });
     window.addEventListener("appinstalled", () => {
       this._pwaPrompt = null;
+      if (window.SaideraPwa) {
+        window.SaideraPwa.ev = null;
+        window.SaideraPwa.installed = true;
+      }
       this.toast("Saidera instalado neste aparelho.");
       document.querySelectorAll("[data-pwa-box]").forEach((el) => el.classList.add("hidden"));
     });
   },
 
-  async pwaPrepararInstalacao() {
-    if (!("serviceWorker" in navigator)) return;
-    await navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
+  pwaEvento() {
+    return this._pwaPrompt || window.SaideraPwa?.ev || null;
+  },
+
+  pwaAbrirPermissao(opcoes) {
+    if (this.pwaStandalone() || window.SaideraPwa?.installed) return "standalone";
+    const ev = this.pwaEvento();
+    if (!ev || typeof ev.prompt !== "function") {
+      if (!opcoes?.silencioso) {
+        if (this.pwaIos()) this.toast("No iPhone: Compartilhar → Adicionar à Tela de Início.");
+        else this.toast("A permissão ainda não chegou. Toque de novo em Instalar. Use Chrome ou Edge.");
+      }
+      return null;
+    }
+    this._pwaPrompt = null;
+    if (window.SaideraPwa) window.SaideraPwa.ev = null;
+    try {
+      ev.prompt();
+    } catch {
+      return null;
+    }
+    ev.userChoice
+      .then((c) => {
+        if (c.outcome === "accepted") {
+          if (window.SaideraPwa) window.SaideraPwa.installed = true;
+          this.toast("Saidera instalado. Abra pelo ícone.");
+        }
+      })
+      .catch(() => {});
+    return "asked";
   },
 
   pwaDispararAgora() {
-    if (this.pwaStandalone()) return Promise.resolve("standalone");
-    if (!this._pwaPrompt) return Promise.resolve(null);
-    try {
-      this._pwaPrompt.prompt();
-    } catch {
-      return Promise.resolve(null);
-    }
-    const ev = this._pwaPrompt;
-    this._pwaPrompt = null;
-    return ev.userChoice
-      .then((c) => (c.outcome === "accepted" ? "accepted" : "dismissed"))
-      .catch(() => "dismissed");
+    return this.pwaAbrirPermissao({ silencioso: true });
   },
 
-  pwaEsperarPrompt(ms = 2500) {
-    if (this._pwaPrompt) return Promise.resolve(this._pwaPrompt);
-    return new Promise((resolve) => {
-      const t0 = Date.now();
-      const tick = () => {
-        if (this._pwaPrompt) return resolve(this._pwaPrompt);
-        if (Date.now() - t0 >= ms) return resolve(null);
-        setTimeout(tick, 120);
-      };
-      tick();
-    });
+  pwaPedirInstalacao() {
+    return this.pwaAbrirPermissao() || (this.pwaIos() ? "ios" : "unavailable");
   },
 
-  async pwaPedirInstalacao() {
-    if (this.pwaStandalone()) return "standalone";
-    await this.pwaPrepararInstalacao();
-    await this.pwaEsperarPrompt(2000);
-    const agora = await this.pwaDispararAgora();
-    if (agora) return agora;
-    if (this.pwaIos()) return "ios";
-    return "unavailable";
-  },
-
-  async pwaInstall() {
-    const r = await this.pwaPedirInstalacao();
-    if (r === "ios") this.toast("No iPhone: Compartilhar → Adicionar à Tela de Início.");
-    else if (r === "unavailable") this.toast("No Chrome ou Edge: menu ⋮ → Instalar Saidera.");
-    else if (r === "accepted") this.toast("Saidera instalado. Abra pelo ícone se quiser.");
-    return r;
+  pwaInstall() {
+    return this.pwaAbrirPermissao();
   },
 };
 

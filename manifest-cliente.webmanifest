@@ -1,10 +1,10 @@
 {
-  "id": "/cliente",
+  "id": "saidera-cliente",
   "name": "Saidera",
   "short_name": "Saidera",
   "description": "Fidelização para a noite de Aracaju.",
-  "start_url": "./entrar.php",
-  "scope": "./",
+  "start_url": "entrar.php",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0e0e0e",

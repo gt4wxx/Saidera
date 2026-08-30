@@ -1,5 +1,10 @@
 DirectoryIndex index.php index.html
 
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/javascript .js
+</IfModule>
+
 <IfModule mod_headers.c>
   <FilesMatch "\.(html|htm|js|php|json|webmanifest)$">
     Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"

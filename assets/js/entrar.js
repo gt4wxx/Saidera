@@ -12,6 +12,7 @@ const EntrarApp = {
     const casa = window.SAIDERA_CASA_CONVITE || new URLSearchParams(location.search).get("casa") || "";
     if (casa) try { localStorage.setItem("saidera_casa_convite", casa); } catch { /* ok */ }
     this.bindForms();
+    window.addEventListener("appinstalled", () => this.telaInstalado());
     if (location.hash === "#cadastro" || location.hash === "#form-cadastro") {
       document.getElementById("form-cadastro")?.scrollIntoView();
     }
@@ -21,12 +22,12 @@ const EntrarApp = {
   bindForms() {
     document.getElementById("form-login")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      UI.pwaDispararAgora();
+      UI.pwaAbrirPermissao({ silencioso: true });
       this.entrar(new FormData(e.target));
     });
     document.getElementById("form-cadastro")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      UI.pwaDispararAgora();
+      UI.pwaAbrirPermissao({ silencioso: true });
       this.cadastrar(new FormData(e.target));
     });
   },
@@ -115,16 +116,14 @@ const EntrarApp = {
       location.replace("pages/cliente.php");
       return;
     }
-    this.telaInstalar("Abrindo a permissão de instalar…");
-    const outcome = await UI.pwaPedirInstalacao();
-    if (outcome === "standalone" || outcome === "accepted") {
+    if (window.SaideraPwa?.installed) {
       this.telaInstalado();
       return;
     }
     this.telaInstalar(
-      outcome === "ios"
-        ? "Se a permissão não abriu: no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início. Ou use o botão abaixo."
-        : "Se a permissão não abriu, toque em Instalar. Os dois caminhos pedem para baixar o app."
+      UI.pwaIos()
+        ? "No iPhone: Compartilhar → Adicionar à Tela de Início. Ou toque em Instalar."
+        : "Confirme a permissão do celular. Se ela não abriu, toque em Instalar."
     );
   },
 
@@ -137,14 +136,9 @@ const EntrarApp = {
   telaInstalar(msg) {
     this.status(`<h2>Instalar o Saidera</h2>
       <p class="muted" style="margin:10px 0 14px">${msg}</p>
-      <button type="button" class="btn btn-gold btn-block" id="btn-instalar-agora">Instalar</button>
+      <button type="button" class="btn btn-gold btn-block" id="btn-instalar-agora" data-pwa-install>Instalar</button>
       ${UI.pwaIos() ? `<p class="notice" style="margin-top:12px">iPhone: <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>.</p>` : ""}
       <button type="button" class="btn btn-ghost btn-block" style="margin-top:10px" id="voltar-login">Voltar</button>`);
-    document.getElementById("btn-instalar-agora")?.addEventListener("click", async () => {
-      const r = await UI.pwaPedirInstalacao();
-      if (r === "accepted" || r === "standalone") this.telaInstalado();
-      else UI.toast(r === "ios" ? "No iPhone: Compartilhar → Adicionar à Tela de Início." : "Confirme a permissão de instalar. Se não aparecer, use o menu ⋮ do Chrome.");
-    });
     document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
   },
 
