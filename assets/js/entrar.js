@@ -21,10 +21,12 @@ const EntrarApp = {
   bindForms() {
     document.getElementById("form-login")?.addEventListener("submit", (e) => {
       e.preventDefault();
+      UI.pwaDispararAgora();
       this.entrar(new FormData(e.target));
     });
     document.getElementById("form-cadastro")?.addEventListener("submit", (e) => {
       e.preventDefault();
+      UI.pwaDispararAgora();
       this.cadastrar(new FormData(e.target));
     });
   },
@@ -113,40 +115,37 @@ const EntrarApp = {
       location.replace("pages/cliente.php");
       return;
     }
-    this.status(`<h2>Instalar o Saidera</h2>
-      <p class="muted" style="margin:10px 0 14px">O painel do cliente só abre no app. Confirme a instalação no celular.</p>
-      <p class="tiny muted">Abrindo o convite de instalar…</p>`);
+    this.telaInstalar("Abrindo a permissão de instalar…");
     const outcome = await UI.pwaPedirInstalacao();
-    if (outcome === "standalone") {
-      location.replace("pages/cliente.php");
+    if (outcome === "standalone" || outcome === "accepted") {
+      this.telaInstalado();
       return;
     }
-    if (outcome === "accepted") {
-      this.status(`<h2>Pronto</h2>
-        <p class="muted" style="margin:10px 0 14px">O Saidera foi instalado. Abra pelo ícone na tela inicial.</p>
-        <p class="tiny muted">Se esta tela continuar aberta, feche e toque no ícone Saidera.</p>`);
-      return;
-    }
-    await this.cancelarInstalacao(outcome);
+    this.telaInstalar(
+      outcome === "ios"
+        ? "Se a permissão não abriu: no iPhone toque em Compartilhar e depois em Adicionar à Tela de Início. Ou use o botão abaixo."
+        : "Se a permissão não abriu, toque em Instalar. Os dois caminhos pedem para baixar o app."
+    );
   },
 
-  async cancelarInstalacao(motivo) {
-    if (motivo === "ios") {
-      this.status(`<h2>Instalar no iPhone</h2>
-        <p class="notice">Toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>. Depois abra pelo ícone Saidera.</p>
-        <button type="button" class="btn btn-ghost btn-block" style="margin-top:14px" id="voltar-login">Voltar</button>`);
-      document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
-      return;
-    }
-    if (motivo === "unavailable") {
-      this.status(`<h2>Abra o app</h2>
-        <p class="muted" style="margin:10px 0 14px">O cliente não entra pelo navegador. Se o Saidera já está no celular, toque no ícone. Senão, no Chrome: menu ⋮ → Instalar Saidera.</p>
-        <button type="button" class="btn btn-ghost btn-block" id="voltar-login">Voltar</button>`);
-      document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin(true));
-      return;
-    }
-    await this.voltarLogin(true);
-    this.erro("login-erro", "A instalação foi cancelada. Entre de novo e confirme para abrir o app.");
+  telaInstalado() {
+    this.status(`<h2>Pronto</h2>
+      <p class="muted" style="margin:10px 0 14px">O Saidera foi instalado. Abra pelo ícone na tela inicial.</p>
+      <p class="tiny muted">Se esta tela continuar aberta, feche e toque no ícone Saidera.</p>`);
+  },
+
+  telaInstalar(msg) {
+    this.status(`<h2>Instalar o Saidera</h2>
+      <p class="muted" style="margin:10px 0 14px">${msg}</p>
+      <button type="button" class="btn btn-gold btn-block" id="btn-instalar-agora">Instalar</button>
+      ${UI.pwaIos() ? `<p class="notice" style="margin-top:12px">iPhone: <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>.</p>` : ""}
+      <button type="button" class="btn btn-ghost btn-block" style="margin-top:10px" id="voltar-login">Voltar</button>`);
+    document.getElementById("btn-instalar-agora")?.addEventListener("click", async () => {
+      const r = await UI.pwaPedirInstalacao();
+      if (r === "accepted" || r === "standalone") this.telaInstalado();
+      else UI.toast(r === "ios" ? "No iPhone: Compartilhar → Adicionar à Tela de Início." : "Confirme a permissão de instalar. Se não aparecer, use o menu ⋮ do Chrome.");
+    });
+    document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
   },
 
   async voltarLogin(sair) {

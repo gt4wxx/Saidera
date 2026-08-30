@@ -375,16 +375,40 @@ const UI = {
     await navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
   },
 
+  pwaDispararAgora() {
+    if (this.pwaStandalone()) return Promise.resolve("standalone");
+    if (!this._pwaPrompt) return Promise.resolve(null);
+    try {
+      this._pwaPrompt.prompt();
+    } catch {
+      return Promise.resolve(null);
+    }
+    const ev = this._pwaPrompt;
+    this._pwaPrompt = null;
+    return ev.userChoice
+      .then((c) => (c.outcome === "accepted" ? "accepted" : "dismissed"))
+      .catch(() => "dismissed");
+  },
+
+  pwaEsperarPrompt(ms = 2500) {
+    if (this._pwaPrompt) return Promise.resolve(this._pwaPrompt);
+    return new Promise((resolve) => {
+      const t0 = Date.now();
+      const tick = () => {
+        if (this._pwaPrompt) return resolve(this._pwaPrompt);
+        if (Date.now() - t0 >= ms) return resolve(null);
+        setTimeout(tick, 120);
+      };
+      tick();
+    });
+  },
+
   async pwaPedirInstalacao() {
     if (this.pwaStandalone()) return "standalone";
     await this.pwaPrepararInstalacao();
-    if (!this._pwaPrompt) await new Promise((r) => setTimeout(r, 600));
-    if (this._pwaPrompt) {
-      this._pwaPrompt.prompt();
-      const choice = await this._pwaPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
-      this._pwaPrompt = null;
-      return choice.outcome === "accepted" ? "accepted" : "dismissed";
-    }
+    await this.pwaEsperarPrompt(2000);
+    const agora = await this.pwaDispararAgora();
+    if (agora) return agora;
     if (this.pwaIos()) return "ios";
     return "unavailable";
   },
