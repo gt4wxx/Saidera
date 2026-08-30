@@ -44,9 +44,10 @@ const QR = {
     return this.decode(text).codigo || String(text || "").trim();
   },
 
-  svg(text, size = 188) {
+  svg(text, size = 188, opts = {}) {
     if (typeof qrcode !== "function") return "";
-    const qr = qrcode(0, "M");
+    const level = opts.level || (opts.logo ? "H" : "M");
+    const qr = qrcode(0, level);
     qr.addData(String(text), "Byte");
     qr.make();
     const raw = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });

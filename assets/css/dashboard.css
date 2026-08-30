@@ -41,6 +41,63 @@ body.dash {
   padding: 16px;
 }
 .qr-convite svg { width: min(200px, 70vw); height: auto; }
+.qr-app {
+  text-align: center;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 22px 18px 20px;
+  background: linear-gradient(180deg, #221c0c 0%, #171717 72%);
+  border: 1px solid #3a3214;
+  border-radius: 26px;
+}
+.qr-app-brand { margin-bottom: 6px; }
+.qr-app-brand .brand-h-qr {
+  display: block;
+  margin: 0 auto;
+  max-height: 38px;
+  width: auto;
+}
+.qr-app-kicker {
+  margin: 0 0 14px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #F5B800;
+}
+.qr-app-frame {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  background: #FFF9E8;
+  border-radius: 22px;
+  padding: 16px;
+  box-shadow: 0 0 0 3px #F5B800;
+}
+.qr-app-frame svg {
+  display: block;
+  width: min(220px, 64vw);
+  height: auto;
+}
+.qr-app-badge {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: #FFF9E8;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 5px #FFF9E8;
+}
+.qr-app-badge img {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.qr-app-title { margin: 16px 0 4px; font-size: 1.15rem; }
+.qr-app-casa { margin: 0; font-weight: 800; color: #F5B800; }
+.qr-app-sub { margin: 8px 0 0; font-size: 0.78rem; color: #8A8A8A; }
 .dash-main { padding: 22px 26px 48px; min-width: 0; overflow-x: hidden; }
 .dash-main .brand-banner,
 .dash-main .brand-banner-hero { margin-bottom: 16px; object-fit: contain; }

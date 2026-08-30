@@ -1333,11 +1333,11 @@ const EstApp = {
     const convite = Logic.urlEntrarCliente(this.estId);
     return `<div class="cfg-grid">
     <section class="panel" id="cfg-qr-app">
-      <h3>QR para o cliente</h3>
-      <p class="tiny muted" style="margin:6px 0 12px">Imprima e cole na mesa, no balcão ou no cartaz. Quem não tem o app cai no login/cadastro. Quem já tem abre o Saidera. Pode repetir este QR quantas vezes quiser.</p>
-      <div class="qr-convite">${QR.svg(convite, 200)}</div>
-      <p class="tiny" style="margin:12px 0;word-break:break-all">${this.esc(convite)}</p>
-      <div class="row wrap" style="gap:8px">
+      <h3>QR do app</h3>
+      <p class="tiny muted" style="margin:6px 0 14px">Imprima e cole na mesa, no balcão ou no cartaz. O cliente lê, cai no cadastro e baixa o Saidera. Quem já tem o app entra direto. Pode repetir este QR quantas vezes quiser.</p>
+      ${UI.qrApp({ url: convite, casa: est.nome, size: 220 })}
+      <p class="tiny" style="margin:14px 0 0;word-break:break-all">${this.esc(convite)}</p>
+      <div class="row wrap" style="gap:8px;margin-top:12px">
         <button type="button" class="btn btn-gold btn-sm" data-act="convite-copiar">Copiar link</button>
         <button type="button" class="btn btn-navy btn-sm" data-act="convite-imprimir">Imprimir QR</button>
       </div>
@@ -1591,10 +1591,33 @@ const EstApp = {
         UI.toast("Permita a janela de impressão.");
         return;
       }
+      const casa = this.esc(this.est()?.nome || "");
+      const brand = Brand.src("03_logo_horizontal.png");
+      const icon = Brand.src("10_app_icon_amarelo.png");
       w.document.write(`<!DOCTYPE html><html><head><title>QR Saidera</title>
-        <style>body{font-family:sans-serif;text-align:center;padding:24px;color:#171717}svg{width:280px;height:280px}p{word-break:break-all;font-size:12px}</style>
-        </head><body><h1>Saidera</h1><p>Leia para entrar no app</p>${QR.svg(url, 280)}<p>${this.esc(url)}</p>
-        <p>${this.esc(this.est()?.nome || "")}</p></body></html>`);
+        <style>
+          @page { margin: 12mm; }
+          body { margin: 0; font-family: Manrope, Segoe UI, sans-serif; background: #fff; color: #171717; }
+          .sheet { max-width: 420px; margin: 0 auto; text-align: center; padding: 28px 22px; border: 3px solid #F5B800; border-radius: 28px; }
+          .logo { height: 42px; margin-bottom: 8px; }
+          .kicker { letter-spacing: .14em; text-transform: uppercase; font-weight: 800; font-size: 11px; color: #8B6914; margin: 0 0 16px; }
+          .frame { position: relative; display: inline-grid; place-items: center; background: #FFF9E8; padding: 18px; border-radius: 22px; }
+          .frame svg { width: 260px; height: 260px; display: block; }
+          .badge { position: absolute; width: 64px; height: 64px; border-radius: 16px; background: #FFF9E8; display: grid; place-items: center; box-shadow: 0 0 0 5px #FFF9E8; }
+          .badge img { width: 48px; height: 48px; border-radius: 12px; }
+          h1 { font-size: 22px; margin: 16px 0 4px; }
+          .casa { font-weight: 800; font-size: 16px; margin: 0; }
+          .sub { font-size: 13px; color: #5c5c5c; margin: 8px 0 0; }
+        </style></head><body>
+        <div class="sheet">
+          <img class="logo" src="${brand}" alt="Saidera"/>
+          <p class="kicker">Cadastre-se e baixe o app</p>
+          <div class="frame">${QR.svg(url, 260, { logo: true })}<span class="badge"><img src="${icon}" alt=""/></span></div>
+          <h1>Leia e entre no Saidera</h1>
+          <p class="casa">${casa}</p>
+          <p class="sub">Quem não tem o app cai no cadastro. Quem já tem abre o Saidera.</p>
+        </div>
+        </body></html>`);
       w.document.close();
       w.focus();
       w.print();

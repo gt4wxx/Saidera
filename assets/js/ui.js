@@ -218,6 +218,25 @@ const UI = {
       .join("")}</div>`;
   },
 
+  qrApp({ url, casa = "", size = 220 } = {}) {
+    const qr = window.QR?.svg ? QR.svg(url, size, { logo: true }) : this.qrSvg(url);
+    const casaTxt = String(casa || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+    return `<div class="qr-app">
+      <div class="qr-app-brand">${Brand.horizontal("brand-h brand-h-qr")}</div>
+      <p class="qr-app-kicker">Cadastre-se e baixe o app</p>
+      <div class="qr-app-frame">
+        ${qr}
+        <span class="qr-app-badge" aria-hidden="true">${Brand.markGold(48)}</span>
+      </div>
+      <h3 class="qr-app-title">Leia e entre no Saidera</h3>
+      ${casaTxt ? `<p class="qr-app-casa">${casaTxt}</p>` : ""}
+      <p class="qr-app-sub">Quem não tem o app cai no cadastro. Quem já tem abre o Saidera.</p>
+    </div>`;
+  },
+
   qrSvg(codigo) {
     const payload = window.QR ? QR.payload(codigo || "SDR-28491") : String(codigo || "SDR-28491");
     if (window.QR?.svg) {
