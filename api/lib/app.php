@@ -2,7 +2,7 @@
 
 function saidera_v(): string
 {
-    return '40';
+    return '41';
 }
 
 function saidera_https(): bool

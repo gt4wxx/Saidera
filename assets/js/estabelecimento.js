@@ -1443,10 +1443,11 @@ const EstApp = {
       Brand.dataUrl("03_logo_horizontal.png", true),
       Brand.dataUrl("10_app_icon_amarelo.png"),
     ]);
-    const qr = QR.svg(url, 320, { logo: true, logoSrc: icon });
+    const qr = QR.svg(url, 360, { logo: true, logoSrc: icon });
     w.document.write(`<!DOCTYPE html><html><head><title>QR Saideira</title>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap" rel="stylesheet"/>
       <style>
-        @page { size: A4 portrait; margin: 8mm; }
+        @page { size: A4 portrait; margin: 10mm; }
         html, body { height: 100%; }
         body {
           margin: 0;
@@ -1454,50 +1455,58 @@ const EstApp = {
           align-items: center;
           justify-content: center;
           background: #fff;
-          color: #fff9e8;
+          color: #171717;
           font-family: Manrope, Segoe UI, sans-serif;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         .sheet {
           width: 100%;
-          max-width: 170mm;
-          min-height: 250mm;
+          max-width: 158mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
           text-align: center;
-          padding: 22mm 16mm;
-          background: linear-gradient(180deg, #221c0c 0%, #171717 72%);
-          border: 3px solid #F5B800;
+          padding: 14mm 12mm 12mm;
+          background: #fff;
+          border: 4px solid #F5B800;
           border-radius: 28px;
         }
-        .logo { height: 52px; width: auto; margin-bottom: 10px; }
+        .logo-plate {
+          background: #171717;
+          border-radius: 18px;
+          padding: 12px 22px;
+          margin: 0 0 14px;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .logo { display: block; height: 48px; width: auto; max-width: 220px; }
         .kicker {
-          letter-spacing: .14em;
+          letter-spacing: .16em;
           text-transform: uppercase;
           font-weight: 800;
-          font-size: 13px;
-          color: #F5B800;
-          margin: 0 0 20px;
+          font-size: 12px;
+          color: #C49200;
+          margin: 0 0 16px;
         }
         .frame {
           display: inline-grid;
           place-items: center;
           background: #FFF9E8;
-          padding: 18px;
+          padding: 16px;
           border-radius: 22px;
-          box-shadow: 0 0 0 3px #F5B800;
+          box-shadow: 0 0 0 4px #F5B800;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
-        .frame svg { width: 92mm; height: 92mm; display: block; }
-        h1 { font-size: 26px; margin: 22px 0 6px; color: #fff9e8; }
-        .casa { font-weight: 800; font-size: 20px; margin: 0; color: #F5B800; }
-        .sub { font-size: 13px; color: #b8b8b8; margin: 12px 0 0; max-width: 42ch; }
+        .frame svg { width: 88mm; height: 88mm; display: block; }
+        h1 { font-size: 24px; margin: 18px 0 6px; color: #171717; letter-spacing: -0.02em; }
+        .casa { font-weight: 800; font-size: 20px; margin: 0; color: #C49200; }
+        .sub { font-size: 12px; color: #5c5c5c; margin: 12px 0 0; max-width: 40ch; line-height: 1.45; }
       </style></head><body>
       <div class="sheet">
-        <img class="logo" src="${brand}" alt="Saideira"/>
+        <div class="logo-plate"><img class="logo" src="${brand}" alt="Saideira"/></div>
         <p class="kicker">Cadastre-se e baixe o app</p>
         <div class="frame">${qr}</div>
         <h1>Leia e entre na Saideira</h1>
