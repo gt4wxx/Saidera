@@ -157,6 +157,7 @@ const GarcomApp = {
         </div>
         <p class="muted" style="margin-top:18px;text-align:center">${cliente ? "Aponte para o QR do cliente" : "Aponte para um QR ou use o ID da Saidera"}</p>
         <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "SAIDERA:SDR-… · identificação" : "ID da Saidera · SDR-…"}</p>
+        <button type="button" class="btn btn-gold btn-block" id="abrir-camera" style="margin-top:12px">Permitir câmera</button>
       </div>
       <div class="row" style="gap:8px;margin-top:14px">
         <button class="btn btn-dark grow" id="torch-btn">${Icons.torch()} Lanterna</button>
@@ -397,14 +398,33 @@ const GarcomApp = {
       this.entregarBtn(t.getAttribute("data-entregar"));
       return;
     }
-    if (id === "start-scan") return void this.ir("scan-cli");
-    if (id === "start-sai") return void this.ir("scan-sai");
+    if (id === "start-scan") {
+      const ir = () => this.ir("scan-cli");
+      if (window.QR?.pedirStream) QR.pedirStream().then(ir).catch((e) => { UI.toast(e.message); ir(); });
+      else ir();
+      return;
+    }
+    if (id === "start-sai") {
+      const ir = () => this.ir("scan-sai");
+      if (window.QR?.pedirStream) QR.pedirStream().then(ir).catch((e) => { UI.toast(e.message); ir(); });
+      else ir();
+      return;
+    }
     if (id === "cancel-scan") {
       QR.stopScan();
       this.ir(this.clienteId ? "comanda" : "home");
       return;
     }
-    if (id === "scan-again") return void this.ir("scan-cli");
+    if (id === "scan-again") {
+      const ir = () => this.ir("scan-cli");
+      if (window.QR?.pedirStream) QR.pedirStream().then(ir).catch((e) => { UI.toast(e.message); ir(); });
+      else ir();
+      return;
+    }
+    if (id === "abrir-camera") {
+      this.ligarCamera(this.mode === "scan-sai" ? "saidera" : "cliente");
+      return;
+    }
     if (id === "torch-btn") return void this.ligarLanterna();
     if (id === "sai-ok-home") return void this.baixarSaidera(this.root.querySelector("#sai-id-home")?.value);
     if (id === "sai-ok-scan") return void this.baixarSaidera(this.root.querySelector("#sai-id-scan")?.value);

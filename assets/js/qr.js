@@ -56,33 +56,81 @@ const QR = {
       .replace("<svg", `<svg width="${size}" height="${size}" class="qr-real"`);
   },
 
+  erroCamera(err) {
+    const nome = String(err?.name || "");
+    const msg = String(err?.message || "");
+    if (!window.isSecureContext) return "A câmera só funciona em HTTPS ou no app instalado.";
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return window.UI?.pwaAndroid?.()
+        ? "Este aparelho não libera a câmera neste navegador. Use o Chrome e permita a câmera."
+        : "Este aparelho não libera a câmera neste navegador. Use o Safari no iPhone.";
+    }
+    if (nome === "NotAllowedError" || nome === "PermissionDeniedError" || /permission|notallowed|denied/i.test(msg)) {
+      const como = window.UI?.ajudaPermissao?.("camera") || "Permita a câmera nas configurações do celular.";
+      return "A câmera está bloqueada. " + como + " Depois toque de novo em Permitir câmera.";
+    }
+    if (nome === "NotFoundError" || nome === "DevicesNotFoundError") return "Nenhuma câmera foi encontrada neste aparelho.";
+    if (nome === "NotReadableError" || nome === "TrackStartError") return "A câmera está em uso em outro app. Feche o outro app e tente de novo.";
+    if (nome === "OverconstrainedError") return "Esta câmera não aceitou o modo pedido. Toque de novo em Permitir câmera.";
+    return "Permita o acesso à câmera para ler o QR.";
+  },
+
+  temStream() {
+    return Boolean(this._stream && this._stream.active);
+  },
+
+  async pedirStream() {
+    if (this.temStream()) return this._stream;
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error(this.erroCamera());
+    }
+    const tentativas = [
+      { audio: false, video: { facingMode: { exact: "environment" } } },
+      { audio: false, video: { facingMode: { ideal: "environment" } } },
+      { audio: false, video: { facingMode: "user" } },
+      { audio: false, video: true },
+    ];
+    let ultimo = null;
+    for (const opts of tentativas) {
+      try {
+        this._stream = await navigator.mediaDevices.getUserMedia(opts);
+        return this._stream;
+      } catch (e) {
+        ultimo = e;
+      }
+    }
+    throw new Error(this.erroCamera(ultimo));
+  },
+
   stopScan() {
     if (this._stop) {
-      this._stop();
+      this._stop(false);
       this._stop = null;
     }
   },
 
   async startScan({ video, onCode, onError }) {
-    this.stopScan();
-    if (!navigator.mediaDevices?.getUserMedia) {
-      onError && onError("Câmera indisponível neste navegador.");
-      return () => {};
+    if (this._stop) {
+      this._stop(true);
+      this._stop = null;
     }
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-    } catch {
-      onError && onError("Permita o acesso à câmera para ler o QR.");
+      stream = await this.pedirStream();
+    } catch (e) {
+      onError && onError(e.message || this.erroCamera(e));
       return () => {};
     }
-    video.srcObject = stream;
-    video.setAttribute("playsinline", "true");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
     video.muted = true;
-    await video.play().catch(() => {});
+    video.autoplay = true;
+    video.srcObject = stream;
+    try {
+      await video.play();
+    } catch {
+      /* o iOS às vezes toca sozinho depois do srcObject */
+    }
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -116,8 +164,7 @@ const QR = {
         }
         if (raw) {
           live = false;
-          stream.getTracks().forEach((t) => t.stop());
-          this._stop = null;
+          this.stopScan();
           onCode && onCode(this.parse(raw), raw);
           return;
         }
@@ -126,9 +173,11 @@ const QR = {
     };
     requestAnimationFrame(tick);
 
-    this._stop = () => {
+    this._stop = (manter) => {
       live = false;
+      if (manter) return;
       stream.getTracks().forEach((t) => t.stop());
+      this._stream = null;
       video.srcObject = null;
     };
     return this._stop;

@@ -71,10 +71,11 @@ const ClienteApp = {
   },
 
   vazio(titulo, texto, cta, href) {
+    const attr = href === "#/ler" ? "data-camera-go" : "data-go";
     return `<div class="card pad empty-cli">
       <h3>${this.esc(titulo)}</h3>
       <p class="muted small">${this.esc(texto)}</p>
-      ${cta ? `<button class="btn btn-gold btn-block" style="margin-top:12px" data-go="${href}">${this.esc(cta)}</button>` : ""}
+      ${cta ? `<button class="btn btn-gold btn-block" style="margin-top:12px" ${attr}="${href}">${this.esc(cta)}</button>` : ""}
     </div>`;
   },
 
@@ -88,13 +89,9 @@ const ClienteApp = {
   },
 
   pedirOndeEstou() {
-    if (!navigator.geolocation) {
-      UI.toast("Este aparelho não informa a localização.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    UI.pedirLocalizacao()
+      .then((geo) => {
+        this.geo = geo;
         try {
           sessionStorage.setItem("saidera_geo", JSON.stringify(this.geo));
         } catch {
@@ -103,10 +100,8 @@ const ClienteApp = {
         Logic.aplicarDistancias(this.geo);
         this.render();
         UI.toast("Lista ordenada pelo que está perto de você.");
-      },
-      () => UI.toast("Não deu para ver onde você está. Busque pelo nome ou bairro."),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-    );
+      })
+      .catch((e) => UI.toast(e.message || "Não deu para ver onde você está."));
   },
 
   cardRitmo(compacto = false) {
@@ -155,7 +150,7 @@ const ClienteApp = {
 
   render() {
     if (!this.root) return;
-    if (window.QR?.stopScan) QR.stopScan();
+    if (this.view !== "ler" && window.QR?.stopScan) QR.stopScan();
     if (!this.me()) {
       this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
         <h2>Sua conta não carregou</h2>
@@ -259,7 +254,7 @@ const ClienteApp = {
     const p = list.sort((a, b) => b.atual / b.meta - a.atual / a.meta)[0];
     const est = p ? Logic.est(p.estabelecimentoId) : Store.all("estabelecimentos")[0];
     if (!est) {
-      return `<article class="hero-progress" data-go="#/ler">
+      return `<article class="hero-progress" data-camera-go="#/ler">
         <div class="content" style="padding:18px">
           <h2>Leia o QR da casa</h2>
           <p class="muted">As Tampas entram no app quando você lê o cupom impresso.</p>
@@ -389,7 +384,7 @@ const ClienteApp = {
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
       <div class="row" style="gap:8px;margin-bottom:14px">
-        <button class="btn btn-gold grow" data-go="#/ler" style="min-height:52px">${Icons.qr()} Ler QR da casa</button>
+        <button class="btn btn-gold grow" data-camera-go="#/ler" style="min-height:52px">${Icons.qr()} Ler QR da casa</button>
         <button class="btn btn-dark" data-go="#/qr" style="min-height:52px">Meu QR</button>
       </div>
       ${Brand.banner("secundario", "brand-banner")}
@@ -596,7 +591,7 @@ const ClienteApp = {
         </div>`;
       })()}
       <div class="row" style="gap:8px;margin-top:16px">
-        <button class="btn btn-gold grow" data-go="#/ler">Ler QR da casa</button>
+        <button class="btn btn-gold grow" data-camera-go="#/ler">Ler QR da casa</button>
         <button class="btn btn-dark" data-go="#/qr">Meu QR</button>
       </div>`;
   },
@@ -809,7 +804,7 @@ const ClienteApp = {
         <p class="small muted">Nascimento ${me.nascimento} · ${me.cidade}</p>
         ${r?.frequencia ? `<p style="margin-top:8px">${this.badgeFreq(r.frequencia)}</p>` : ""}
         <div class="row" style="gap:8px;justify-content:center;margin-top:10px">
-          <button class="btn btn-gold btn-sm" data-go="#/ler">Ler QR da casa</button>
+          <button class="btn btn-gold btn-sm" data-camera-go="#/ler">Ler QR da casa</button>
           <button class="btn btn-dark btn-sm" data-go="#/qr">Meu QR</button>
           <button class="btn btn-ghost btn-sm" data-go="#/conta">Editar dados</button>
         </div>
@@ -920,7 +915,8 @@ const ClienteApp = {
           <i></i><i></i><i></i><i></i>
         </div>
       </div>
-      <p class="tiny muted" id="scan-hint-cli" style="text-align:center;margin-bottom:14px">Aguardando o QR…</p>
+      <p class="tiny muted" id="scan-hint-cli" style="text-align:center;margin-bottom:14px">Toque em Permitir câmera. No Android e no iPhone o aviso só abre neste toque.</p>
+      <button type="button" class="btn btn-gold btn-block" id="abrir-camera" style="margin-bottom:12px">Permitir câmera</button>
       <div class="search">${Icons.search()}<input id="tkt-manual" placeholder="Ou digite o código · TKT-…"/></div>
       <button class="btn btn-gold btn-block" id="tkt-ok" style="margin-top:12px">Adicionar Tampas</button>
       <p class="tiny muted" style="margin-top:12px;text-align:center">Cada cupom é de uso único. Depois de lido, acaba.</p>`;
@@ -958,6 +954,7 @@ const ClienteApp = {
     const video = this.root.querySelector("#scan-video-cli");
     const hint = this.root.querySelector("#scan-hint-cli");
     if (!video || !window.QR?.startScan) return;
+    if (hint) hint.textContent = "Pedindo permissão da câmera…";
     QR.startScan({
       video,
       onCode: (_parsed, raw) => {
@@ -966,7 +963,10 @@ const ClienteApp = {
       },
       onError: (msg) => {
         if (hint) hint.textContent = msg || "Digite o código do cupom abaixo.";
+        UI.toast(msg || "Permita a câmera e tente de novo.");
       },
+    }).then(() => {
+      if (hint && QR.temStream()) hint.textContent = "Aguardando o QR…";
     });
   },
 
@@ -981,7 +981,7 @@ const ClienteApp = {
         <p style="margin-top:12px">Mostre este QR ao garçom se ele precisar abrir a sua comanda. É o seu ID — pode usar sempre.</p>
         <p class="tiny muted" style="margin-top:10px">O caminho principal continua sendo ler o cupom impresso da casa. Este QR fica aqui se precisar.</p>
         <button class="btn btn-ghost btn-block" style="margin-top:16px" data-copiar="${this.esc(me.codigo)}">Copiar meu ID</button>
-        <button class="btn btn-gold btn-block" style="margin-top:8px" data-go="#/ler">Ler QR da casa</button>
+        <button class="btn btn-gold btn-block" style="margin-top:8px" data-camera-go="#/ler">Ler QR da casa</button>
       </div>`;
   },
 
@@ -1094,6 +1094,7 @@ const ClienteApp = {
       if (e.key === "Enter") this.aplicarTicket(e.target.value);
     });
     this.root.querySelector("[data-geo]")?.addEventListener("click", () => this.pedirOndeEstou());
+    this.root.querySelector("#abrir-camera")?.addEventListener("click", () => this.iniciarScanCliente());
     this.root.querySelectorAll("[data-copiar]").forEach((el) =>
       el.addEventListener("click", () => this.copiar(el.getAttribute("data-copiar"), "Código copiado."))
     );
@@ -1105,7 +1106,7 @@ const ClienteApp = {
       })
     );
     this.root.querySelector("[data-foto-off]")?.addEventListener("click", () => this.enviarFoto(""));
-    if (this.view === "ler") this.iniciarScanCliente();
+    if (this.view === "ler" && window.QR?.temStream?.()) this.iniciarScanCliente();
     if (this.view === "notificacoes") this.marcarLidas();
   },
 

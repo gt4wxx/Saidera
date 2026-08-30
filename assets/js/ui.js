@@ -243,7 +243,7 @@ const UI = {
     if (this._bound) return;
     this._bound = true;
     document.addEventListener("click", (e) => {
-      const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-close-modal], [data-close-menu], [data-pwa-install], [data-action]");
+      const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-close-modal], [data-close-menu], [data-pwa-install], [data-camera-go], [data-action]");
       if (!el) return;
       if (el.closest('[data-action="reset-demo"]')) {
         location.href = API?.home?.() || "../index.php";
@@ -282,6 +282,22 @@ const UI = {
       if (el.closest("[data-pwa-ios-copy]")) {
         e.preventDefault();
         this.pwaCopiarLink();
+        return;
+      }
+      const camGo = el.closest("[data-camera-go]");
+      if (camGo) {
+        e.preventDefault();
+        const dest = camGo.getAttribute("data-camera-go");
+        const ir = () => {
+          if (window.ClienteApp?.go) window.ClienteApp.go(dest);
+          else location.hash = dest;
+        };
+        if (window.QR?.pedirStream) {
+          QR.pedirStream().then(ir).catch((err) => {
+            this.toast(err.message || "Permita a câmera e tente de novo.");
+            ir();
+          });
+        } else ir();
         return;
       }
       if (el.closest("[data-pwa-install]")) {
@@ -340,6 +356,38 @@ const UI = {
     this.pwaInit();
   },
 
+  pedirLocalizacao() {
+    return new Promise((resolve, reject) => {
+      if (!window.isSecureContext) {
+        reject(new Error("A localização só funciona em HTTPS ou no app instalado."));
+        return;
+      }
+      if (!navigator.geolocation) {
+        reject(new Error("Este aparelho não informa a localização."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => {
+          if (err?.code === 1) {
+            reject(new Error("A localização está bloqueada. " + this.ajudaPermissao("localizacao")));
+            return;
+          }
+          if (err?.code === 2) {
+            reject(new Error("Não achamos sua posição. Ligue o GPS e tente de novo."));
+            return;
+          }
+          if (err?.code === 3) {
+            reject(new Error("A localização demorou. Tente de novo em um lugar mais aberto."));
+            return;
+          }
+          reject(new Error("Não deu para ver onde você está. Busque pelo nome ou bairro."));
+        },
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+      );
+    });
+  },
+
   pwaStandalone() {
     try {
       if (window.matchMedia("(display-mode: standalone)").matches) return true;
@@ -355,6 +403,21 @@ const UI = {
 
   pwaCelular() {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  },
+
+  pwaAndroid() {
+    return /Android/i.test(navigator.userAgent || "");
+  },
+
+  ajudaPermissao(tipo) {
+    const oque = tipo === "camera" ? "Câmera" : "Localização";
+    if (this.pwaIos()) {
+      return `No iPhone: Ajustes → Saidera (ou Safari) → ${oque} → Permitir.`;
+    }
+    if (this.pwaStandalone()) {
+      return `No Android: mantenha o ícone Saidera → Informações do app → Permissões → ${oque} → Permitir.`;
+    }
+    return `No Android: toque no cadeado do Chrome → Permissões → ${oque} → Permitir. Ou menu ⋮ → Configurações do site.`;
   },
 
   pwaIos() {

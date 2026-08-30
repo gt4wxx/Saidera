@@ -1505,7 +1505,12 @@ const EstApp = {
     }
   },
 
-  abrirScanQr() {
+  async abrirScanQr() {
+    try {
+      if (window.QR?.pedirStream) await QR.pedirStream();
+    } catch (e) {
+      UI.toast(e.message || "Permita a câmera para ler o QR.");
+    }
     const m = UI.modal({
       center: true,
       onClose: () => QR.stopScan(),

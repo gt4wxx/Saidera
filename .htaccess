@@ -6,6 +6,8 @@ DirectoryIndex index.php index.html
 </IfModule>
 
 <IfModule mod_headers.c>
+  Header set Permissions-Policy "geolocation=(self), camera=(self), microphone=()"
+  Header set Feature-Policy "geolocation 'self'; camera 'self'; microphone 'none'"
   <FilesMatch "\.(html|htm|js|php|json|webmanifest)$">
     Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
