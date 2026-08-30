@@ -848,6 +848,29 @@ const AdminApp = {
       <p class="tiny muted" style="margin-bottom:8px">Marque só os menus que a casa <strong>não</strong> usa neste plano. Eles continuam no menu, mas o conteúdo fica turvo.</p>
       ${this.checksMenus(Logic.menusCasaCatalogo().map((m) => m.id))}
       <button class="btn btn-gold" style="margin-top:12px" data-act="pln-criar">Cadastrar plano</button>`;
+    const cobrancas = Store.all("cobrancasPlano");
+    const pend = cobrancas.filter((c) => c.status === "pendente");
+    const pixOk = Boolean(Store.data?.meta?.pixChave);
+    const cobRows = cobrancas
+      .slice(0, 40)
+      .map((c) => {
+        const casa = Logic.est(c.estabelecimentoId);
+        const pl = Logic.plano(c.planoId);
+        const lab = { pendente: "Aguardando Pix", pago: "Pago", cancelado: "Cancelado" }[c.status] || c.status;
+        return `<tr>
+          <td><strong>${this.esc(casa?.nome || "Casa")}</strong><p class="tiny muted">${this.esc(c.txid)}</p></td>
+          <td>${this.esc(pl?.nome || "—")}<p class="tiny muted">${this.esc(Logic.fmtReais(c.valor))}</p></td>
+          <td><span class="badge ${c.status === "pago" ? "badge-green" : c.status === "pendente" ? "badge-gold" : "badge-ghost"}">${lab}</span></td>
+          <td>${this.esc(Logic.fmtDate(c.criadoEm))}</td>
+          <td class="table-actions">${
+            c.status === "pendente"
+              ? `<button class="btn btn-gold btn-sm" data-act="cob-pagar" data-id="${c.id}">Confirmar Pix</button>
+                 <button class="btn btn-ghost btn-sm" data-act="cob-cancelar" data-id="${c.id}">Cancelar</button>`
+              : ""
+          }</td>
+        </tr>`;
+      })
+      .join("");
     return `${this.formNovo("pln", "Cadastrar novo plano", form)}
     <section class="panel" style="margin-bottom:14px">
       <h3>Mensagem dos menus bloqueados</h3>
@@ -855,8 +878,25 @@ const AdminApp = {
       <div class="field"><span>Texto</span><input id="pln-msg" maxlength="80" value="${this.esc(Store.data?.meta?.msgPlanoBloqueado || "Indisponível")}" placeholder="Indisponível"/></div>
       <button class="btn btn-navy btn-sm" style="margin-top:10px" data-act="pln-msg">Salvar mensagem</button>
     </section>
+    ${
+      pixOk
+        ? ""
+        : `<p class="notice" style="margin-bottom:14px">Cadastre a chave Pix em Configurações. Sem ela, a casa não consegue pedir um plano com preço.</p>`
+    }
+    <section class="panel" style="margin-bottom:14px">
+      <h3>Pix dos planos</h3>
+      <p class="tiny muted" style="margin:6px 0 12px">${pend.length ? `${pend.length} aguardando confirmação.` : "Nenhum Pix pendente."} Quando a casa pede um plano com preço, o Pix sai com esse valor. Confirme aqui depois de cair no extrato.</p>
+      ${
+        cobrancas.length
+          ? `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Casa</th><th>Plano</th><th>Status</th><th>Pedido</th><th></th></tr></thead>
+        <tbody>${cobRows}</tbody>
+      </table></div>`
+          : this.empty("Nenhuma cobrança ainda.")
+      }
+    </section>
     <section class="panel">
-      <p class="muted small" style="margin-bottom:12px">O plano define quais menus a casa usa livremente. Os outros continuam no menu, turvos. Se estiver à mostra, o estabelecimento vê e pode escolher. Visão Geral, Configurações e Planos ficam sempre livres.</p>
+      <p class="muted small" style="margin-bottom:12px">O plano define quais menus a casa usa livremente. Os outros continuam no menu, turvos. Se estiver à mostra, a casa pode pedir. Com preço, gera Pix e só muda depois que você confirmar. Visão Geral, Configurações e Planos ficam sempre livres.</p>
       ${list.length ? `<div class="table-wrap"><table class="data">
         <thead><tr><th>Plano</th><th>Menus bloqueados</th><th>À mostra</th><th>Casas</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((p) => `<tr>
@@ -945,6 +985,12 @@ const AdminApp = {
     </div>
     <section class="panel" style="margin-bottom:14px">
       <p class="tiny muted">${this.esc(Logic.tipoEst(e))} · ${this.esc(Logic.enderecoLinha(e))} · gestor ${this.esc(e.gestorEmail || "—")} · plano ${this.esc(Logic.planoDaCasa(e)?.nome || "Completo")}</p>
+      ${(() => {
+        const cob = Logic.cobrancaPendente(e.id);
+        if (!cob) return "";
+        const pl = Logic.plano(cob.planoId);
+        return `<p class="notice" style="margin-top:12px">Pix pendente: ${this.esc(pl?.nome || "plano")} · ${this.esc(Logic.fmtReais(cob.valor))} · ${this.esc(cob.txid)}. Confirme em Planos depois de cair no extrato.</p>`;
+      })()}
       <div class="row wrap" style="gap:8px;margin-top:12px;align-items:flex-end">
         <div class="field" style="margin:0;min-width:220px"><span>Plano desta casa</span>
           <select id="casa-plano">${Store.all("planos").map((p) => `<option value="${p.id}" ${e.planoId === p.id ? "selected" : ""}>${this.esc(p.nome)}${p.aMostra ? "" : " (só admin)"}</option>`).join("")}</select>
@@ -1075,6 +1121,13 @@ const AdminApp = {
         <h3>Planos</h3>
         <p class="tiny muted" style="margin:6px 0 10px">Texto sobre o conteúdo turvo quando o menu não está no plano da casa.</p>
         <div class="field"><span>Mensagem de menu bloqueado</span><input id="cfg-pln-msg" maxlength="80" value="${this.esc(m.msgPlanoBloqueado || "Indisponível")}" placeholder="Indisponível"/></div>
+      </section>
+      <section class="panel">
+        <h3>Pix da rede</h3>
+        <p class="tiny muted" style="margin:6px 0 10px">Quando a casa pede um plano com preço, o app gera um Pix com este valor para esta chave. CPF, CNPJ, e-mail, celular com DDD ou chave aleatória.</p>
+        <div class="field"><span>Chave Pix</span><input id="cfg-pix-chave" value="${this.esc(m.pixChave || "")}" placeholder="e-mail, CPF, celular ou chave aleatória"/></div>
+        <div class="field" style="margin-top:10px"><span>Nome no Pix</span><input id="cfg-pix-nome" maxlength="25" value="${this.esc(m.pixNome || "Saidera")}" placeholder="Saidera"/></div>
+        <div class="field" style="margin-top:10px"><span>Cidade no Pix</span><input id="cfg-pix-cidade" maxlength="15" value="${this.esc(m.pixCidade || "Aracaju")}" placeholder="Aracaju"/></div>
       </section>
       <section class="panel">
         <h3>Suporte</h3>
@@ -1299,6 +1352,19 @@ const AdminApp = {
     }
     if (act === "casa-plano") {
       await this.post("planos/atribuir", { estabelecimentoId: id, planoId: this.val("#casa-plano") }, "Plano da casa atualizado.");
+      return;
+    }
+    if (act === "cob-pagar") {
+      const c = Store.find("cobrancasPlano", id);
+      const pl = Logic.plano(c?.planoId);
+      const casa = Logic.est(c?.estabelecimentoId);
+      if (!confirm(`Confirmar o Pix de ${Logic.fmtReais(c?.valor)} e passar ${casa?.nome || "a casa"} para o plano ${pl?.nome || ""}?`)) return;
+      await this.post("planos/cobranca-pagar", { id }, "Pix confirmado. Plano da casa atualizado.");
+      return;
+    }
+    if (act === "cob-cancelar") {
+      if (!confirm("Cancelar este Pix? A casa continua no plano atual.")) return;
+      await this.post("planos/cobranca-cancelar", { id }, "Cobrança cancelada.");
       return;
     }
     if (act === "pln-msg") {
@@ -1769,6 +1835,9 @@ const AdminApp = {
         suporteWhatsapp: this.val("#cfg-whats"),
         suporteEmail: this.val("#cfg-email"),
         msgPlanoBloqueado: this.val("#cfg-pln-msg"),
+        pixChave: this.val("#cfg-pix-chave"),
+        pixNome: this.val("#cfg-pix-nome"),
+        pixCidade: this.val("#cfg-pix-cidade"),
         novaSenha: this.val("#cfg-senha"),
       }, "Configurações salvas.");
     }

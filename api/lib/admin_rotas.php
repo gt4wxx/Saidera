@@ -539,8 +539,46 @@ function admin_rota(string $method, string $path, array $in): bool
             if (!$st->fetch()) fail('Plano não encontrado.');
         }
         db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid ?: null, $eid]);
+        cancelar_cobrancas_pendentes($eid);
         auditar('Plano atribuído à casa', pub('est', $eid));
         admin_ok_store();
+    }
+
+    if ($path === 'planos/cobranca-pagar') {
+        auth_require(['admin']);
+        garantir_plano_cobrancas();
+        $cid = nid('cob', $in['id'] ?? '');
+        if (!$cid) fail('Cobrança não encontrada.');
+        $st = db()->prepare('SELECT * FROM plano_cobrancas WHERE id = ?');
+        $st->execute([$cid]);
+        $c = $st->fetch();
+        if (!$c) fail('Cobrança não encontrada.');
+        if ($c['status'] === 'pago') fail('Esta cobrança já foi marcada como paga.');
+        db()->prepare("UPDATE plano_cobrancas SET status = 'pago', pago_em = NOW() WHERE id = ?")->execute([$cid]);
+        db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([(int) $c['plano_id'], (int) $c['estabelecimento_id']]);
+        cancelar_cobrancas_pendentes((int) $c['estabelecimento_id'], $cid);
+        auditar('Pix do plano confirmado', $c['txid']);
+        admin_ok_store();
+    }
+
+    if ($path === 'planos/cobranca-cancelar') {
+        $u = auth_require(['admin', 'estabelecimento']);
+        garantir_plano_cobrancas();
+        $cid = nid('cob', $in['id'] ?? '');
+        if (!$cid) fail('Cobrança não encontrada.');
+        $st = db()->prepare('SELECT * FROM plano_cobrancas WHERE id = ?');
+        $st->execute([$cid]);
+        $c = $st->fetch();
+        if (!$c) fail('Cobrança não encontrada.');
+        if ($c['status'] === 'pago') fail('Cobrança já paga. Não dá para cancelar.');
+        if ($u['papel'] === 'estabelecimento') {
+            $eid = gestor_est_id((int) $u['id']);
+            if ((int) $c['estabelecimento_id'] !== (int) $eid) fail('Cobrança de outra casa.');
+        }
+        db()->prepare("UPDATE plano_cobrancas SET status = 'cancelado' WHERE id = ?")->execute([$cid]);
+        auditar('Pix do plano cancelado', $c['txid']);
+        if ($u['papel'] === 'admin') admin_ok_store();
+        ok(['store' => bootstrap_store($u)]);
     }
 
     if ($path === 'saideras/entregar-admin') {

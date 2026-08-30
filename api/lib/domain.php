@@ -681,3 +681,127 @@ function garantir_planos(): void
         db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE plano_id IS NULL')->execute([$completo]);
     }
 }
+
+function garantir_plano_cobrancas(): void
+{
+    db()->exec('CREATE TABLE IF NOT EXISTS plano_cobrancas (
+      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      estabelecimento_id BIGINT UNSIGNED NOT NULL,
+      plano_id BIGINT UNSIGNED NOT NULL,
+      plano_de_id BIGINT UNSIGNED DEFAULT NULL,
+      valor DECIMAL(10,2) NOT NULL,
+      txid VARCHAR(25) NOT NULL,
+      pix_payload TEXT NOT NULL,
+      status ENUM("pendente","pago","cancelado") NOT NULL DEFAULT "pendente",
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      pago_em DATETIME DEFAULT NULL,
+      KEY idx_cob_est (estabelecimento_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+}
+
+function pix_crc16(string $s): string
+{
+    $crc = 0xFFFF;
+    $len = strlen($s);
+    for ($i = 0; $i < $len; $i++) {
+        $crc ^= (ord($s[$i]) << 8);
+        for ($j = 0; $j < 8; $j++) {
+            if ($crc & 0x8000) $crc = (($crc << 1) ^ 0x1021) & 0xFFFF;
+            else $crc = ($crc << 1) & 0xFFFF;
+        }
+    }
+    return strtoupper(str_pad(dechex($crc), 4, '0', STR_PAD_LEFT));
+}
+
+function pix_tlv(string $id, string $value): string
+{
+    return $id . str_pad((string) strlen($value), 2, '0', STR_PAD_LEFT) . $value;
+}
+
+function pix_ascii(string $s, int $max): string
+{
+    $map = [
+        'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'ä' => 'a',
+        'é' => 'e', 'ê' => 'e', 'è' => 'e',
+        'í' => 'i', 'ì' => 'i',
+        'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ò' => 'o',
+        'ú' => 'u', 'ù' => 'u', 'ü' => 'u',
+        'ç' => 'c',
+        'Á' => 'A', 'À' => 'A', 'Ã' => 'A', 'Â' => 'A',
+        'É' => 'E', 'Ê' => 'E', 'Í' => 'I',
+        'Ó' => 'O', 'Ô' => 'O', 'Õ' => 'O',
+        'Ú' => 'U', 'Ç' => 'C',
+    ];
+    $s = strtr($s, $map);
+    $s = preg_replace('/[^A-Za-z0-9 .\-\/]/', '', $s) ?? '';
+    $s = trim(preg_replace('/\s+/', ' ', $s) ?? '');
+    if ($s === '') $s = 'SAIDERA';
+    return substr($s, 0, $max);
+}
+
+function pix_emv(string $chave, float $valor, string $nome, string $cidade, string $txid): string
+{
+    $chave = trim($chave);
+    $txid = strtoupper(preg_replace('/[^A-Z0-9]/', '', $txid) ?: 'SDPLANO');
+    $txid = substr($txid, 0, 25);
+    $gui = pix_tlv('00', 'br.gov.bcb.pix') . pix_tlv('01', $chave);
+    $payload = pix_tlv('00', '01')
+        . pix_tlv('01', '11')
+        . pix_tlv('26', $gui)
+        . pix_tlv('52', '0000')
+        . pix_tlv('53', '986');
+    if ($valor > 0) {
+        $payload .= pix_tlv('54', number_format($valor, 2, '.', ''));
+    }
+    $payload .= pix_tlv('58', 'BR')
+        . pix_tlv('59', pix_ascii($nome, 25))
+        . pix_tlv('60', pix_ascii($cidade, 15))
+        . pix_tlv('62', pix_tlv('05', $txid))
+        . '6304';
+    return $payload . pix_crc16($payload);
+}
+
+function row_plano_cobranca(array $c): array
+{
+    return [
+        'id' => pub('cob', $c['id']),
+        'estabelecimentoId' => pub('est', $c['estabelecimento_id']),
+        'planoId' => pub('pln', $c['plano_id']),
+        'planoDeId' => !empty($c['plano_de_id']) ? pub('pln', $c['plano_de_id']) : null,
+        'valor' => (float) $c['valor'],
+        'txid' => $c['txid'],
+        'pix' => $c['pix_payload'],
+        'status' => $c['status'],
+        'criadoEm' => iso($c['criado_em']),
+        'pagoEm' => !empty($c['pago_em']) ? iso($c['pago_em']) : null,
+    ];
+}
+
+function cancelar_cobrancas_pendentes(int $eid, ?int $exceto = null): void
+{
+    try {
+        if ($exceto) {
+            db()->prepare("UPDATE plano_cobrancas SET status = 'cancelado' WHERE estabelecimento_id = ? AND status = 'pendente' AND id <> ?")
+                ->execute([$eid, $exceto]);
+            return;
+        }
+        db()->prepare("UPDATE plano_cobrancas SET status = 'cancelado' WHERE estabelecimento_id = ? AND status = 'pendente'")
+            ->execute([$eid]);
+    } catch (Throwable $e) {
+    }
+}
+
+function listar_cobrancas_plano(?int $eid = null): array
+{
+    try {
+        garantir_plano_cobrancas();
+        if ($eid) {
+            $st = db()->prepare('SELECT * FROM plano_cobrancas WHERE estabelecimento_id = ? ORDER BY criado_em DESC LIMIT 30');
+            $st->execute([$eid]);
+            return array_map('row_plano_cobranca', $st->fetchAll());
+        }
+        return array_map('row_plano_cobranca', db()->query('SELECT * FROM plano_cobrancas ORDER BY criado_em DESC LIMIT 80')->fetchAll());
+    } catch (Throwable $e) {
+        return [];
+    }
+}

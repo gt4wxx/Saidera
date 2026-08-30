@@ -1264,29 +1264,51 @@ const EstApp = {
     </section>`;
   },
 
+  pixBox(cob) {
+    if (!cob?.pix) return "";
+    const p = Logic.plano(cob.planoId);
+    const qr = window.QR?.svg ? QR.svg(cob.pix, 200) : "";
+    return `<section class="panel pix-box" style="margin-bottom:14px">
+      <p class="tiny muted">Pix gerado · aguardando confirmação</p>
+      <h3>${this.esc(p?.nome || "Novo plano")}</h3>
+      <p class="pix-valor">${this.esc(Logic.fmtReais(cob.valor))}</p>
+      <p class="small" style="margin:8px 0 12px">Pague este valor. O plano só muda depois que o admin confirmar o Pix no extrato.</p>
+      ${qr ? `<div class="qr-convite">${qr}</div>` : ""}
+      <textarea id="pix-copia" readonly class="pix-copia">${this.esc(cob.pix)}</textarea>
+      <p class="tiny muted" style="margin:8px 0">Identificador: ${this.esc(cob.txid)}</p>
+      <div class="row wrap" style="gap:8px">
+        <button type="button" class="btn btn-gold" data-act="pix-copiar">Copiar Pix</button>
+        <button type="button" class="btn btn-ghost" data-act="cob-cancelar" data-id="${cob.id}">Cancelar pedido</button>
+      </div>
+    </section>`;
+  },
+
   planos() {
     const atual = Logic.planoDaCasa(this.est());
+    const pend = Logic.cobrancaPendente(this.estId);
     const lista = Store.all("planos").filter((p) => p.status === "ativo" && (p.aMostra || p.id === atual?.id));
-    const preco = (p) =>
-      p.preco != null ? "R$ " + Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "Sem preço definido";
+    const preco = (p) => (p.preco != null ? Logic.fmtReais(p.preco) : "Sem preço — troca na hora");
     const card = (p) => {
       const meu = atual && p.id === atual.id;
+      const pedindo = pend && pend.planoId === p.id;
       const menus = (p.menus || []).map((id) => this.esc(Logic.labelMenuCasa(id))).join(", ");
+      let acao = `<p class="tiny muted" style="margin-top:12px">Este é o plano da casa agora.</p>`;
+      if (!meu && pedindo) acao = `<p class="tiny gold" style="margin-top:12px">Pix deste plano já foi gerado. Pague acima.</p>`;
+      else if (!meu) {
+        const lab = p.preco > 0 ? `Pedir ${Logic.fmtReais(p.preco)}` : "Usar este plano";
+        acao = `<button class="btn btn-gold" style="margin-top:12px" data-act="pln-escolher" data-id="${p.id}">${this.esc(lab)}</button>`;
+      }
       return `<article class="panel" style="margin:0">
         <div class="row between" style="gap:8px;align-items:flex-start">
           <div>
             <h3>${this.esc(p.nome)}</h3>
             <p class="tiny muted">${this.esc(preco(p))}</p>
           </div>
-          ${meu ? `<span class="badge badge-gold">Atual</span>` : `<span class="badge badge-ghost">À mostra</span>`}
+          ${meu ? `<span class="badge badge-gold">Atual</span>` : pedindo ? `<span class="badge badge-gold">Aguardando Pix</span>` : `<span class="badge badge-ghost">À mostra</span>`}
         </div>
         <p class="small" style="margin:10px 0">${this.esc(p.descricao || "Sem descrição.")}</p>
         <p class="tiny muted">Menus: ${menus || "—"}</p>
-        ${
-          meu
-            ? `<p class="tiny muted" style="margin-top:12px">Este é o plano da casa agora.</p>`
-            : `<button class="btn btn-gold" style="margin-top:12px" data-act="pln-escolher" data-id="${p.id}">Usar este plano</button>`
-        }
+        ${acao}
       </article>`;
     };
     return `${
@@ -1296,9 +1318,10 @@ const EstApp = {
       <h3>${this.esc(atual.nome)}</h3>
       <p class="small" style="margin-top:6px">${this.esc(atual.descricao || "Sem descrição.")}</p>
     </section>`
-        : `<section class="panel" style="margin-bottom:14px"><p class="muted">A casa ainda não tem um plano. Escolha um à mostra ou peça ao admin para atribuir.</p></section>`
+        : `<section class="panel" style="margin-bottom:14px"><p class="muted">A casa ainda não tem um plano. Escolha um à mostra.</p></section>`
     }
-    <p class="muted small" style="margin-bottom:12px">Só aparecem os planos que o admin deixou à mostra. Trocar o plano libera ou turva os menus na hora.</p>
+    ${pend ? this.pixBox(pend) : ""}
+    <p class="muted small" style="margin-bottom:12px">Só aparecem os planos que o admin deixou à mostra. Se o plano tem preço, um Pix é gerado com esse valor. O plano muda depois da confirmação.</p>
     ${lista.length ? `<div class="grid-2">${lista.map(card).join("")}</div>` : `<section class="panel"><p class="muted">Nenhum plano à mostra no momento.</p></section>`}`;
   },
 
@@ -1358,7 +1381,7 @@ const EstApp = {
     <section class="panel">
       <h3>Plano da casa</h3>
       <p class="small">${this.esc(Logic.planoDaCasa(est)?.nome || "Sem plano definido")}</p>
-      <p class="tiny muted" style="margin:6px 0 12px">O plano define quais menus ficam livres. Os outros continuam no menu, turvos. Só dá para trocar pelos planos à mostra.</p>
+      <p class="tiny muted" style="margin:6px 0 12px">O plano define quais menus ficam livres. Para trocar, peça um plano à mostra. Se tiver preço, pague o Pix e o admin confirma.</p>
       <a class="btn btn-ghost btn-sm" href="#/planos">Ver planos</a>
     </section>
     <section class="panel">
@@ -1522,8 +1545,33 @@ const EstApp = {
     if (act === "pln-escolher") {
       const p = Store.find("planos", id);
       if (!p) return;
-      if (!confirm(`Passar a casa para o plano ${p.nome}? Os menus mudam na hora.`)) return;
-      await this.post("planos/escolher", { planoId: id }, `Plano ${p.nome} ativado.`);
+      const valor = p.preco != null ? Number(p.preco) : 0;
+      const txt =
+        valor > 0
+          ? `Pedir o plano ${p.nome} por ${Logic.fmtReais(valor)}? O plano só muda depois que o admin confirmar o Pix.`
+          : `Passar a casa para o plano ${p.nome}? Sem preço, a troca é na hora.`;
+      if (!confirm(txt)) return;
+      const data = await this.post(
+        "planos/escolher",
+        { planoId: id },
+        valor > 0 ? "Pix gerado. Pague e aguarde a confirmação do admin." : `Plano ${p.nome} ativado.`
+      );
+      if (data && data.ativado === false) {
+        this.root.querySelector(".pix-box")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+      return;
+    }
+    if (act === "pix-copiar") {
+      const txt = this.root.querySelector("#pix-copia")?.value || "";
+      if (!txt) return;
+      const ok = navigator.clipboard?.writeText?.(txt);
+      if (ok && typeof ok.then === "function") ok.then(() => UI.toast("Pix copiado.")).catch(() => prompt("Copie o Pix", txt));
+      else prompt("Copie o Pix", txt);
+      return;
+    }
+    if (act === "cob-cancelar") {
+      if (!confirm("Cancelar este pedido de plano? O Pix deixa de valer.")) return;
+      await this.post("planos/cobranca-cancelar", { id }, "Pedido cancelado.");
       return;
     }
     if (act === "convite-copiar") {

@@ -400,6 +400,15 @@ function rota(string $method, string $path): void
             else $msg = substr($msg, 0, 80);
             cfg_set('msg_plano_bloqueado', $msg !== '' ? $msg : 'Indisponível');
         }
+        if (array_key_exists('pixChave', $in)) cfg_set('pix_chave', trim((string) $in['pixChave']));
+        if (array_key_exists('pixNome', $in)) {
+            $nome = trim((string) $in['pixNome']);
+            cfg_set('pix_nome', $nome !== '' ? $nome : 'Saidera');
+        }
+        if (array_key_exists('pixCidade', $in)) {
+            $cidPix = trim((string) $in['pixCidade']);
+            cfg_set('pix_cidade', $cidPix);
+        }
         if (!empty($in['novaSenha'])) {
             if (strlen($in['novaSenha']) < 6) fail('A nova senha precisa ter pelo menos 6 caracteres.');
             db()->prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?')->execute([password_hash($in['novaSenha'], PASSWORD_DEFAULT), $u['id']]);
@@ -416,9 +425,43 @@ function rota(string $method, string $path): void
         $st->execute([$pid]);
         $p = $st->fetch();
         if (!$p) fail('Este plano não está à mostra ou não está ativo.');
-        db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid, $eid]);
-        auditar('Casa escolheu plano', $p['nome']);
-        ok(['store' => bootstrap_store($u)]);
+        $est = db()->prepare('SELECT plano_id FROM estabelecimentos WHERE id = ?');
+        $est->execute([$eid]);
+        $atual = $est->fetch();
+        $planoAtual = $atual ? (int) ($atual['plano_id'] ?? 0) : 0;
+        if ($planoAtual === (int) $pid) fail('Este já é o plano da casa.');
+        $preco = $p['preco'] !== null && $p['preco'] !== '' ? (float) $p['preco'] : 0;
+        if ($preco <= 0) {
+            db()->prepare('UPDATE estabelecimentos SET plano_id = ? WHERE id = ?')->execute([$pid, $eid]);
+            cancelar_cobrancas_pendentes($eid);
+            auditar('Casa mudou de plano', $p['nome']);
+            ok(['store' => bootstrap_store($u), 'ativado' => true]);
+        }
+        $chave = trim((string) cfg('pix_chave', ''));
+        if ($chave === '') fail('A rede ainda não cadastrou a chave Pix. Avise o admin.');
+        garantir_plano_cobrancas();
+        $st = db()->prepare("SELECT * FROM plano_cobrancas WHERE estabelecimento_id = ? AND plano_id = ? AND status = 'pendente' LIMIT 1");
+        $st->execute([$eid, $pid]);
+        $exist = $st->fetch();
+        if ($exist) {
+            ok(['store' => bootstrap_store($u), 'ativado' => false, 'cobranca' => row_plano_cobranca($exist)]);
+        }
+        cancelar_cobrancas_pendentes($eid);
+        $txid = 'SD' . strtoupper(bin2hex(random_bytes(8)));
+        $nome = trim((string) cfg('pix_nome', 'Saidera')) ?: 'Saidera';
+        $cidade = trim((string) cfg('pix_cidade', ''));
+        if ($cidade === '') {
+            $cidade = trim(explode('/', (string) cfg('cidade', 'Aracaju'))[0]) ?: 'Aracaju';
+        }
+        $payload = pix_emv($chave, $preco, $nome, $cidade, $txid);
+        db()->prepare('INSERT INTO plano_cobrancas (estabelecimento_id, plano_id, plano_de_id, valor, txid, pix_payload, status) VALUES (?,?,?,?,?,?,?)')
+            ->execute([$eid, $pid, $planoAtual ?: null, $preco, $txid, $payload, 'pendente']);
+        $cid = (int) db()->lastInsertId();
+        $st = db()->prepare('SELECT * FROM plano_cobrancas WHERE id = ?');
+        $st->execute([$cid]);
+        $cob = $st->fetch();
+        auditar('Casa pediu plano (Pix)', $p['nome'] . ' · R$ ' . number_format($preco, 2, ',', '.'));
+        ok(['store' => bootstrap_store($u), 'ativado' => false, 'cobranca' => $cob ? row_plano_cobranca($cob) : null]);
     }
 
     if (admin_rota($method, $path, $in)) return;

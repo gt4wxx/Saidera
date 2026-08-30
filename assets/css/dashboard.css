@@ -552,3 +552,25 @@ body.dash select {
   }
   body { background: #fff !important; color: #171717; }
 }
+
+.pix-box .pix-valor {
+  margin: 6px 0 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #F5B800;
+}
+.pix-copia {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  background: #141414;
+  color: #F4E7C3;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  word-break: break-all;
+  resize: none;
+}

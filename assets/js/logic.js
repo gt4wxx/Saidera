@@ -283,6 +283,14 @@ const Logic = {
     return ids;
   },
 
+  fmtReais(v) {
+    return "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  },
+
+  cobrancaPendente(estId) {
+    return Store.all("cobrancasPlano").find((c) => c.status === "pendente" && (!estId || c.estabelecimentoId === estId)) || null;
+  },
+
   fmtDate(iso) {
     if (!iso) return "—";
     if (iso.includes("/")) return iso;

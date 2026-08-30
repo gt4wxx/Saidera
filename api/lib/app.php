@@ -71,6 +71,7 @@ function saidera_migrar(): void
             db()->exec('ALTER TABLE estabelecimentos ADD COLUMN plano_id BIGINT UNSIGNED DEFAULT NULL');
         }
         garantir_planos();
+        garantir_plano_cobrancas();
     } catch (Throwable $e) {
         /* instalação antiga sem permissão de ALTER — o cadastro novo ainda grava o endereço composto */
     }

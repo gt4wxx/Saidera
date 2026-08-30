@@ -252,6 +252,20 @@ CREATE TABLE IF NOT EXISTS auditoria (
   em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS plano_cobrancas (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  estabelecimento_id BIGINT UNSIGNED NOT NULL,
+  plano_id BIGINT UNSIGNED NOT NULL,
+  plano_de_id BIGINT UNSIGNED DEFAULT NULL,
+  valor DECIMAL(10,2) NOT NULL,
+  txid VARCHAR(25) NOT NULL,
+  pix_payload TEXT NOT NULL,
+  status ENUM('pendente','pago','cancelado') NOT NULL DEFAULT 'pendente',
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  pago_em DATETIME DEFAULT NULL,
+  KEY idx_cob_est (estabelecimento_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS avisos_estabelecimento (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estabelecimento_id BIGINT UNSIGNED NOT NULL,
@@ -265,7 +279,10 @@ INSERT INTO config (k, v) VALUES
   ('meta_padrao_rede', '10'),
   ('validade_saidera_dias', '15'),
   ('suporte_whatsapp', ''),
-  ('suporte_email', '')
+  ('suporte_email', ''),
+  ('pix_chave', ''),
+  ('pix_nome', 'Saidera'),
+  ('pix_cidade', 'Aracaju')
 ON DUPLICATE KEY UPDATE v = VALUES(v);
 
 SET FOREIGN_KEY_CHECKS = 1;

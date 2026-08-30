@@ -159,6 +159,9 @@ function bootstrap_store(array $u): array
         'suporteWhatsapp' => cfg('suporte_whatsapp', ''),
         'suporteEmail' => cfg('suporte_email', ''),
         'msgPlanoBloqueado' => cfg('msg_plano_bloqueado', 'Indisponível') ?: 'Indisponível',
+        'pixChave' => '',
+        'pixNome' => cfg('pix_nome', 'Saidera') ?: 'Saidera',
+        'pixCidade' => cfg('pix_cidade', '') ?: '',
         'demo' => [
             'clienteId' => null,
             'estabelecimentoId' => null,
@@ -182,6 +185,7 @@ function bootstrap_store(array $u): array
         'auditoria' => [],
         'avisosEstabelecimento' => [],
         'planos' => [],
+        'cobrancasPlano' => [],
     ];
 
     if ($u['papel'] === 'cliente') {
@@ -323,6 +327,7 @@ function bootstrap_store(array $u): array
         } catch (Throwable $e) {
             $empty['planos'] = [];
         }
+        $empty['cobrancasPlano'] = listar_cobrancas_plano($eid);
         return $empty;
     }
 
@@ -346,6 +351,11 @@ function bootstrap_store(array $u): array
     }
 
     // admin
+    $empty['meta']['pixChave'] = cfg('pix_chave', '') ?: '';
+    if ($empty['meta']['pixCidade'] === '') {
+        $cid = (string) cfg('cidade', 'Aracaju');
+        $empty['meta']['pixCidade'] = trim(explode('/', $cid)[0]) ?: 'Aracaju';
+    }
     $empty['meta']['contagens'] = admin_contagens();
     $empty['meta']['semana'] = admin_semana();
     $empty['meta']['bairros'] = admin_bairros();
@@ -415,6 +425,7 @@ function bootstrap_store(array $u): array
     } catch (Throwable $e) {
         $empty['planos'] = [];
     }
+    $empty['cobrancasPlano'] = listar_cobrancas_plano();
     $empty['funcionarios'] = array_map(fn($f) => [
         'id' => pub('fun', $f['id']),
         'nome' => $f['nome'],
