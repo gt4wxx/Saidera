@@ -17,11 +17,14 @@ $css = $css ?? [];
 <?php endforeach; ?>
   <link rel="icon" type="image/png" href="../assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="../assets/brand/apple-touch.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/brand/apple-touch.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="../assets/brand/icon-192.png"/>
   <link rel="manifest" href="<?= htmlspecialchars($manifest ?? '../manifest.webmanifest') ?>"/>
   <meta name="theme-color" content="#171717"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <?php if (!empty($swCliente)): ?>
   <script src="../assets/js/pwa-captura.js?v=<?= $v ?>"></script>
 <?php else: ?>

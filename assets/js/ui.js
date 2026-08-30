@@ -264,6 +264,26 @@ const UI = {
         document.querySelector("#sidebar")?.classList.toggle("open");
         return;
       }
+      if (el.closest("[data-pwa-ios-close]")) {
+        e.preventDefault();
+        document.getElementById("pwa-ios-folha")?.remove();
+        return;
+      }
+      if (el.closest("[data-pwa-ios-seguir]")) {
+        e.preventDefault();
+        this.pwaFolhaIosPassoShare();
+        return;
+      }
+      if (el.closest("[data-pwa-ios-safari]")) {
+        e.preventDefault();
+        this.pwaAbrirSafari();
+        return;
+      }
+      if (el.closest("[data-pwa-ios-copy]")) {
+        e.preventDefault();
+        this.pwaCopiarLink();
+        return;
+      }
       if (el.closest("[data-pwa-install]")) {
         e.preventDefault();
         this.pwaAbrirPermissao();
@@ -338,19 +358,103 @@ const UI = {
   },
 
   pwaIos() {
-    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const ua = navigator.userAgent || "";
+    if (/iphone|ipad|ipod/i.test(ua)) return true;
+    return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  },
+
+  pwaIosSafari() {
+    if (!this.pwaIos()) return false;
+    const ua = navigator.userAgent || "";
+    if (/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|Instagram|FBAN|FBAV|FB_IAB|Line\/|WhatsApp|Twitter|TikTok/i.test(ua)) return false;
+    return /Safari/i.test(ua);
+  },
+
+  pwaIconeShare() {
+    return `<svg class="pwa-ios-share" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 14v6h14v-6"/></svg>`;
+  },
+
+  pwaAbrirSafari() {
+    const href = location.href;
+    const safari = href.startsWith("https://")
+      ? href.replace(/^https:\/\//, "x-safari-https://")
+      : href.replace(/^http:\/\//, "x-safari-http://");
+    location.href = safari;
+  },
+
+  async pwaCopiarLink() {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      this.toast("Link copiado. Cole na barra do Safari.");
+    } catch {
+      this.toast("Copie o endereço da página e abra no Safari.");
+    }
+  },
+
+  pwaFolhaIos() {
+    document.getElementById("pwa-ios-folha")?.remove();
+    const safari = this.pwaIosSafari();
+    const icon = this.pages() ? "../assets/brand/apple-touch.png" : "assets/brand/apple-touch.png";
+    const bg = document.createElement("div");
+    bg.id = "pwa-ios-folha";
+    bg.className = "pwa-ios-bg";
+    bg.innerHTML = safari
+      ? `<div class="pwa-ios-card" role="dialog" aria-labelledby="pwa-ios-tit">
+          <div class="pwa-ios-app">
+            <img src="${icon}" alt=""/>
+            <div>
+              <p class="tiny muted">Permissão do iPhone</p>
+              <h2 id="pwa-ios-tit">Adicionar o Saidera à tela inicial?</h2>
+            </div>
+          </div>
+          <p class="muted" style="margin:12px 0 14px">O iPhone não abre o aviso sozinho. Autorize aqui e confirme nos 2 toques do Safari — o item fica <strong>no fim</strong> da lista de compartilhar.</p>
+          <ol class="pwa-ios-passos">
+            <li>Toque em <strong>Permitir</strong> abaixo.</li>
+            <li>Toque em ${this.pwaIconeShare()} <strong>Compartilhar</strong> na barra de baixo do Safari.</li>
+            <li><strong>Role a lista até o fim</strong> e toque em <strong>Adicionar à Tela de Início</strong>.</li>
+            <li>Toque em <strong>Adicionar</strong>.</li>
+          </ol>
+          <button type="button" class="btn btn-gold btn-block" data-pwa-ios-seguir>Permitir</button>
+          <button type="button" class="btn btn-ghost btn-block" style="margin-top:8px" data-pwa-ios-close>Agora não</button>
+        </div>`
+      : `<div class="pwa-ios-card" role="dialog" aria-labelledby="pwa-ios-tit">
+          <div class="pwa-ios-app">
+            <img src="${icon}" alt=""/>
+            <div>
+              <p class="tiny muted">Permissão do iPhone</p>
+              <h2 id="pwa-ios-tit">Adicionar o Saidera à tela inicial?</h2>
+            </div>
+          </div>
+          <p class="muted" style="margin:12px 0 14px">Este navegador <strong>não mostra</strong> “Adicionar à Tela de Início”. A permissão só existe no <strong>Safari</strong>.</p>
+          <button type="button" class="btn btn-gold btn-block" data-pwa-ios-safari>Permitir e abrir no Safari</button>
+          <button type="button" class="btn btn-navy btn-block" style="margin-top:8px" data-pwa-ios-copy>Copiar link para o Safari</button>
+          <button type="button" class="btn btn-ghost btn-block" style="margin-top:8px" data-pwa-ios-close>Agora não</button>
+        </div>`;
+    bg.addEventListener("click", (e) => {
+      if (e.target === bg) bg.remove();
+    });
+    document.body.appendChild(bg);
+  },
+
+  pwaFolhaIosPassoShare() {
+    const card = document.querySelector("#pwa-ios-folha .pwa-ios-card");
+    if (!card) {
+      this.pwaFolhaIos();
+      return;
+    }
+    card.innerHTML = `<div class="pwa-ios-apontar">
+        ${this.pwaIconeShare()}
+        <h2>Permissão autorizada</h2>
+        <p class="muted">Toque em <strong>Compartilhar</strong> na barra de baixo do Safari. Role até o fim da lista e toque em <strong>Adicionar à Tela de Início</strong>.</p>
+        <button type="button" class="btn btn-ghost btn-block" style="margin-top:14px" data-pwa-ios-close>Fechar</button>
+      </div>`;
   },
 
   pwaBox() {
     if (this.pwaStandalone()) return "";
-    if (this.pwaIos()) {
-      return `<div class="pwa-box" data-pwa-box>
-        <p class="notice">No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</p>
-      </div>`;
-    }
     return `<div class="pwa-box" data-pwa-box>
       <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar o Saidera</button>
-      <p class="tiny muted" style="margin-top:8px">Opcional. Chrome ou Edge no celular ou no PC.</p>
+      <p class="tiny muted" style="margin-top:8px">${this.pwaIos() ? "No iPhone a permissão abre aqui. Depois confirme no Safari." : "Opcional. Chrome ou Edge no celular ou no PC."}</p>
     </div>`;
   },
 
@@ -395,29 +499,32 @@ const UI = {
   pwaAbrirPermissao(opcoes) {
     if (this.pwaStandalone() || window.SaideraPwa?.installed) return "standalone";
     const ev = this.pwaEvento();
-    if (!ev || typeof ev.prompt !== "function") {
-      if (!opcoes?.silencioso) {
-        if (this.pwaIos()) this.toast("No iPhone: Compartilhar → Adicionar à Tela de Início.");
-        else this.toast("A permissão ainda não chegou. Toque de novo em Instalar. Use Chrome ou Edge.");
+    if (ev && typeof ev.prompt === "function") {
+      this._pwaPrompt = null;
+      if (window.SaideraPwa) window.SaideraPwa.ev = null;
+      try {
+        ev.prompt();
+      } catch {
+        return null;
       }
-      return null;
+      ev.userChoice
+        .then((c) => {
+          if (c.outcome === "accepted") {
+            if (window.SaideraPwa) window.SaideraPwa.installed = true;
+            this.toast("Saidera instalado. Abra pelo ícone.");
+          }
+        })
+        .catch(() => {});
+      return "asked";
     }
-    this._pwaPrompt = null;
-    if (window.SaideraPwa) window.SaideraPwa.ev = null;
-    try {
-      ev.prompt();
-    } catch {
-      return null;
+    if (this.pwaIos()) {
+      if (!opcoes?.silencioso) this.pwaFolhaIos();
+      return "ios";
     }
-    ev.userChoice
-      .then((c) => {
-        if (c.outcome === "accepted") {
-          if (window.SaideraPwa) window.SaideraPwa.installed = true;
-          this.toast("Saidera instalado. Abra pelo ícone.");
-        }
-      })
-      .catch(() => {});
-    return "asked";
+    if (!opcoes?.silencioso) {
+      this.toast("A permissão ainda não chegou. Toque de novo em Instalar. Use Chrome ou Edge.");
+    }
+    return null;
   },
 
   pwaDispararAgora() {

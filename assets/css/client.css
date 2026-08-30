@@ -510,3 +510,53 @@ body.client-page .demo-fab {
 }
 .avatar-edit img { object-fit: cover; }
 #cadastro { scroll-margin-top: 20px; }
+
+.pwa-ios-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.62);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+}
+.pwa-ios-card {
+  width: min(100%, 440px);
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px 22px 18px 18px;
+  padding: 20px 18px 16px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+}
+.pwa-ios-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pwa-ios-app img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+.pwa-ios-app h2 {
+  font-size: 1.15rem;
+  line-height: 1.25;
+  margin: 2px 0 0;
+}
+.pwa-ios-passos {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: #d8d0be;
+  font-size: 0.92rem;
+}
+.pwa-ios-passos li { margin: 8px 0; }
+.pwa-ios-share {
+  display: inline-block;
+  vertical-align: -5px;
+  color: #0a84ff;
+}
+.pwa-ios-apontar { text-align: center; padding: 8px 4px 4px; }
+.pwa-ios-apontar .pwa-ios-share { width: 42px; height: 42px; }
+.pwa-ios-apontar h2 { margin: 10px 0 8px; font-size: 1.2rem; }

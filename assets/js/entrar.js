@@ -22,12 +22,12 @@ const EntrarApp = {
   bindForms() {
     document.getElementById("form-login")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      UI.pwaAbrirPermissao({ silencioso: true });
+      UI.pwaAbrirPermissao({ silencioso: !UI.pwaIos() });
       this.entrar(new FormData(e.target));
     });
     document.getElementById("form-cadastro")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      UI.pwaAbrirPermissao({ silencioso: true });
+      UI.pwaAbrirPermissao({ silencioso: !UI.pwaIos() });
       this.cadastrar(new FormData(e.target));
     });
   },
@@ -122,9 +122,10 @@ const EntrarApp = {
     }
     this.telaInstalar(
       UI.pwaIos()
-        ? "No iPhone: Compartilhar → Adicionar à Tela de Início. Ou toque em Instalar."
+        ? "Toque em Instalar para autorizar. No iPhone a confirmação é no Safari: Compartilhar → role até Adicionar à Tela de Início."
         : "Confirme a permissão do celular. Se ela não abriu, toque em Instalar."
     );
+    if (UI.pwaIos()) UI.pwaFolhaIos();
   },
 
   telaInstalado() {
@@ -137,7 +138,7 @@ const EntrarApp = {
     this.status(`<h2>Instalar o Saidera</h2>
       <p class="muted" style="margin:10px 0 14px">${msg}</p>
       <button type="button" class="btn btn-gold btn-block" id="btn-instalar-agora" data-pwa-install>Instalar</button>
-      ${UI.pwaIos() ? `<p class="notice" style="margin-top:12px">iPhone: <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>.</p>` : ""}
+      ${UI.pwaIos() ? `<p class="notice" style="margin-top:12px">Só no <strong>Safari</strong>. Depois de Compartilhar, <strong>role a lista até o fim</strong> — Adicionar à Tela de Início fica escondido.</p>` : ""}
       <button type="button" class="btn btn-ghost btn-block" style="margin-top:10px" id="voltar-login">Voltar</button>`);
     document.getElementById("voltar-login")?.addEventListener("click", () => this.voltarLogin());
   },
