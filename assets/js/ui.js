@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "38");
+    return String(window.SAIDERA_V || "39");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -56,6 +56,9 @@ const Brand = {
     return `<img class="${cls}" src="${this.kitSrc("03_logo_horizontal.png")}" alt="Saideira"/>`;
   },
   principal(cls = "brand-principal") {
+    return `<img class="${cls}" src="${this.kitSrc("03_logo_horizontal.png")}" alt="Saideira"/>`;
+  },
+  empilhada(cls = "brand-principal") {
     return `<img class="${cls}" src="${this.kitSrc("01_logo_principal.png")}" alt="Saideira"/>`;
   },
   banner(tipo, cls = "brand-banner") {
