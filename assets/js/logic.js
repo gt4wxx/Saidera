@@ -3,6 +3,65 @@ const Logic = {
     return new Date();
   },
 
+  diaIso(d) {
+    if (d === undefined) d = this.hoje();
+    if (d == null || d === "") return "";
+    if (typeof d === "string") {
+      const m = String(d).match(/^(\d{4}-\d{2}-\d{2})/);
+      if (m) return m[1];
+    }
+    const x = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(x.getTime())) return "";
+    const y = x.getFullYear();
+    const m = String(x.getMonth() + 1).padStart(2, "0");
+    const day = String(x.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  },
+
+  consumoNoDia(c, iso) {
+    const raw = String(c?.criadoEm || "");
+    if (raw.slice(0, 10) === iso) return true;
+    const d = new Date(raw);
+    return !Number.isNaN(d.getTime()) && this.diaIso(d) === iso;
+  },
+
+  resumoDiaCasa(estId, iso) {
+    const key = iso || this.diaIso();
+    const cons = Store.all("consumos").filter((c) => c.estabelecimentoId === estId && this.consumoNoDia(c, key));
+    const sais = Store.all("saideras").filter((s) => s.estabelecimentoId === estId);
+    const ganhas = sais.filter((s) => this.diaIso(s.conquistadaEm) === key);
+    const entregues = sais.filter((s) => this.diaIso(s.utilizadaEm) === key);
+    const byDrink = {};
+    cons.forEach((c) => {
+      byDrink[c.bebidaId] = (byDrink[c.bebidaId] || 0) + (c.quantidade || 0);
+    });
+    const total = Object.values(byDrink).reduce((a, b) => a + b, 0) || 1;
+    const drinks = Object.entries(byDrink)
+      .map(([id, qtd]) => ({
+        id,
+        nome: this.bebida(id)?.nome || "Bebida",
+        qtd,
+        pct: Math.round((qtd / total) * 100),
+      }))
+      .sort((a, b) => b.qtd - a.qtd);
+    const ids = [...new Set(cons.map((c) => c.clienteId))];
+    const pessoas = ids.map((id) => this.retratoCliente(id, estId)).filter(Boolean);
+    const d = new Date(`${key}T12:00:00`);
+    return {
+      iso: key,
+      label: Number.isNaN(d.getTime())
+        ? key
+        : d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "short" }),
+      eHoje: key === this.diaIso(),
+      clientes: ids.length,
+      tampas: cons.reduce((a, c) => a + (c.quantidade || 0), 0),
+      saiderasGanhas: ganhas.length,
+      saiderasEntregues: entregues.length,
+      drinks,
+      pessoas,
+    };
+  },
+
   diasValidade() {
     return Number(Store.data?.meta?.validadeSaideraDias) || 15;
   },
@@ -1185,8 +1244,8 @@ const Logic = {
 
   resumoEst(estId) {
     const cons = Store.all("consumos").filter((c) => c.estabelecimentoId === estId);
-    const hojeKey = this.hoje().toISOString().slice(0, 10);
-    const hoje = cons.filter((c) => (c.criadoEm || "").slice(0, 10) === hojeKey || new Date(c.criadoEm).toDateString() === this.hoje().toDateString());
+    const hojeKey = this.diaIso();
+    const hoje = cons.filter((c) => this.consumoNoDia(c, hojeKey));
     const sais = Store.all("saideras").filter((s) => s.estabelecimentoId === estId);
     const tkts = Store.all("tickets").filter((t) => t.estabelecimentoId === estId);
     const byDrink = {};
@@ -1221,20 +1280,23 @@ const Logic = {
     };
   },
 
-  semanaTampas(estId, clienteId) {
+  semanaTampas(estId, clienteId, dias = 7) {
     const cons = Store.all("consumos").filter(
       (c) => (!estId || c.estabelecimentoId === estId) && (!clienteId || c.clienteId === clienteId)
     );
+    const n = Math.min(31, Math.max(7, Number(dias) || 7));
     const labels = [];
     const values = [];
-    for (let i = 6; i >= 0; i--) {
+    const keys = [];
+    for (let i = n - 1; i >= 0; i--) {
       const d = new Date(this.hoje());
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      labels.push(d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""));
-      values.push(cons.filter((c) => (c.criadoEm || "").slice(0, 10) === key).reduce((a, c) => a + (c.quantidade || 0), 0));
+      const key = this.diaIso(d);
+      keys.push(key);
+      labels.push(d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit" }).replace(".", ""));
+      values.push(cons.filter((c) => this.consumoNoDia(c, key)).reduce((a, x) => a + (x.quantidade || 0), 0));
     }
-    return { labels, values };
+    return { labels, values, keys };
   },
 
   audienciasEstimar(a = {}) {

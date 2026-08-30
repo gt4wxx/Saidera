@@ -99,12 +99,13 @@ const UI = {
     return `<div class="photo"><img src="${src}" alt="${alt}" onerror="this.onerror=null;this.src='${fb}'"/></div>`;
   },
 
-  lineChart(values, labels = []) {
+  lineChart(values, labels = [], keys = []) {
     const w = 560, h = 176, p = 22;
     if (!values.length) return `<p class="muted empty-msg">Sem dados para o gráfico.</p>`;
     const max = Math.max(1, ...values) * 1.12;
     const min = 0;
     const last = values.length - 1;
+    const step = values.length > 12 ? Math.ceil(values.length / 7) : 1;
     const pts = values.map((v, i) => {
       const x = p + (i / Math.max(1, last)) * (w - p * 2);
       const y = h - p - ((v - min) / (max - min || 1)) * (h - p * 2 - 14);
@@ -114,10 +115,19 @@ const UI = {
     const area = `${d} L${pts.at(-1)[0]},${h - p} L${pts[0][0]},${h - p} Z`;
     const uid = `cg${Math.random().toString(36).slice(2, 8)}`;
     const dots = pts
-      .map((pt) => `<circle cx="${pt[0]}" cy="${pt[1]}" r="4.5" fill="#171717" stroke="#F5B800" stroke-width="2.5"><title>${pt[2]}</title></circle>`)
+      .map((pt, i) => {
+        const key = String(keys[i] || "").replace(/"/g, "");
+        const title = `${labels[i] || ""} · ${pt[2]} tampas`;
+        const dot = `<circle cx="${pt[0]}" cy="${pt[1]}" r="4.5" fill="#171717" stroke="#F5B800" stroke-width="2.5"><title>${title}</title></circle>`;
+        if (!key) return dot;
+        return `<g data-dash-dia="${key}" class="chart-hit" style="cursor:pointer"><circle cx="${pt[0]}" cy="${pt[1]}" r="16" fill="transparent"/><title>${title} — clique para ver o dia</title>${dot}</g>`;
+      })
       .join("");
     const labs = labels
-      .map((l, i) => `<text x="${pts[i][0]}" y="${h - 4}" text-anchor="middle" fill="#8A8A8A" font-size="11" font-weight="600">${l}</text>`)
+      .map((l, i) => {
+        if (step > 1 && i % step && i !== last) return "";
+        return `<text x="${pts[i][0]}" y="${h - 4}" text-anchor="middle" fill="#8A8A8A" font-size="11" font-weight="600">${l}</text>`;
+      })
       .join("");
     return `<svg class="chart-line" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">
       <defs>
@@ -126,8 +136,8 @@ const UI = {
           <stop offset="100%" stop-color="#F5B800" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <path d="${area}" fill="url(#${uid})"/>
-      <path d="${d}" fill="none" stroke="#F5B800" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${area}" fill="url(#${uid})" pointer-events="none"/>
+      <path d="${d}" fill="none" stroke="#F5B800" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>
       ${dots}${labs}
     </svg>`;
   },
@@ -168,7 +178,8 @@ const UI = {
         const dash = frac * circ;
         const rot = acc * 360 - 90;
         acc += frac;
-        return `<circle class="donut-seg" cx="80" cy="80" r="${r}" fill="none" stroke="${it.cor || colors[i % colors.length]}" stroke-width="18" stroke-dasharray="${dash.toFixed(2)} ${(circ - dash).toFixed(2)}" transform="rotate(${rot} 80 80)"/>`;
+        const filtro = it.filtro ? ` data-dash-filtro="${it.filtro}" style="cursor:pointer"` : "";
+        return `<circle class="donut-seg" cx="80" cy="80" r="${r}" fill="none" stroke="${it.cor || colors[i % colors.length]}" stroke-width="18" stroke-dasharray="${dash.toFixed(2)} ${(circ - dash).toFixed(2)}" transform="rotate(${rot} 80 80)"${filtro}/>`;
       })
       .join("");
     return `<div class="donut-wrap">
@@ -177,19 +188,32 @@ const UI = {
         <div class="donut-center"><b>${total}</b><span>${centro}</span></div>
       </div>
       <ul class="donut-leg">${list
-        .map((it, i) => `<li><i style="background:${it.cor || colors[i % colors.length]}"></i><span>${it.nome}</span><strong>${it.n}</strong></li>`)
+        .map((it, i) => {
+          const cor = it.cor || colors[i % colors.length];
+          const inner = `<i style="background:${cor}"></i><span>${it.nome}</span><strong>${it.n}</strong>`;
+          if (it.filtro) {
+            return `<li><button type="button" class="donut-leg-btn" data-dash-filtro="${it.filtro}">${inner}</button></li>`;
+          }
+          return `<li>${inner}</li>`;
+        })
         .join("")}</ul>
     </div>`;
   },
 
-  heatRow(labels, values) {
+  heatRow(labels, values, opts = {}) {
     const max = Math.max(1, ...(values || [0]));
     return `<div class="heat-row">${(values || [])
       .map((v, i) => {
         const t = v / max;
         const a = 0.22 + 0.78 * t;
         const color = t > 0.4 ? "#171717" : "#F4E7C3";
-        return `<div class="heat-cell" style="background:rgba(245,184,0,${a.toFixed(2)});color:${color}"><b>${v}</b><span>${labels[i] || ""}</span></div>`;
+        const on = opts.selected === i ? " on" : "";
+        const inner = `<b>${v}</b><span>${labels[i] || ""}</span>`;
+        const style = `background:rgba(245,184,0,${a.toFixed(2)});color:${color}`;
+        if (opts.clickable) {
+          return `<button type="button" class="heat-cell${on}" data-dash-wd="${i}" style="${style}">${inner}</button>`;
+        }
+        return `<div class="heat-cell" style="${style}">${inner}</div>`;
       })
       .join("")}</div>`;
   },
@@ -529,10 +553,6 @@ const UI = {
     return Brand.pages();
   },
 
-  pwaSwUrl() {
-    return this.pages() ? "../sw.js" : "sw.js";
-  },
-
   pwaInit() {
     if (this._pwaReady) return;
     this._pwaReady = true;
@@ -585,18 +605,6 @@ const UI = {
       this.toast("A permissão ainda não chegou. Toque de novo em Instalar. Use Chrome ou Edge.");
     }
     return null;
-  },
-
-  pwaDispararAgora() {
-    return this.pwaAbrirPermissao({ silencioso: true });
-  },
-
-  pwaPedirInstalacao() {
-    return this.pwaAbrirPermissao() || (this.pwaIos() ? "ios" : "unavailable");
-  },
-
-  pwaInstall() {
-    return this.pwaAbrirPermissao();
   },
 };
 

@@ -19,6 +19,8 @@ const EstApp = {
   tktFiltro: "",
   funNovo: false,
   bebQ: "",
+  dashDia: "",
+  dashFaixa: 7,
 
   async boot() {
     const ok = await Store.init({ papel: "estabelecimento" });
@@ -83,11 +85,17 @@ const EstApp = {
     return Number(v || 0).toLocaleString("pt-BR");
   },
 
-  norm(s) {
-    return String(s || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+  isoOffset(n) {
+    const d = Logic.hoje();
+    d.setDate(d.getDate() + n);
+    return Logic.diaIso(d);
+  },
+
+  isoSemana(wd) {
+    const d = Logic.hoje();
+    const diff = (d.getDay() - Number(wd) + 7) % 7;
+    d.setDate(d.getDate() - diff);
+    return Logic.diaIso(d);
   },
 
   telaBloqueada() {
@@ -115,10 +123,10 @@ const EstApp = {
   donutFreq(freq) {
     return UI.donut(
       [
-        { nome: "Vem sempre", n: freq.alta || 0, cor: "#F5B800" },
-        { nome: "Regular", n: freq.media || 0, cor: "#1B3A5F" },
-        { nome: "Pouca frequência", n: freq.baixa || 0, cor: "#C4A35A" },
-        { nome: "Sumiu (30 dias)", n: freq.fria || 0, cor: "#8B1E3F" },
+        { nome: "Vem sempre", n: freq.alta || 0, cor: "#F5B800", filtro: "alta" },
+        { nome: "Regular", n: freq.media || 0, cor: "#1B3A5F", filtro: "media" },
+        { nome: "Pouca frequência", n: freq.baixa || 0, cor: "#C4A35A", filtro: "baixa" },
+        { nome: "Sumiu (30 dias)", n: freq.fria || 0, cor: "#8B1E3F", filtro: "fria" },
       ],
       "clientes"
     );
@@ -254,9 +262,14 @@ const EstApp = {
   },
 
   dashboard() {
+    const hoje = Logic.diaIso();
+    if (!this.dashDia) this.dashDia = hoje;
+    const ontem = this.isoOffset(-1);
     const r = Logic.resumoEst(this.estId);
     const painel = Logic.painelCasa(this.estId);
-    const week = painel.semana;
+    const week = Logic.semanaTampas(this.estId, null, this.dashFaixa);
+    const dia = Logic.resumoDiaCasa(this.estId, this.dashDia);
+    const selWd = new Date(`${this.dashDia}T12:00:00`).getDay();
     const recent = this.recentes();
     const avisos = Logic.avisosDoEst(this.estId).slice(0, 5);
     const pend = Store.all("campanhas").filter(
@@ -280,8 +293,33 @@ const EstApp = {
       ["#/campanhas", "btn-ghost", "Pedir campanha"],
       ["#/config", "btn-ghost", "QR do app"],
     ];
+    const pessoas = (dia.pessoas || [])
+      .slice(0, 8)
+      .map(
+        (c) => `<a class="insight-card" href="#/cliente/${c.id}">
+        <img src="${this.avatar(c.avatar)}" alt=""/>
+        <div>
+          <strong>${this.esc(c.nome)}</strong>
+          <p class="tiny muted">${this.esc(c.favorita?.nome || "Sem favorita ainda")} · ${this.n(c.tampasPedidas)} tampas</p>
+        </div>
+      </a>`
+      )
+      .join("");
     return `${Brand.banner("secundario", "brand-banner")}
     ${atalhos.length ? `<div class="atalhos">${atalhos.map(([href, cls, lab]) => `<a class="btn ${cls} btn-sm" href="${href}">${lab}</a>`).join("")}</div>` : ""}
+    <div class="dash-toolbar">
+      <div class="chips">
+        <button type="button" class="chip ${this.dashDia === hoje ? "on" : ""}" data-dash-dia="${hoje}">Hoje</button>
+        <button type="button" class="chip ${this.dashDia === ontem ? "on" : ""}" data-dash-dia="${ontem}">Ontem</button>
+        <button type="button" class="chip ${this.dashFaixa === 7 ? "on" : ""}" data-dash-faixa="7">7 dias</button>
+        <button type="button" class="chip ${this.dashFaixa === 14 ? "on" : ""}" data-dash-faixa="14">14 dias</button>
+        <button type="button" class="chip ${this.dashFaixa === 30 ? "on" : ""}" data-dash-faixa="30">30 dias</button>
+      </div>
+      <label class="dash-dia-pick">
+        <span>Escolher o dia</span>
+        <input type="date" id="dash-dia-inp" value="${this.esc(this.dashDia)}" max="${hoje}"/>
+      </label>
+    </div>
     ${pend.length ? `<p class="notice" style="margin-bottom:14px">${pend.length} campanha(s) sua(s) aguardando o admin. <a href="#/campanhas" style="color:#F5B800">Ver</a></p>` : ""}
     ${
       avisos.length
@@ -300,13 +338,42 @@ const EstApp = {
     </section>`
         : ""
     }<div class="kpis">${kpis.map(([l, v, href]) => `<a class="kpi kpi-go" href="${href}"><span>${l}</span><b>${this.n(v)}</b></a>`).join("")}</div>
+    <section class="panel dash-dia-panel" style="margin-bottom:16px">
+      <div class="row between" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <h3>Como foi · ${this.esc(dia.label)}${dia.eHoje ? " (hoje)" : ""}</h3>
+        <p class="tiny muted">Clique no gráfico, no dia da semana ou escolha a data.</p>
+      </div>
+      <div class="kpis kpis-dia">${[
+        ["Vieram", dia.clientes],
+        ["Tampas", dia.tampas],
+        ["Saideras ganhas", dia.saiderasGanhas],
+        ["Saideras entregues", dia.saiderasEntregues],
+      ].map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${this.n(v)}</b></div>`).join("")}</div>
+      ${
+        dia.tampas || dia.clientes
+          ? `${dia.drinks.length ? `<div style="margin-top:14px"><p class="tiny muted" style="margin-bottom:8px">O que saiu neste dia</p>${UI.rankBars(dia.drinks.slice(0, 5))}</div>` : ""}
+          ${pessoas ? `<div class="grid-2" style="margin-top:14px">${pessoas}</div>` : ""}`
+          : `<p class="muted empty-msg" style="margin-top:12px">Nesse dia não houve movimento registrado.</p>`
+      }
+    </section>
     <div class="grid-2" style="margin-bottom:16px">
       <section class="panel">
-        <h3>Tampas nos últimos 7 dias</h3>
-        ${week.values.some((v) => v) ? UI.lineChart(week.values, week.labels) : `<p class="muted empty-msg">Ainda não há consumos nesta semana.</p>`}
+        <h3>Tampas nos últimos ${this.dashFaixa} dias</h3>
+        ${
+          week.values.some((v) => v)
+            ? `${UI.lineChart(week.values, week.labels, week.keys)}
+        <div class="dash-dias">${week.keys
+          .map(
+            (k, i) =>
+              `<button type="button" class="dash-dia ${k === this.dashDia ? "on" : ""}" data-dash-dia="${k}"><b>${week.values[i]}</b><span>${this.esc(week.labels[i])}</span></button>`
+          )
+          .join("")}</div>`
+            : `<p class="muted empty-msg">Ainda não há consumos neste período.</p>`
+        }
       </section>
       <section class="panel">
         <h3>Quem frequenta</h3>
+        <p class="tiny muted" style="margin-bottom:10px">Clique na fatia ou no nome para abrir esses clientes.</p>
         ${this.donutFreq(painel.freq)}
       </section>
     </div>
@@ -322,7 +389,12 @@ const EstApp = {
     </div>
     <section class="panel" style="margin-bottom:16px">
       <h3>Movimento por dia da semana</h3>
-      ${painel.weekday.values.some((v) => v) ? UI.heatRow(painel.weekday.labels, painel.weekday.values) : `<p class="muted empty-msg">Sem tampas o bastante para ver o ritmo da semana.</p>`}
+      <p class="tiny muted" style="margin-bottom:10px">Clique num dia para abrir a última ocorrência daquele dia da semana.</p>
+      ${
+        painel.weekday.values.some((v) => v)
+          ? UI.heatRow(painel.weekday.labels, painel.weekday.values, { clickable: true, selected: selWd })
+          : `<p class="muted empty-msg">Sem tampas o bastante para ver o ritmo da semana.</p>`
+      }
     </section>
     ${painel.topClientes.length ? `<section class="panel" style="margin-bottom:16px">
       <div class="row between" style="margin-bottom:12px"><h3>Quem mais pede aqui</h3><a class="gold small" href="#/clientes">Ver todos</a></div>
@@ -1387,10 +1459,33 @@ const EstApp = {
 
   onClick(e) {
     if (this.telaBloqueada() && e.target.closest("[data-plano-lock]")) return;
-    const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico]");
+    const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico], [data-dash-dia], [data-dash-faixa], [data-dash-wd], [data-dash-filtro]");
     if (!t || t.disabled) return;
     if (t.closest("[data-menu], [data-close-menu], [data-close-modal], [data-href], [data-act]")) return;
     const id = t.id;
+    if (t.hasAttribute("data-dash-dia")) {
+      this.dashDia = t.getAttribute("data-dash-dia") || Logic.diaIso();
+      this.render();
+      this.root.querySelector(".dash-dia-panel")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    if (t.hasAttribute("data-dash-faixa")) {
+      this.dashFaixa = Math.min(30, Math.max(7, Number(t.getAttribute("data-dash-faixa")) || 7));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-dash-wd")) {
+      this.dashDia = this.isoSemana(t.getAttribute("data-dash-wd"));
+      this.render();
+      this.root.querySelector(".dash-dia-panel")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    if (t.hasAttribute("data-dash-filtro")) {
+      this.cliFiltro = t.getAttribute("data-dash-filtro") || "";
+      this.cliPage = 1;
+      location.hash = "#/clientes";
+      return;
+    }
     if (t.hasAttribute("data-page")) {
       const n = Number(t.getAttribute("data-page"));
       if (!n || n === this.cliPage) return;
@@ -1824,15 +1919,12 @@ const EstApp = {
         this.render();
       })
     );
-    this.root.querySelector("#casa-beb-busca")?.addEventListener("input", (e) => {
-      this.bebQ = e.target.value;
+    this.root.querySelector("#dash-dia-inp")?.addEventListener("change", (e) => {
+      const v = e.target.value;
+      if (!v) return;
+      this.dashDia = v;
       this.render();
-      const el = this.root.querySelector("#casa-beb-busca");
-      if (el) {
-        el.focus();
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }
+      this.root.querySelector(".dash-dia-panel")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
     this.root.querySelector("#casa-beb-busca")?.addEventListener("input", (e) => {
       this.bebQ = e.target.value;
