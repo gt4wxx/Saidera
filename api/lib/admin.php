@@ -25,8 +25,6 @@ function admin_contagens(): array
         'saiderasExpiradas' => admin_count("SELECT COUNT(*) FROM saideras WHERE status = 'expirada'"),
         'funcionarios' => admin_count('SELECT COUNT(*) FROM funcionarios'),
         'bebidas' => admin_count('SELECT COUNT(*) FROM bebidas'),
-        'tickets' => admin_count('SELECT COUNT(*) FROM tickets'),
-        'ticketsAbertos' => admin_count('SELECT COUNT(*) FROM tickets WHERE usado = 0'),
     ];
 }
 
