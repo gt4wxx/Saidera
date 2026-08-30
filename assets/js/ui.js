@@ -321,7 +321,20 @@ const UI = {
   },
 
   pwaStandalone() {
-    return window.matchMedia("(display-mode: standalone)").matches || Boolean(window.navigator.standalone);
+    try {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+      if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
+      if (window.matchMedia("(display-mode: minimal-ui)").matches) return true;
+    } catch {
+      /* matchMedia indisponível */
+    }
+    if (window.navigator.standalone) return true;
+    if (String(document.referrer || "").startsWith("android-app://")) return true;
+    return false;
+  },
+
+  pwaCelular() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   },
 
   pwaIos() {

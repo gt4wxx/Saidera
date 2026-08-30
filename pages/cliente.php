@@ -9,13 +9,14 @@ require __DIR__ . '/_cabecalho.php';
 $v = saidera_v();
 ?>
 <body class="client-page">
-  <script>
-  (function () {
-    var stand = window.matchMedia("(display-mode: standalone)").matches || Boolean(window.navigator.standalone);
-    if (!stand) location.replace("../entrar.php");
-  })();
-  </script>
-  <div id="app"></div>
+  <div id="app">
+    <div id="cli-boot" style="min-height:100dvh;display:grid;place-items:center;background:#0e0e0e;padding:28px;text-align:center">
+      <div>
+        <img src="../assets/brand/03_logo_horizontal.png" alt="Saidera" style="width:min(220px,72vw);margin:0 auto 18px"/>
+        <p id="cli-boot-msg" style="color:#c4b8a4;font-size:14px">Abrindo seu painel…</p>
+      </div>
+    </div>
+  </div>
   <script src="../assets/js/icons.js?v=<?= $v ?>"></script>
   <script src="../assets/js/api.js?v=<?= $v ?>"></script>
   <script src="../assets/js/store.js?v=<?= $v ?>"></script>

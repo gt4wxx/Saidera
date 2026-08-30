@@ -3,7 +3,7 @@
   "name": "Saidera",
   "short_name": "Saidera",
   "description": "Fidelização para a noite de Aracaju.",
-  "start_url": "entrar.php",
+  "start_url": "pages/cliente.php",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",

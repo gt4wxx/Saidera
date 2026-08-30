@@ -17,22 +17,38 @@ const ClienteApp = {
   })(),
 
   async boot() {
-    if (!UI.pwaStandalone()) {
+    this.root = document.getElementById("app");
+    const msg = document.getElementById("cli-boot-msg");
+    if (!UI.pwaStandalone() && !UI.pwaCelular()) {
       location.replace("../entrar.php");
       return;
     }
-    const ok = await Store.init({ papel: "cliente" });
-    if (!ok) return;
-    UI.bindGlobal();
-    this.root = document.getElementById("app");
-    if (this.geo) Logic.aplicarDistancias(this.geo);
-    Store.on(() => this.render());
-    window.addEventListener("hashchange", () => this.route());
-    this.route();
+    const aviso = setTimeout(() => {
+      if (msg) msg.textContent = "Ainda carregando. Confira a internet do celular.";
+    }, 4000);
+    try {
+      const ok = await Store.init({ papel: "cliente" });
+      if (!ok) return;
+      UI.bindGlobal();
+      if (this.geo) Logic.aplicarDistancias(this.geo);
+      Store.on(() => this.render());
+      window.addEventListener("hashchange", () => this.route());
+      this.route();
+    } catch (e) {
+      if (this.root) {
+        this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
+          <p class="muted">${this.esc(e.message || "Não foi possível abrir o painel.")}</p>
+          <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" onclick="location.reload()">Tentar de novo</button>
+        </main>`;
+      }
+    } finally {
+      clearTimeout(aviso);
+    }
   },
 
   me() {
-    return Logic.cliente(Store.demo().clienteId);
+    const id = Store.demo()?.clienteId;
+    return Logic.cliente(id) || Store.all("clientes")[0] || null;
   },
 
   badgeFreq(f) {
@@ -138,29 +154,46 @@ const ClienteApp = {
   },
 
   render() {
+    if (!this.root) return;
     if (window.QR?.stopScan) QR.stopScan();
-    const html = {
-      home: () => this.home(),
-      explorar: () => this.explorar(),
-      mapa: () => this.mapa(),
-      est: () => this.detalhe(),
-      tampas: () => this.tampas(),
-      saideras: () => this.saideras(),
-      ofertas: () => this.ofertas(),
-      perfil: () => this.perfil(),
-      qr: () => this.qr(),
-      ler: () => this.ler(),
-      notificacoes: () => this.notificacoes(),
-      historico: () => this.historico(),
-      preferencias: () => this.preferencias(),
-      privacidade: () => this.privacidade(),
-      conta: () => this.conta(),
-    }[this.view] || (() => this.home());
-    this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell">
-      <div class="phone-body">${html()}</div>
-      ${this.nav()}
-    </div></div>${UI.demoWidget()}`;
-    this.bind();
+    if (!this.me()) {
+      this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
+        <h2>Sua conta não carregou</h2>
+        <p class="muted" style="margin:10px 0 16px">Feche o app e abra de novo pelo ícone. Ou entre outra vez.</p>
+        <a class="btn btn-gold btn-block" href="../entrar.php">Ir para o login</a>
+      </main>`;
+      return;
+    }
+    try {
+      const html = {
+        home: () => this.home(),
+        explorar: () => this.explorar(),
+        mapa: () => this.mapa(),
+        est: () => this.detalhe(),
+        tampas: () => this.tampas(),
+        saideras: () => this.saideras(),
+        ofertas: () => this.ofertas(),
+        perfil: () => this.perfil(),
+        qr: () => this.qr(),
+        ler: () => this.ler(),
+        notificacoes: () => this.notificacoes(),
+        historico: () => this.historico(),
+        preferencias: () => this.preferencias(),
+        privacidade: () => this.privacidade(),
+        conta: () => this.conta(),
+      }[this.view] || (() => this.home());
+      this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell">
+        <div class="phone-body">${html()}</div>
+        ${this.nav()}
+      </div></div>${UI.demoWidget()}`;
+      this.bind();
+    } catch (e) {
+      this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
+        <h2>Não deu para montar a tela</h2>
+        <p class="muted" style="margin:10px 0 16px">${this.esc(e.message || "Erro inesperado.")}</p>
+        <button type="button" class="btn btn-gold btn-block" onclick="location.reload()">Tentar de novo</button>
+      </main>`;
+    }
   },
 
   nav() {
@@ -262,7 +295,7 @@ const ClienteApp = {
 
   estMini(e, { campanha, pin } = {}) {
     const me = this.me();
-    const drinks = e.bebidas
+    const drinks = (e.bebidas || [])
       .slice(0, 3)
       .map((b) => {
         const cam = campanha && campanha.bebidaId === b.id ? campanha : Logic.patrocinioEm(e.id, b.id);
@@ -479,7 +512,7 @@ const ClienteApp = {
     const e = Logic.est(this.params.id);
     if (!e) return `<p>Estabelecimento não encontrado.</p>`;
     const me = this.me();
-    const drinks = e.bebidas
+    const drinks = (e.bebidas || [])
       .map((b) => {
         const cam = Logic.patrocinioEm(e.id, b.id, me.id);
         const meta = Logic.metaDe(e, b.id, me.id);
@@ -497,7 +530,7 @@ const ClienteApp = {
         </div>`;
       })
       .join("");
-    const mineDrinks = e.bebidas
+    const mineDrinks = (e.bebidas || [])
       .map((b) => {
         const existing = Logic.progresso(me.id, e.id, b.id);
         const cam = Logic.patrocinioEm(e.id, b.id, me.id);
