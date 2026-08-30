@@ -33,7 +33,7 @@ const AdminApp = {
       ["disparos", "Disparos", Icons.send()],
       ["audiencias", "Audiências", Icons.users()],
       ["tampas", "Tampas", Icons.tampas()],
-      ["saideras", "Saideras", Icons.gift()],
+      ["saideras", "Saideiras", Icons.gift()],
       ["tickets", "Cupons QR", Icons.qr()],
       ["planos", "Planos", Icons.shield()],
       ["relatorios", "Relatórios", Icons.chart()],
@@ -256,11 +256,11 @@ const AdminApp = {
       ["Casas ativas", c.estabelecimentosAtivos ?? r.estabelecimentos, "#/estabelecimentos"],
       ["Clientes", c.clientes ?? r.usuarios, "#/clientes"],
       ["Tampas somadas", c.tampas ?? r.tampas, "#/tampas"],
-      ["Saideras disponíveis", c.saiderasDisponiveis ?? r.disponiveis, "#/saideras"],
-      ["Saideras usadas", c.saiderasUsadas ?? r.usadas, "#/saideras"],
+      ["Saideiras disponíveis", c.saiderasDisponiveis ?? r.disponiveis, "#/saideras"],
+      ["Saideiras usadas", c.saiderasUsadas ?? r.usadas, "#/saideras"],
       ["Campanhas pendentes", pendentes.length, "#/disparos"],
       ["Cupons QR abertos", cuponsAbertos.length, "#/tickets"],
-      ["Quase na Saidera", quase.length, "#/tampas"],
+      ["Quase na Saideira", quase.length, "#/tampas"],
     ];
     return `${Brand.banner("principal", "brand-banner-hero")}
       <p class="tiny muted" style="margin-bottom:12px">Números do banco. Toque num KPI para abrir o menu.</p>
@@ -275,7 +275,7 @@ const AdminApp = {
       ${cuponsAbertos.length ? `<section class="panel" style="margin-bottom:14px"><h3>Cupons QR abertos</h3>${cuponsAbertos.slice(0, 6).map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #2a2a2a"><span>${this.esc(t.codigo)} · ${this.esc(Logic.est(t.estabelecimentoId)?.nome || "—")}</span><a class="btn btn-ghost btn-sm" href="#/tickets">Ver</a></div>`).join("")}</section>` : ""}
       <div class="grid-2">
         <section class="panel"><h3>Tampas nos últimos 7 dias</h3>${semana.values?.some((v) => v) ? UI.lineChart(semana.values, semana.labels) : this.empty("Ainda não há consumos registrados.")}</section>
-        <section class="panel"><h3>Saideras por bairro</h3>${bairros.length ? UI.bars(bairros) : this.empty("Nenhuma Saidera conquistada ainda.")}</section>
+        <section class="panel"><h3>Saideiras por bairro</h3>${bairros.length ? UI.bars(bairros) : this.empty("Nenhuma Saideira conquistada ainda.")}</section>
       </div>
       <section class="panel" style="margin-top:14px">
         <h3>Últimos eventos</h3>
@@ -309,7 +309,7 @@ const AdminApp = {
     <section class="panel">
       ${this.toolbar("q-est", "est", "Filtrar por nome, bairro ou e-mail", `${this.chips("estStatus", [["", "Todas"], ["ativo", "Ativas"], ["inativo", "Inativas"]])} ${this.chips("estTipo", [["", "Tipo"], ["bar", "Bar"], ["restaurante", "Restaurante"]])}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Equipe</th><th>Plano</th><th>Meta</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Casa</th><th>Tipo</th><th>Gestor</th><th>Clientes</th><th>Tampas</th><th>Saideiras</th><th>Equipe</th><th>Plano</th><th>Meta</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((e) => `<tr>
           <td><strong>${this.esc(e.nome)}</strong><p class="tiny muted">${this.esc(Logic.enderecoLinha(e))}</p></td>
           <td>${this.esc(Logic.tipoEst(e))}</td>
@@ -347,7 +347,7 @@ const AdminApp = {
     <section class="panel">
       ${this.toolbar("q-cli", "cli", "Filtrar por nome, código ou e-mail", this.chips("cliStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]]))}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Código</th><th>Contato</th><th>Bairro</th><th>Tampas</th><th>Saideras</th><th>Última visita</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Código</th><th>Contato</th><th>Bairro</th><th>Tampas</th><th>Saideiras</th><th>Última visita</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((c) => `<tr>
           <td><div class="person"><img src="${this.avatar(c.avatar)}" alt=""/><strong>${this.esc(c.nome)}</strong></div></td>
           <td>${this.esc(c.codigo)}</td>
@@ -389,7 +389,7 @@ const AdminApp = {
     <section class="panel">
       ${this.toolbar("q-fun", "fun", "Filtrar por nome ou e-mail", `${this.chips("funStatus", [["", "Todos"], ["ativo", "Ativos"], ["inativo", "Inativos"]])} ${this.selCasa("funCasa")}`)}
       ${list.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Nome</th><th>Casa</th><th>Cargo</th><th>E-mail</th><th>Tampas hoje</th><th>Saideras entregues</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Casa</th><th>Cargo</th><th>E-mail</th><th>Tampas hoje</th><th>Saideiras entregues</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((f) => `<tr>
           <td><strong>${this.esc(f.nome)}</strong></td>
           <td>${this.esc(f.casa)}</td>
@@ -531,7 +531,7 @@ const AdminApp = {
             <option value="todos">Quem frequenta</option>
             <option value="aniversario">Aniversariantes do mês</option>
             <option value="inativos">Sem voltar há 30 dias</option>
-            <option value="quase">Próximos da Saidera</option>
+            <option value="quase">Próximos da Saideira</option>
           </select>
         </div>
         <div class="field"><span>Parceiro (opcional)</span>
@@ -667,7 +667,7 @@ const AdminApp = {
     return `<div class="kpis">
       <div class="kpi"><span>Cartões de progresso</span><b>${this.n(c.progressos ?? Store.all("tampas").length)}</b></div>
       <div class="kpi"><span>Tampas somadas nos consumos</span><b>${this.n(c.tampas)}</b></div>
-      <div class="kpi"><span>Quase na Saidera</span><b>${this.n(quaseN)}</b></div>
+      <div class="kpi"><span>Quase na Saideira</span><b>${this.n(quaseN)}</b></div>
       <div class="kpi"><span>Consumos recentes</span><b>${this.n(Store.all("consumos").length)}</b></div>
     </div>
     <section class="panel">
@@ -719,7 +719,7 @@ const AdminApp = {
           <td>${this.badge(s.status)}</td>
           <td class="table-actions">${this.saiAcoes(s)}</td>
         </tr>`).join("")}</tbody>
-      </table></div>` : this.empty("Nenhuma Saidera conquistada ainda.")}
+      </table></div>` : this.empty("Nenhuma Saideira conquistada ainda.")}
     </section>`;
   },
 
@@ -925,7 +925,7 @@ const AdminApp = {
     return `<div class="kpis">
       <div class="kpi"><span>Código QR</span><b>${this.esc(c.codigo)}</b></div>
       <div class="kpi"><span>Tampas em aberto</span><b>${this.n(tampas.reduce((a, t) => a + t.atual, 0))}</b></div>
-      <div class="kpi"><span>Saideras</span><b>${this.n(sais.length)}</b></div>
+      <div class="kpi"><span>Saideiras</span><b>${this.n(sais.length)}</b></div>
       <div class="kpi"><span>Status</span><b>${this.esc(c.status)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
@@ -939,7 +939,7 @@ const AdminApp = {
       </div>
       <div class="table-actions wrap">
         <button class="btn btn-gold btn-sm" data-act="cli-aviso" data-id="${c.id}">Enviar aviso</button>
-        <button class="btn btn-navy btn-sm" data-act="sai-conceder" data-id="${c.id}">Conceder Saidera</button>
+        <button class="btn btn-navy btn-sm" data-act="sai-conceder" data-id="${c.id}">Conceder Saideira</button>
         <button class="btn btn-ghost btn-sm" data-act="tam-ajustar-cli" data-id="${c.id}">Ajustar Tampas</button>
         <button class="btn btn-ghost btn-sm" data-act="cli-qr" data-id="${c.id}">Novo código QR</button>
         <button class="btn btn-ghost btn-sm" data-act="cli-editar" data-id="${c.id}">Editar cadastro</button>
@@ -955,11 +955,11 @@ const AdminApp = {
         </div>`).join("") : this.empty("Nenhum progresso ainda.")}
       </section>
       <section class="panel">
-        <h3>Saideras</h3>
+        <h3>Saideiras</h3>
         ${sais.length ? sais.map((s) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a;gap:8px">
           <div><strong>${this.esc(s.codigo)}</strong><p class="tiny muted">${this.esc(Logic.bebida(s.bebidaId)?.nome || "—")} · ${this.esc(Logic.est(s.estabelecimentoId)?.nome || "—")}</p></div>
           <div class="table-actions">${this.saiAcoes(s)}</div>
-        </div>`).join("") : this.empty("Nenhuma Saidera.")}
+        </div>`).join("") : this.empty("Nenhuma Saideira.")}
       </section>
     </div>
     <section class="panel" style="margin-top:14px">
@@ -980,7 +980,7 @@ const AdminApp = {
     return `<div class="kpis">
       <div class="kpi"><span>Clientes</span><b>${this.n(e.qtdClientes)}</b></div>
       <div class="kpi"><span>Tampas</span><b>${this.n(e.qtdTampas)}</b></div>
-      <div class="kpi"><span>Saideras</span><b>${this.n(e.qtdSaideras)}</b></div>
+      <div class="kpi"><span>Saideiras</span><b>${this.n(e.qtdSaideras)}</b></div>
       <div class="kpi"><span>Equipe</span><b>${this.n(equipe.length)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
@@ -1068,8 +1068,8 @@ const AdminApp = {
     <section class="panel" style="margin-bottom:14px">
       <h3>Rede</h3>
       ${UI.bars([
-        { nome: "Conversão de Saidera", pct: r.conversao },
-        { nome: "Saideras ainda disponíveis", pct: c.saideras ? Math.round(((c.saiderasDisponiveis || 0) / c.saideras) * 100) : 0 },
+        { nome: "Conversão de Saideira", pct: r.conversao },
+        { nome: "Saideiras ainda disponíveis", pct: c.saideras ? Math.round(((c.saiderasDisponiveis || 0) / c.saideras) * 100) : 0 },
         { nome: "Campanhas já disparadas", pct: totalCam ? Math.round((ofertas / totalCam) * 100) : 0 },
         { nome: "Cupons já usados", pct: tkts.length ? Math.round((tkts.filter((t) => this.ticketStatus(t) === "usado").length / tkts.length) * 100) : 0 },
       ])}
@@ -1077,7 +1077,7 @@ const AdminApp = {
     <section class="panel" style="margin-bottom:14px">
       <h3>Por casa</h3>
       ${porCasa.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Casa</th><th>Clientes</th><th>Tampas</th><th>Saideras</th><th>Cupons</th></tr></thead>
+        <thead><tr><th>Casa</th><th>Clientes</th><th>Tampas</th><th>Saideiras</th><th>Cupons</th></tr></thead>
         <tbody>${porCasa.map((e) => `<tr><td>${this.esc(e.nome)}</td><td>${this.n(e.clientes)}</td><td>${this.n(e.tampas)}</td><td>${this.n(e.saideras)}</td><td>${this.n(e.cupons)}</td></tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhuma casa.")}
       ${porCasa.some((x) => x.saideras) ? `<div style="margin-top:14px">${UI.bars(porCasa.slice(0, 8).map((x) => ({ nome: x.nome, pct: Math.round((x.saideras / maxCasa) * 100) })))}</div>` : ""}
@@ -1085,7 +1085,7 @@ const AdminApp = {
     <section class="panel">
       <h3>Por bebida</h3>
       ${porBeb.length ? `<div class="table-wrap"><table class="data">
-        <thead><tr><th>Bebida</th><th>Casas</th><th>Tampas (consumos)</th><th>Saideras</th></tr></thead>
+        <thead><tr><th>Bebida</th><th>Casas</th><th>Tampas (consumos)</th><th>Saideiras</th></tr></thead>
         <tbody>${porBeb.map((b) => `<tr><td>${this.esc(b.nome)}</td><td>${this.n(b.casas)}</td><td>${this.n(b.tampas)}</td><td>${this.n(b.saideras)}</td></tr>`).join("")}</tbody>
       </table></div>` : this.empty("Nenhuma bebida no catálogo.")}
     </section>`;
@@ -1114,8 +1114,8 @@ const AdminApp = {
       </section>
       <section class="panel">
         <h3>Validade</h3>
-        <p class="tiny muted" style="margin:6px 0 10px">Prazo das Saideras conquistadas a partir de agora.</p>
-        <div class="field"><span>Validade da Saidera (dias)</span><input id="cfg-validade" type="number" min="1" value="${m.validadeSaideraDias ?? 15}"/></div>
+        <p class="tiny muted" style="margin:6px 0 10px">Prazo das Saideiras conquistadas a partir de agora.</p>
+        <div class="field"><span>Validade da Saideira (dias)</span><input id="cfg-validade" type="number" min="1" value="${m.validadeSaideraDias ?? 15}"/></div>
       </section>
       <section class="panel">
         <h3>Planos</h3>
@@ -1126,7 +1126,7 @@ const AdminApp = {
         <h3>Pix da rede</h3>
         <p class="tiny muted" style="margin:6px 0 10px">Quando a casa pede um plano com preço, o app gera um Pix com este valor para esta chave. CPF, CNPJ, e-mail, celular com DDD ou chave aleatória.</p>
         <div class="field"><span>Chave Pix</span><input id="cfg-pix-chave" value="${this.esc(m.pixChave || "")}" placeholder="e-mail, CPF, celular ou chave aleatória"/></div>
-        <div class="field" style="margin-top:10px"><span>Nome no Pix</span><input id="cfg-pix-nome" maxlength="25" value="${this.esc(m.pixNome || "Saidera")}" placeholder="Saidera"/></div>
+        <div class="field" style="margin-top:10px"><span>Nome no Pix</span><input id="cfg-pix-nome" maxlength="25" value="${this.esc(m.pixNome || "Saideira")}" placeholder="Saideira"/></div>
         <div class="field" style="margin-top:10px"><span>Cidade no Pix</span><input id="cfg-pix-cidade" maxlength="15" value="${this.esc(m.pixCidade || "Aracaju")}" placeholder="Aracaju"/></div>
       </section>
       <section class="panel">
@@ -1630,7 +1630,7 @@ const AdminApp = {
       this.modalForm("Editar campanha", `
         <div class="field"><span>Título</span><input name="titulo" value="${this.esc(c.titulo)}"/></div>
         <div class="field"><span>Tipo</span><select name="tipo">${[["comparecer", "Comparecer"], ["aniversario", "Aniversário"], ["tampas", "Tampas reduzidas"], ["chamar", "Chamar de volta"]].map(([v, l]) => `<option value="${v}" ${c.tipo === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-        <div class="field"><span>Público</span><select name="publico">${[["todos", "Quem frequenta"], ["aniversario", "Aniversariantes"], ["inativos", "Inativos"], ["quase", "Quase Saidera"]].map(([v, l]) => `<option value="${v}" ${c.publico === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="field"><span>Público</span><select name="publico">${[["todos", "Quem frequenta"], ["aniversario", "Aniversariantes"], ["inativos", "Inativos"], ["quase", "Quase Saideira"]].map(([v, l]) => `<option value="${v}" ${c.publico === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
         <div class="field"><span>Bebida</span><select name="bebidaId"><option value="">—</option>${bebs.map((b) => `<option value="${b.id}" ${b.id === c.bebidaId ? "selected" : ""}>${this.esc(b.nome)}</option>`).join("")}</select></div>
         <div class="field"><span>Parceiro</span><select name="parceiroId"><option value="">Rede / casa</option>${pars.map((p) => `<option value="${p.id}" ${p.id === c.parceiroId ? "selected" : ""}>${this.esc(p.nome)}</option>`).join("")}</select></div>
         <div class="field"><span>Meta de Tampas</span><input name="metaTampas" type="number" min="1" value="${c.metaTampas || ""}"/></div>
@@ -1703,8 +1703,8 @@ const AdminApp = {
       return;
     }
     if (act === "sai-expirar") {
-      if (!confirm("Marcar esta Saidera como expirada?")) return;
-      await this.post("saideras/expirar", { id }, "Saidera expirada.");
+      if (!confirm("Marcar esta Saideira como expirada?")) return;
+      await this.post("saideras/expirar", { id }, "Saideira expirada.");
       return;
     }
     if (act === "sai-prorrogar") {
@@ -1714,20 +1714,20 @@ const AdminApp = {
       return;
     }
     if (act === "sai-restaurar") {
-      if (!confirm("Devolver esta Saidera como disponível?")) return;
-      await this.post("saideras/restaurar", { id }, "Saidera restaurada.");
+      if (!confirm("Devolver esta Saideira como disponível?")) return;
+      await this.post("saideras/restaurar", { id }, "Saideira restaurada.");
       return;
     }
     if (act === "sai-entregar") {
       if (!confirm("Marcar como entregue ao cliente?")) return;
-      await this.post("saideras/entregar-admin", { id }, "Saidera marcada como entregue.");
+      await this.post("saideras/entregar-admin", { id }, "Saideira marcada como entregue.");
       return;
     }
     if (act === "sai-conceder") {
       const c = Store.find("clientes", id);
       if (!c) return;
       const o = this.optsCasaBebida(c);
-      this.modalForm("Conceder Saidera", `
+      this.modalForm("Conceder Saideira", `
         <div class="field"><span>Cliente</span><input value="${this.esc(c.nome)}" disabled/></div>
         <div class="field"><span>Casa</span><select name="estabelecimentoId">${o.casas}</select></div>
         <div class="field"><span>Bebida</span><select name="bebidaId">${o.bebs || "<option value=''>Cadastre uma bebida</option>"}</select></div>
@@ -1736,7 +1736,7 @@ const AdminApp = {
           clienteId: c.id,
           estabelecimentoId: box.querySelector("[name=estabelecimentoId]")?.value,
           bebidaId: box.querySelector("[name=bebidaId]")?.value,
-        }, "Saidera creditada. O cliente vê no app.");
+        }, "Saideira creditada. O cliente vê no app.");
         return Boolean(data);
       });
       return;

@@ -252,9 +252,9 @@ function admin_rota(string $method, string $path, array $in): bool
     if ($path === 'saideras/expirar') {
         auth_require(['admin']);
         $sid = nid('sai', $in['id'] ?? '');
-        if (!$sid) fail('Saidera não encontrada.');
+        if (!$sid) fail('Saideira não encontrada.');
         db()->prepare("UPDATE saideras SET status = 'expirada' WHERE id = ? AND status = 'disponivel'")->execute([$sid]);
-        auditar('Saidera expirada pelo admin', (string) $sid);
+        auditar('Saideira expirada pelo admin', (string) $sid);
         admin_ok_store();
     }
 
@@ -302,35 +302,35 @@ function admin_rota(string $method, string $path, array $in): bool
         $s = nova_saidera($cli, $eid, $bid);
         $beb = db()->prepare('SELECT nome FROM bebidas WHERE id = ?');
         $beb->execute([$bid]);
-        notificar($cli, 'Você ganhou uma Saidera!', ($beb->fetch()['nome'] ?? 'Bebida') . ' · ' . $s['codigo'] . ' (crédito do suporte).', 'saidera');
-        auditar('Admin concedeu Saidera', $s['codigo']);
+        notificar($cli, 'Você ganhou uma Saideira!', ($beb->fetch()['nome'] ?? 'Bebida') . ' · ' . $s['codigo'] . ' (crédito do suporte).', 'saidera');
+        auditar('Admin concedeu Saideira', $s['codigo']);
         admin_ok_store(['saidera' => $s]);
     }
 
     if ($path === 'saideras/prorrogar') {
         auth_require(['admin']);
         $sid = nid('sai', $in['id'] ?? '');
-        if (!$sid) fail('Saidera não encontrada.');
+        if (!$sid) fail('Saideira não encontrada.');
         $dias = max(1, min(90, (int) ($in['dias'] ?? 15)));
         $st = db()->prepare('SELECT codigo, expira_em, status FROM saideras WHERE id = ?');
         $st->execute([$sid]);
         $s = $st->fetch();
-        if (!$s) fail('Saidera não encontrada.');
+        if (!$s) fail('Saideira não encontrada.');
         $base = strtotime($s['expira_em']) > time() ? $s['expira_em'] : date('Y-m-d H:i:s');
         $exp = (new DateTimeImmutable($base))->modify('+' . $dias . ' days')->format('Y-m-d H:i:s');
         db()->prepare("UPDATE saideras SET expira_em = ?, status = IF(status = 'expirada', 'disponivel', status) WHERE id = ?")->execute([$exp, $sid]);
-        auditar('Admin prorrogou Saidera', $s['codigo'] . ' · +' . $dias . 'd');
+        auditar('Admin prorrogou Saideira', $s['codigo'] . ' · +' . $dias . 'd');
         admin_ok_store();
     }
 
     if ($path === 'saideras/restaurar') {
         auth_require(['admin']);
         $sid = nid('sai', $in['id'] ?? '');
-        if (!$sid) fail('Saidera não encontrada.');
+        if (!$sid) fail('Saideira não encontrada.');
         $dias = (int) cfg('validade_saidera_dias', 15);
         $exp = (new DateTimeImmutable())->modify('+' . $dias . ' days')->format('Y-m-d H:i:s');
         db()->prepare("UPDATE saideras SET status = 'disponivel', utilizada_em = NULL, expira_em = ? WHERE id = ?")->execute([$exp, $sid]);
-        auditar('Admin restaurou Saidera', (string) $sid);
+        auditar('Admin restaurou Saideira', (string) $sid);
         admin_ok_store();
     }
 
@@ -584,7 +584,7 @@ function admin_rota(string $method, string $path, array $in): bool
     if ($path === 'saideras/entregar-admin') {
         auth_require(['admin']);
         $sid = nid('sai', $in['id'] ?? $in['saideraId'] ?? '');
-        if (!$sid) fail('Saidera não encontrada.');
+        if (!$sid) fail('Saideira não encontrada.');
         entregar_saidera($sid, null);
         admin_ok_store();
     }

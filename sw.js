@@ -16,7 +16,7 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => {
       if (event.request.mode === "navigate") {
         return new Response(
-          "<!DOCTYPE html><html lang='pt-BR'><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Saidera</title><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0e0e;color:#f5f0e6;font-family:sans-serif;text-align:center;padding:24px'><div><p>Sem conexão. Abra de novo com internet.</p></div></body></html>",
+          "<!DOCTYPE html><html lang='pt-BR'><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Saideira</title><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0e0e;color:#f5f0e6;font-family:sans-serif;text-align:center;padding:24px'><div><p>Sem conexão. Abra de novo com internet.</p></div></body></html>",
           { headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
       }

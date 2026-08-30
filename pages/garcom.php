@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/_proteger.php';
 saidera_proteger('funcionario');
-$titulo = 'Saidera · Garçom';
+$titulo = 'Saideira · Garçom';
 $css = ['../assets/css/client.css', '../assets/css/dashboard.css'];
 require __DIR__ . '/_cabecalho.php';
 $v = saidera_v();

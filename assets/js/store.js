@@ -9,7 +9,7 @@ const Store = {
       me = await API.me();
     } catch (e) {
       document.body.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto">
-        <h1>Saidera</h1>
+        <h1>Saideira</h1>
         <p>${e.message || "Não foi possível abrir o painel."}</p>
         <p><a href="${API.home()}" style="color:#F5B800">Voltar ao login</a></p>
       </main>`;
@@ -30,7 +30,7 @@ const Store = {
       this.data = boot;
     } catch (e) {
       document.body.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto">
-        <h1>Saidera</h1>
+        <h1>Saideira</h1>
         <p>${e.message || "Não foi possível carregar seus dados."}</p>
         <p><a href="${API.home()}" style="color:#F5B800">Voltar ao login</a></p>
       </main>`;

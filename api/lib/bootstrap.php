@@ -160,7 +160,7 @@ function bootstrap_store(array $u): array
         'suporteEmail' => cfg('suporte_email', ''),
         'msgPlanoBloqueado' => cfg('msg_plano_bloqueado', 'Indisponível') ?: 'Indisponível',
         'pixChave' => '',
-        'pixNome' => cfg('pix_nome', 'Saidera') ?: 'Saidera',
+        'pixNome' => cfg('pix_nome', 'Saideira') ?: 'Saideira',
         'pixCidade' => cfg('pix_cidade', '') ?: '',
         'demo' => [
             'clienteId' => null,

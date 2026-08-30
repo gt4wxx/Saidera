@@ -130,12 +130,12 @@ const EntrarApp = {
 
   telaInstalado() {
     this.status(`<h2>Pronto</h2>
-      <p class="muted" style="margin:10px 0 14px">O Saidera foi instalado. Abra pelo ícone na tela inicial.</p>
-      <p class="tiny muted">Se esta tela continuar aberta, feche e toque no ícone Saidera.</p>`);
+      <p class="muted" style="margin:10px 0 14px">A Saideira foi instalada. Abra pelo ícone na tela inicial.</p>
+      <p class="tiny muted">Se esta tela continuar aberta, feche e toque no ícone Saideira.</p>`);
   },
 
   telaInstalar(msg) {
-    this.status(`<h2>Instalar o Saidera</h2>
+    this.status(`<h2>Instalar a Saideira</h2>
       <p class="muted" style="margin:10px 0 14px">${msg}</p>
       <button type="button" class="btn btn-gold btn-block" id="btn-instalar-agora" data-pwa-install>Instalar</button>
       ${UI.pwaIos() ? `<p class="notice" style="margin-top:12px">Só no <strong>Safari</strong>. Depois de Compartilhar, <strong>role a lista até o fim</strong> — Adicionar à Tela de Início fica escondido.</p>` : ""}

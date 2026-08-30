@@ -23,7 +23,7 @@ if ($path === 'health') {
 if (!saidera_app()) {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(503);
-    echo json_encode(['ok' => false, 'erro' => 'Instale o Saidera em /instalar.php', 'instalar' => true], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => false, 'erro' => 'Instale a Saideira em /instalar.php', 'instalar' => true], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -408,7 +408,7 @@ function rota(string $method, string $path): void
         if (array_key_exists('pixChave', $in)) cfg_set('pix_chave', trim((string) $in['pixChave']));
         if (array_key_exists('pixNome', $in)) {
             $nome = trim((string) $in['pixNome']);
-            cfg_set('pix_nome', $nome !== '' ? $nome : 'Saidera');
+            cfg_set('pix_nome', $nome !== '' ? $nome : 'Saideira');
         }
         if (array_key_exists('pixCidade', $in)) {
             $cidPix = trim((string) $in['pixCidade']);
@@ -453,7 +453,7 @@ function rota(string $method, string $path): void
         }
         cancelar_cobrancas_pendentes($eid);
         $txid = 'SD' . strtoupper(bin2hex(random_bytes(8)));
-        $nome = trim((string) cfg('pix_nome', 'Saidera')) ?: 'Saidera';
+        $nome = trim((string) cfg('pix_nome', 'Saideira')) ?: 'Saideira';
         $cidade = trim((string) cfg('pix_cidade', ''));
         if ($cidade === '') {
             $cidade = trim(explode('/', (string) cfg('cidade', 'Aracaju'))[0]) ?: 'Aracaju';

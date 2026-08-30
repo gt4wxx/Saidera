@@ -39,7 +39,7 @@ function http_get_url(string $url): string
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 8,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_USERAGENT => 'Saidera/1.0 (https://saideira.devpremium.site)',
+            CURLOPT_USERAGENT => 'Saideira/1.0 (https://saideira.devpremium.site)',
         ]);
         $out = curl_exec($ch);
         curl_close($ch);
@@ -47,7 +47,7 @@ function http_get_url(string $url): string
     }
     $ctx = stream_context_create(['http' => [
         'timeout' => 8,
-        'header' => "User-Agent: Saidera/1.0\r\n",
+        'header' => "User-Agent: Saideira/1.0\r\n",
     ]]);
     $out = @file_get_contents($url, false, $ctx);
     return is_string($out) ? $out : '';
@@ -326,7 +326,7 @@ function nova_saidera(int $cliId, int $estId, int $bebidaId, ?int $campanhaId = 
     db()->prepare('INSERT INTO saideras (codigo, cliente_id, estabelecimento_id, bebida_id, campanha_id, expira_em) VALUES (?,?,?,?,?,?)')
         ->execute([$codigo, $cliId, $estId, $bebidaId, $campanhaId, $exp]);
     $id = (int) db()->lastInsertId();
-    auditar('Saidera conquistada', $codigo);
+    auditar('Saideira conquistada', $codigo);
     return ['id' => pub('sai', $id), 'codigo' => $codigo];
 }
 
@@ -376,9 +376,9 @@ function registrar_consumo(int $cliId, int $estId, int $bebidaId, int $qtd, ?int
     $bn = $beb->fetch()['nome'] ?? 'Bebida';
     $en = $est->fetch()['nome'] ?? 'Casa';
     if (!$silencioso) {
-        $titulo = $ganhas ? 'Você ganhou uma Saidera!' : ($qtd . ' Tampa' . ($qtd > 1 ? 's' : '') . ' registrada' . ($qtd > 1 ? 's' : ''));
+        $titulo = $ganhas ? 'Você ganhou uma Saideira!' : ($qtd . ' Tampa' . ($qtd > 1 ? 's' : '') . ' registrada' . ($qtd > 1 ? 's' : ''));
         $texto = $ganhas
-            ? "{$bn} no {$en}. Informe o ID da Saidera à casa para retirar."
+            ? "{$bn} no {$en}. Informe o ID da Saideira à casa para retirar."
             : "{$bn} no {$en}: {$depois}/{$metaDepois}.";
         notificar($cliId, $titulo, $texto, $ganhas ? 'saidera' : 'progresso');
         auditar('Registro de consumo', "{$en} · {$bn} ×{$qtd}");
@@ -493,7 +493,7 @@ function resgatar_ticket(string $codigo, int $cliId): array
     $est = db()->prepare('SELECT nome FROM estabelecimentos WHERE id = ?');
     $est->execute([$t['estabelecimento_id']]);
     $en = $est->fetch()['nome'] ?? 'Casa';
-    notificar($cliId, $ganhas ? 'Você ganhou uma Saidera!' : 'Tampas adicionadas', "{$resumo} no {$en}.", $ganhas ? 'saidera' : 'progresso');
+    notificar($cliId, $ganhas ? 'Você ganhou uma Saideira!' : 'Tampas adicionadas', "{$resumo} no {$en}.", $ganhas ? 'saidera' : 'progresso');
     auditar('QR de tampas resgatado', $codigo . ' · ' . $resumo);
     return [
         'ticket' => ticket_pub((int) $t['id']),
@@ -509,8 +509,8 @@ function entregar_saidera_codigo(string $codigo, int $estId, ?int $funId = null)
     $st = db()->prepare('SELECT * FROM saideras WHERE codigo = ?');
     $st->execute([$codigo]);
     $s = $st->fetch();
-    if (!$s) fail('Saidera não encontrada. Confira o ID com o cliente.');
-    if ((int) $s['estabelecimento_id'] !== $estId) fail('Esta Saidera é de outro estabelecimento.');
+    if (!$s) fail('Saideira não encontrada. Confira o ID com o cliente.');
+    if ((int) $s['estabelecimento_id'] !== $estId) fail('Esta Saideira é de outro estabelecimento.');
     return entregar_saidera((int) $s['id'], $funId);
 }
 
@@ -519,14 +519,14 @@ function entregar_saidera(int $id, ?int $funId = null): array
     $st = db()->prepare('SELECT * FROM saideras WHERE id = ?');
     $st->execute([$id]);
     $s = $st->fetch();
-    if (!$s || $s['status'] !== 'disponivel') fail('Esta Saidera não está disponível.');
+    if (!$s || $s['status'] !== 'disponivel') fail('Esta Saideira não está disponível.');
     if (strtotime($s['expira_em']) < time()) {
         db()->prepare("UPDATE saideras SET status = 'expirada' WHERE id = ?")->execute([$id]);
-        fail('Esta Saidera expirou.');
+        fail('Esta Saideira expirou.');
     }
     db()->prepare("UPDATE saideras SET status = 'utilizada', utilizada_em = NOW() WHERE id = ?")->execute([$id]);
     marcar_turno($funId, 0, 1);
-    auditar('Entrega de Saidera', $s['codigo']);
+    auditar('Entrega de Saideira', $s['codigo']);
     $s['status'] = 'utilizada';
     return [
         'id' => pub('sai', $s['id']),
@@ -687,7 +687,7 @@ function garantir_planos(): void
     $ins = db()->prepare('INSERT INTO planos (nome, descricao, preco, menus_json, a_mostra, status) VALUES (?,?,?,?,?,?)');
     $ins->execute([
         'Completo',
-        'Todos os menus da casa. Bom para quem já opera a Saidera no dia a dia.',
+        'Todos os menus da casa. Bom para quem já opera a Saideira no dia a dia.',
         null,
         json_encode(menus_casa_catalogo()),
         1,
@@ -696,7 +696,7 @@ function garantir_planos(): void
     $completo = (int) db()->lastInsertId();
     $ins->execute([
         'Essencial',
-        'QR, clientes, Saideras e o básico. Sem campanhas nem inteligência.',
+        'QR, clientes, Saideiras e o básico. Sem campanhas nem inteligência.',
         null,
         json_encode(sanitizar_menus_casa(['dashboard', 'clientes', 'registrar', 'atender', 'saideras', 'config', 'planos'])),
         1,
@@ -760,7 +760,7 @@ function pix_ascii(string $s, int $max): string
     $s = strtr($s, $map);
     $s = preg_replace('/[^A-Za-z0-9 .\-\/]/', '', $s) ?? '';
     $s = trim(preg_replace('/\s+/', ' ', $s) ?? '');
-    if ($s === '') $s = 'SAIDERA';
+    if ($s === '') $s = 'SAIDEIRA';
     return substr($s, 0, $max);
 }
 

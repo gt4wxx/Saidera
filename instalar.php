@@ -13,7 +13,7 @@ if (is_file($cfgPath) && empty($_POST['forcar'])) {
         $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4', DB_USER, DB_PASS);
         $n = (int) $pdo->query("SELECT COUNT(*) FROM usuarios WHERE papel = 'admin'")->fetchColumn();
         if ($n > 0 && empty($_GET['ok'])) {
-            $ok = 'O Saidera já está instalado. Entre pela página inicial.';
+            $ok = 'A Saideira já está instalada. Entre pela página inicial.';
         }
     } catch (Throwable $e) {
         $erro = 'Configuração encontrada, mas o banco não conectou: ' . $e->getMessage();
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pass = (string) ($_POST['pass'] ?? '');
     $adminEmail = strtolower(trim($_POST['admin_email'] ?? ''));
     $adminSenha = (string) ($_POST['admin_senha'] ?? '');
-    $adminNome = trim($_POST['admin_nome'] ?? 'Admin Saidera');
+    $adminNome = trim($_POST['admin_nome'] ?? 'Admin Saideira');
     try {
         if (!$name || !$user) throw new RuntimeException('Preencha o banco e o usuário do MySQL da Hostinger.');
         if (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('E-mail do admin inválido.');
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             . "define('DB_USER', " . var_export($user, true) . ");\n"
             . "define('DB_PASS', " . var_export($pass, true) . ");\n"
             . "define('DB_CHARSET', 'utf8mb4');\n"
-            . "define('APP_NAME', 'Saidera');\n"
+            . "define('APP_NAME', 'Saideira');\n"
             . "define('SESSION_NAME', 'saidera_sess');\n";
         if (file_put_contents($cfgPath, $php) === false) {
             throw new RuntimeException('Não consegui gravar api/config.php. Crie o arquivo na Hostinger com permissão de escrita.');
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Instalar Saidera</title>
+  <title>Instalar Saideira</title>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet"/>
   <style>
     body { font-family: Manrope, system-ui, sans-serif; background: #0e0e0e; color: #FFF9E8; margin: 0; padding: 32px 16px; }
@@ -84,11 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <main>
-  <h1>Instalar o Saidera</h1>
+  <h1>Instalar a Saideira</h1>
   <p>Use os dados do MySQL no hPanel da Hostinger (Bancos de dados). Isso cria as tabelas e o primeiro admin. Sem dados de demonstração.</p>
   <?php if ($erro): ?><p class="err"><?= h($erro) ?></p><?php endif; ?>
   <?php if (!empty($_GET['ok']) || ($ok && empty($erro))): ?>
-    <p class="ok">Pronto. <a href="index.php">Entrar no Saidera</a></p>
+    <p class="ok">Pronto. <a href="index.php">Entrar na Saideira</a></p>
   <?php endif; ?>
   <form method="post">
     <label>Host do banco</label>

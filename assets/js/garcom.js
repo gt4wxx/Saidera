@@ -110,7 +110,7 @@ const GarcomApp = {
     return `${this.top()}
       <p class="tiny muted">Turno no salão</p>
       <h1 style="margin:8px 0 6px">Pronto no salão</h1>
-      <p class="muted" style="margin-bottom:14px">Dois caminhos: ler o QR do cliente ou baixar a Saidera pelo ID.</p>
+      <p class="muted" style="margin-bottom:14px">Dois caminhos: ler o QR do cliente ou baixar a Saideira pelo ID.</p>
       ${Brand.banner("secundario", "brand-banner")}
       <div class="waiter-actions">
         <button class="waiter-action gold" id="start-scan">
@@ -120,14 +120,14 @@ const GarcomApp = {
         </button>
         <button class="waiter-action navy" id="start-sai">
           ${Icons.gift()}
-          <strong>Baixar Saidera</strong>
+          <strong>Baixar Saideira</strong>
           <span>O cliente informa o ID (SDR-…)</span>
         </button>
       </div>
       <div class="card pad" style="margin-top:14px">
         <p class="tiny muted">ID do cliente</p>
         <div class="search" style="margin-top:8px">${Icons.search()}<input id="busca-id" placeholder="ID do cliente · SDR-…"/></div>
-        <p class="tiny muted" style="margin:14px 0 8px">ID da Saidera</p>
+        <p class="tiny muted" style="margin:14px 0 8px">ID da Saideira</p>
         <div class="row" style="gap:8px">
           <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="SDR-8842"/></div>
           <button class="btn btn-navy btn-sm" id="sai-ok-home">Baixar</button>
@@ -143,7 +143,7 @@ const GarcomApp = {
       }
       <div class="grid-2" style="margin-top:22px">
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
-        <div class="kpi"><span>Saideras entregues</span><b>${f.saiderasEntregues}</b></div>
+        <div class="kpi"><span>Saideiras entregues</span><b>${f.saiderasEntregues}</b></div>
       </div>
       <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele e não expira. O cupom impresso da casa o cliente lê no app dele.</p>`;
   },
@@ -156,15 +156,15 @@ const GarcomApp = {
           <video id="scan-video" playsinline muted autoplay></video>
           <i></i><i></i><i></i><i></i>
         </div>
-        <p class="muted" style="margin-top:18px;text-align:center">${cliente ? "Aponte para o QR do cliente" : "Aponte para um QR ou use o ID da Saidera"}</p>
-        <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "SAIDERA:SDR-… · identificação" : "ID da Saidera · SDR-…"}</p>
+        <p class="muted" style="margin-top:18px;text-align:center">${cliente ? "Aponte para o QR do cliente" : "Aponte para um QR ou use o ID da Saideira"}</p>
+        <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "SAIDERA:SDR-… · identificação" : "ID da Saideira · SDR-…"}</p>
         <button type="button" class="btn btn-gold btn-block" id="abrir-camera" style="margin-top:12px">Permitir câmera</button>
       </div>
       <div class="row" style="gap:8px;margin-top:14px">
         <button class="btn btn-dark grow" id="torch-btn">${Icons.torch()} Lanterna</button>
         <button class="btn btn-ghost grow" id="cancel-scan">Cancelar</button>
       </div>
-      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-28491" : "Ou ID da Saidera · SDR-8842"}"/></div>
+      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-28491" : "Ou ID da Saideira · SDR-8842"}"/></div>
       ${cliente ? "" : `<button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
   },
 
@@ -193,21 +193,21 @@ const GarcomApp = {
       ${
         todasDisp.length
           ? `<article class="saidera-alert">
-              <span class="badge badge-green">SAIDERA DISPONÍVEL</span>
+              <span class="badge badge-green">SAIDEIRA DISPONÍVEL</span>
               <p style="margin:8px 0 12px">${todasDisp
                 .map((s) => `${Logic.bebida(s.bebidaId)?.nome || "Bebida"} · <strong>${s.codigo}</strong> · ${Logic.validadeLabel(s)}`)
                 .join("<br/>")}</p>
               ${todasDisp
                 .map(
                   (s) =>
-                    `<button type="button" class="btn btn-gold btn-block btn-sm" style="margin-bottom:8px" data-entregar="${s.id}">Entregar ${Logic.bebida(s.bebidaId)?.nome || "Saidera"}</button>`
+                    `<button type="button" class="btn btn-gold btn-block btn-sm" style="margin-bottom:8px" data-entregar="${s.id}">Entregar ${Logic.bebida(s.bebidaId)?.nome || "Saideira"}</button>`
                 )
                 .join("")}
             </article>`
           : ""
       }
       <div class="card pad" style="margin-bottom:14px">
-        <p class="tiny muted">Baixar pelo ID da Saidera</p>
+        <p class="tiny muted">Baixar pelo ID da Saideira</p>
         <div class="row" style="gap:8px;margin-top:8px">
           <div class="search grow">${Icons.search()}<input id="sai-id-comanda" placeholder="SDR-8842"/></div>
           <button class="btn btn-navy btn-sm" id="sai-ok-comanda">Baixar</button>
@@ -234,7 +234,7 @@ const GarcomApp = {
             <p class="tiny muted">${Logic.bebida(this.drinkId)?.nome || "Bebida"}</p>
             <strong>${dispDrink.length && p.atual === 0 ? p.meta : p.atual} / ${p.meta}</strong>
           </div>
-          <span class="muted small">${dispDrink.length ? "Saidera nesta bebida" : falta === 1 ? "Falta 1" : "Faltam " + falta}</span>
+          <span class="muted small">${dispDrink.length ? "Saideira nesta bebida" : falta === 1 ? "Falta 1" : "Faltam " + falta}</span>
         </div>
         <div style="margin:10px 0">${UI.tampas(dispDrink.length && p.atual === 0 ? p.meta : p.atual, p.meta)}</div>
         ${UI.barra(dispDrink.length && p.atual === 0 ? p.meta : p.atual, p.meta)}
@@ -263,12 +263,12 @@ const GarcomApp = {
       UI.modal({
         center: true,
         html: `${UI.celebrate(
-          res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDERA LIBERADA! 🍺",
+          res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDEIRA LIBERADA! 🍺",
           res.ofertaConcluida
             ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo: regra da casa ${res.metaBar} Tampas · agora ${res.depois}/${res.meta}.`
-            : `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo agora: ${res.depois}/${res.meta}.`
+            : `${cliente.primeiroNome} conquistou ${res.ganhas} Saideira de ${bebida.nome}. Ciclo agora: ${res.depois}/${res.meta}.`
         )}
-          <p class="tiny muted">Peça o ID da Saidera para baixar, ou entregue na comanda.</p>
+          <p class="tiny muted">Peça o ID da Saideira para baixar, ou entregue na comanda.</p>
           <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Continuar na comanda</button>`,
       });
     } else {
@@ -334,7 +334,7 @@ const GarcomApp = {
     this.render();
     UI.modal({
       center: true,
-      html: `${UI.celebrate("Saidera entregue", `${Logic.bebida(res.saidera.bebidaId)?.nome || ""} · ${res.saidera.codigo}`)}
+      html: `${UI.celebrate("Saideira entregue", `${Logic.bebida(res.saidera.bebidaId)?.nome || ""} · ${res.saidera.codigo}`)}
         <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
     });
   },
@@ -471,12 +471,12 @@ const GarcomApp = {
     if (s) {
       UI.modal({
         center: true,
-        html: `${UI.celebrate("Saidera entregue", `${Logic.bebida(s.bebidaId)?.nome || "Bebida"} · ${s.codigo} baixada para ${Logic.cliente(this.clienteId).primeiroNome}.`)}
+        html: `${UI.celebrate("Saideira entregue", `${Logic.bebida(s.bebidaId)?.nome || "Bebida"} · ${s.codigo} baixada para ${Logic.cliente(this.clienteId).primeiroNome}.`)}
           <p class="tiny muted">A comanda continua aberta para marcar novas Tampas.</p>
           <button type="button" class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
       });
     } else {
-      UI.toast("Esta Saidera não está mais disponível.");
+      UI.toast("Esta Saideira não está mais disponível.");
     }
   },
 

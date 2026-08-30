@@ -113,7 +113,7 @@ const EstApp = {
     }
     const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: raw };
     if (d.tipo === "ticket") {
-      box.innerHTML = `<p class="notice">Este é o cupom da casa (TKT-…). O cliente lê no app. A Saidera tem outro ID.</p>`;
+      box.innerHTML = `<p class="notice">Este é o cupom da casa (TKT-…). O cliente lê no app. A Saideira tem outro ID.</p>`;
       return;
     }
     const s = Logic.saideraPorCodigo(raw, this.estId);
@@ -122,29 +122,29 @@ const EstApp = {
         s.status === "disponivel"
           ? `<p class="tiny gold" style="margin-top:8px">Encontrada e disponível. Confira e confirme a entrega.</p>`
           : s.status === "utilizada"
-            ? `<p class="notice" style="margin-top:8px">Esta Saidera já foi entregue. Não dá para baixar de novo.</p>`
-            : `<p class="notice" style="margin-top:8px">Esta Saidera expirou e não pode ser entregue.</p>`;
+            ? `<p class="notice" style="margin-top:8px">Esta Saideira já foi entregue. Não dá para baixar de novo.</p>`
+            : `<p class="notice" style="margin-top:8px">Esta Saideira expirou e não pode ser entregue.</p>`;
       box.innerHTML = `${this.saiFicha(s)}${aviso}`;
       return;
     }
     const c = Logic.clientePorCodigo(d.codigo);
     if (c) {
-      box.innerHTML = `<p class="notice">Isso é o ID do cliente <strong>${this.esc(c.nome)}</strong>, não da Saidera. Peça no app dele o código da bebida grátis.</p>`;
+      box.innerHTML = `<p class="notice">Isso é o ID do cliente <strong>${this.esc(c.nome)}</strong>, não da Saideira. Peça no app dele o código da bebida grátis.</p>`;
       return;
     }
-    box.innerHTML = `<p class="tiny muted">Nenhuma Saidera com este ID nesta casa.</p>`;
+    box.innerHTML = `<p class="tiny muted">Nenhuma Saideira com este ID nesta casa.</p>`;
   },
 
   pedirConfirmacaoSaidera(s) {
     if (!s) {
-      UI.toast("Saidera não encontrada nesta casa.");
+      UI.toast("Saideira não encontrada nesta casa.");
       return;
     }
     if (s.status !== "disponivel") {
       UI.modal({
         center: true,
         html: `<h2>Não dá para entregar</h2>
-          <p class="muted" style="margin:8px 0 14px">${s.status === "utilizada" ? "Esta Saidera já foi baixada." : "Esta Saidera expirou."}</p>
+          <p class="muted" style="margin:8px 0 14px">${s.status === "utilizada" ? "Esta Saideira já foi baixada." : "Esta Saideira expirou."}</p>
           ${this.saiFicha(s)}
           <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ok</button>`,
       });
@@ -186,7 +186,7 @@ const EstApp = {
     const b = Logic.bebida(s.bebidaId);
     UI.modal({
       center: true,
-      html: `${UI.celebrate("Saidera entregue", `${this.esc(b?.nome || "Bebida")} · ${this.esc(s.codigo)}`)}
+      html: `${UI.celebrate("Saideira entregue", `${this.esc(b?.nome || "Bebida")} · ${this.esc(s.codigo)}`)}
         <p class="sai-ok-txt">Baixada para <strong>${this.esc(c?.nome || "o cliente")}</strong>. Pode servir a bebida. Este ID não vale mais.</p>
         <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ok</button>`,
     });
@@ -324,7 +324,7 @@ const EstApp = {
       registrar: "Gerar QR das Tampas",
       atender: "QR do cliente",
       bebidas: "Bebidas",
-      saideras: "Saideras",
+      saideras: "Saideiras",
       funcionarios: "Funcionários",
       inteligencia: "Conheça seus clientes",
       chamar: "Chamar de volta",
@@ -344,7 +344,7 @@ const EstApp = {
       ["registrar", "Gerar QR", Icons.qr()],
       ["atender", "QR do cliente", Icons.user()],
       ["bebidas", "Bebidas", Icons.beer()],
-      ["saideras", "Saideras", Icons.gift()],
+      ["saideras", "Saideiras", Icons.gift()],
       ["funcionarios", "Funcionários", Icons.user()],
       ["inteligencia", "Conheça seus clientes", Icons.spark()],
       ["campanhas", "Campanhas", Icons.megaphone()],
@@ -387,16 +387,16 @@ const EstApp = {
       ["Clientes da casa", r.clientes, "#/clientes"],
       ["Vieram hoje", r.clientesHoje, "#/clientes"],
       ["Tampas hoje", r.tampasHoje, "#/registrar"],
-      ["Saideras disponíveis", r.saiderasDisp, "#/saideras"],
-      ["Saideras usadas", r.saiderasUsadas, "#/saideras"],
+      ["Saideiras disponíveis", r.saiderasDisp, "#/saideras"],
+      ["Saideiras usadas", r.saiderasUsadas, "#/saideras"],
       ["Cupons abertos", r.ticketsAbertos, "#/registrar"],
-      ["Quase na Saidera", r.quase, "#/inteligencia"],
+      ["Quase na Saideira", r.quase, "#/inteligencia"],
       ["Sem voltar há 30 dias", r.inativos, "#/chamar"],
     ];
     const atalhos = [
       ["#/registrar", "btn-gold", "Gerar cupom QR"],
       ["#/atender", "btn-navy", "Ler QR do cliente"],
-      ["#/saideras", "btn-ghost", "Baixar Saidera"],
+      ["#/saideras", "btn-ghost", "Baixar Saideira"],
       ["#/campanhas", "btn-ghost", "Pedir campanha"],
       ["#/config", "btn-ghost", "QR do app"],
     ];
@@ -453,8 +453,8 @@ const EstApp = {
       <div class="kpis kpis-dia">${[
         ["Vieram", dia.clientes],
         ["Tampas", dia.tampas],
-        ["Saideras ganhas", dia.saiderasGanhas],
-        ["Saideras entregues", dia.saiderasEntregues],
+        ["Saideiras ganhas", dia.saiderasGanhas],
+        ["Saideiras entregues", dia.saiderasEntregues],
       ].map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${this.n(v)}</b></div>`).join("")}</div>
       ${
         dia.tampas || dia.clientes
@@ -545,7 +545,7 @@ const EstApp = {
             </div>
           </div>
           <div class="row">
-            ${disp.length ? `<span class="badge badge-green">Saidera disponível</span>` : ""}
+            ${disp.length ? `<span class="badge badge-green">Saideira disponível</span>` : ""}
             ${action}
           </div>
         </div>`;
@@ -626,10 +626,10 @@ const EstApp = {
       ? `${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.cliQuery.trim()}”`
       : `${from}–${to} de ${list.length} clientes com movimento nesta casa`;
     return `<section class="panel">
-      ${this.chips("cliFiltro", [["", "Todos"], ["alta", "Vem sempre"], ["media", "Regular"], ["baixa", "Pouca frequência"], ["fria", "Sumiu"], ["quase", "Quase Saidera"], ["saidera", "Com Saidera"], ["niver", "Aniversário"], ["inativo", "Inativos"]])}
+      ${this.chips("cliFiltro", [["", "Todos"], ["alta", "Vem sempre"], ["media", "Regular"], ["baixa", "Pouca frequência"], ["fria", "Sumiu"], ["quase", "Quase Saideira"], ["saidera", "Com Saideira"], ["niver", "Aniversário"], ["inativo", "Inativos"]])}
       <p class="muted small" style="margin:12px 0">${busca}</p>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Frequência</th><th>Favorita</th><th>Pedidos</th><th>Tampas pedidas</th><th>Cartela</th><th>Saideras</th><th>Última visita</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Frequência</th><th>Favorita</th><th>Pedidos</th><th>Tampas pedidas</th><th>Cartela</th><th>Saideiras</th><th>Última visita</th></tr></thead>
         <tbody>${rows || `<tr><td colspan="8" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
       </table></div>
       ${this.pager(page, pages, "Páginas de clientes")}
@@ -670,13 +670,13 @@ const EstApp = {
           <div class="kpi"><b>${this.n(r?.pedidos || 0)}</b><span>Pedidos</span></div>
           <div class="kpi"><b>${this.n(r?.tampasPedidas || 0)}</b><span>Tampas pedidas</span></div>
           <div class="kpi"><b>${this.n(r?.mediaPorVisita || 0)}</b><span>Média por visita</span></div>
-          <div class="kpi"><b>${this.n(r?.saideras?.total || 0)}</b><span>Saideras</span></div>
+          <div class="kpi"><b>${this.n(r?.saideras?.total || 0)}</b><span>Saideiras</span></div>
           <div class="kpi"><b>${this.n(r?.saideras?.disp || 0)}</b><span>Prontas para baixar</span></div>
         </div>
         <div class="row wrap" style="gap:8px;margin-top:14px">
           <a class="btn btn-gold grow" href="#/registrar">Gerar cupom</a>
           <a class="btn btn-dark grow" href="#/atender/${c.id}">Registrar Tampas</a>
-          ${sais.some((s) => s.status === "disponivel") ? `<a class="btn btn-navy grow" href="#/saideras">Baixar Saidera</a>` : ""}
+          ${sais.some((s) => s.status === "disponivel") ? `<a class="btn btn-navy grow" href="#/saideras">Baixar Saideira</a>` : ""}
           <button class="btn btn-ghost grow" data-act="cli-aviso" data-id="${c.id}">Aviso no app</button>
         </div>
       </section>
@@ -737,7 +737,7 @@ const EstApp = {
       <h2>${t.codigo}</h2>
       <ul class="ticket-itens">${t.itens.map((i) => `<li><strong>${i.quantidade}×</strong> ${i.nome}</li>`).join("")}</ul>
       <p class="badge badge-gold">USO ÚNICO</p>
-      <p class="tiny" style="margin-top:10px">O cliente lê este QR no app Saidera. Depois de usado, o cupom acaba.</p>
+      <p class="tiny" style="margin-top:10px">O cliente lê este QR no app Saideira. Depois de usado, o cupom acaba.</p>
     </article>`;
   },
 
@@ -833,7 +833,7 @@ const EstApp = {
             </div>
             ${(() => {
               const disp = Store.all("saideras").filter((s) => s.clienteId === c.id && s.estabelecimentoId === this.estId && s.status === "disponivel");
-              return disp.length ? `<p class="notice" style="margin-bottom:14px">${disp.length} Saidera(s) pronta(s). <a href="#/saideras" style="color:#F5B800">Baixar com o ID</a></p>` : "";
+              return disp.length ? `<p class="notice" style="margin-bottom:14px">${disp.length} Saideira(s) pronta(s). <a href="#/saideras" style="color:#F5B800">Baixar com o ID</a></p>` : "";
             })()}
             <h3 style="margin-bottom:10px">Bebida</h3>
             <div class="drink-pick" id="drinks">
@@ -872,7 +872,7 @@ const EstApp = {
       .filter((b) => !noCard.has(b.id))
       .filter((b) => !q || this.norm(`${b.nome} ${b.marca || ""} ${b.tipo || ""}`).includes(q));
     return `<div class="kpis">
-      <div class="kpi"><span>Saidera padrão da casa</span><b>${est.metaPadrao} Tampas</b></div>
+      <div class="kpi"><span>Saideira padrão da casa</span><b>${est.metaPadrao} Tampas</b></div>
       <div class="kpi"><span>No cardápio</span><b>${cardapio.length}</b></div>
       <div class="kpi"><span>Ainda no catálogo</span><b>${Store.all("bebidas").filter((b) => !noCard.has(b.id)).length}</b></div>
     </div>
@@ -950,10 +950,10 @@ const EstApp = {
       <div class="kpi"><span>Entregues</span><b>${this.n(tot.filter((s) => s.status === "utilizada").length)}</b></div>
     </div>
     <section class="panel" style="margin-bottom:14px">
-      <h3>Baixar Saidera</h3>
-      <p class="muted small" style="margin:6px 0 12px">Peça o ID da Saidera no app do cliente (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
+      <h3>Baixar Saideira</h3>
+      <p class="muted small" style="margin:6px 0 12px">Peça o ID da Saideira no app do cliente (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
       <div class="row wrap" style="gap:8px">
-        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saidera · SDR-8842" maxlength="24" autocomplete="off"/></div>
+        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saideira · SDR-8842" maxlength="24" autocomplete="off"/></div>
         <button class="btn btn-gold" id="entregar-sai">Revisar e entregar</button>
       </div>
       <div id="sai-preview" class="sai-preview"></div>
@@ -978,7 +978,7 @@ const EstApp = {
           </tr>`;
         })
         .join("")}</tbody>
-    </table></div>` : `<p class="muted empty-msg">Nenhuma Saidera nesta casa ainda.</p>`}
+    </table></div>` : `<p class="muted empty-msg">Nenhuma Saideira nesta casa ainda.</p>`}
     </section>`;
   },
 
@@ -1006,7 +1006,7 @@ const EstApp = {
             <span class="badge ${f.status === "ativo" ? "badge-green" : "badge-ghost"}" style="margin-left:auto">${this.esc(f.status)}</span></div>
           <div class="kpis" style="margin-top:12px">
             <div class="kpi"><b>${this.n(f.tampasHoje)}</b><span>Tampas hoje</span></div>
-            <div class="kpi"><b>${this.n(f.saiderasEntregues)}</b><span>Saideras entregues</span></div>
+            <div class="kpi"><b>${this.n(f.saiderasEntregues)}</b><span>Saideiras entregues</span></div>
           </div>
           <div class="table-actions" style="margin-top:12px">
             <button class="btn btn-ghost btn-sm" data-act="fun-editar" data-id="${f.id}">Editar</button>
@@ -1031,7 +1031,7 @@ const EstApp = {
         ["Vem sempre", r.freq.alta],
         ["Pouca frequência", r.freq.baixa],
         ["Sumiu (30 dias)", r.freq.fria],
-        ["Próximos da Saidera", r.quase],
+        ["Próximos da Saideira", r.quase],
         ["Aniversariantes do mês", r.niver],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${this.n(v)}</b></div>`)
@@ -1074,7 +1074,7 @@ const EstApp = {
     </section>` : ""}
     <div class="grid-2" style="margin-top:14px">
       <section class="panel">
-        <h3>Próximos da Saidera</h3>
+        <h3>Próximos da Saideira</h3>
         ${quase.length
           ? quase.map((t) => {
             const c = Logic.cliente(t.clienteId);
@@ -1082,7 +1082,7 @@ const EstApp = {
             return `<div class="row between" style="padding:8px 0"><div><strong>${this.esc(c?.nome || "—")}</strong><p class="tiny muted">${this.esc(retrato?.favorita?.nome || Logic.bebida(t.bebidaId)?.nome || "Bebida")} · cartela ${t.atual}/${t.meta} · ${this.n(retrato?.visitas || 0)} visitas</p></div>
               <div class="table-actions"><a class="btn btn-ghost btn-sm" href="#/cliente/${t.clienteId}">Ficha</a><button type="button" class="btn btn-gold btn-sm" data-solicitar="quase">Acelerar</button></div></div>`;
           }).join("")
-          : `<p class="muted empty-msg">Ninguém a 2 Tampas ou menos da Saidera.</p>`}
+          : `<p class="muted empty-msg">Ninguém a 2 Tampas ou menos da Saideira.</p>`}
       </section>
       <section class="panel">
         <h3>Aniversariantes do mês</h3>
@@ -1129,7 +1129,7 @@ const EstApp = {
     const sel = new Set(this.volta.ids);
     const chips = [10, 20, 50, list.length].filter((n, i, a) => n <= list.length && a.indexOf(n) === i);
     return `<section class="panel" style="max-width:720px">
-      <p class="muted" style="margin-bottom:14px">Escolha quantos clientes inativos entram no disparo. Ao terminar, peça ao Admin Saidera para ativar o “chamar de volta”.</p>
+      <p class="muted" style="margin-bottom:14px">Escolha quantos clientes inativos entram no disparo. Ao terminar, peça ao Admin Saideira para ativar o “chamar de volta”.</p>
       <div class="field"><span>Quantos clientes</span>
         <div class="row wrap" style="margin-top:8px;gap:8px">
           <input id="volta-qtd" type="number" min="1" max="${list.length}" value="${this.volta.qtd}" style="max-width:120px"/>
@@ -1160,7 +1160,7 @@ const EstApp = {
       <div class="field" style="margin-top:14px"><span>Mensagem pronta</span>
         <textarea id="volta-msg" rows="3">${msg}</textarea>
       </div>
-      <button class="btn btn-gold btn-block" style="margin-top:16px" id="pedir-volta">Pedir disparo ao Admin Saidera</button>
+      <button class="btn btn-gold btn-block" style="margin-top:16px" id="pedir-volta">Pedir disparo ao Admin Saideira</button>
     </section>`;
   },
 
@@ -1169,14 +1169,14 @@ const EstApp = {
     const form = this.campForm;
     const modelos = Logic.modelosCampanhaCasa(est);
     const tipos = [
-      ["comparecer", "Comparecer", "Chamar quem já frequenta a casa e usa o app para consumo e retirada da Saidera.", Icons.megaphone()],
+      ["comparecer", "Comparecer", "Chamar quem já frequenta a casa e usa o app para consumo e retirada da Saideira.", Icons.megaphone()],
       ["aniversario", "Aniversário", "Oferta pronta para quem faz aniversário neste mês.", Icons.gift()],
-      ["tampas", "Tampas reduzidas", "Saidera mais rápida: menos Tampas nesta casa.", Icons.tampas()],
+      ["tampas", "Tampas reduzidas", "Saideira mais rápida: menos Tampas nesta casa.", Icons.tampas()],
     ];
     const publicos = [
       ["todos", "Quem frequenta"],
       ["aniversario", "Aniversariantes"],
-      ["quase", "Quase Saidera"],
+      ["quase", "Quase Saideira"],
       ["inativos", "Inativos"],
     ];
     const drinks = (est.bebidas || []).slice(0, 10);
@@ -1187,7 +1187,7 @@ const EstApp = {
     const alteraMeta = form.tipo === "tampas" || form.tipo === "aniversario";
     return `<section class="panel" style="margin-bottom:16px">
       <h3>Nova campanha em massa</h3>
-      <p class="muted" style="margin:6px 0 14px">Escolha o tipo. A mensagem e o público já vêm prontos — ajuste se quiser e envie ao Admin Saidera para validar e disparar.</p>
+      <p class="muted" style="margin:6px 0 14px">Escolha o tipo. A mensagem e o público já vêm prontos — ajuste se quiser e envie ao Admin Saideira para validar e disparar.</p>
       <div class="tipo-pick">
         ${tipos
           .map(
@@ -1237,7 +1237,7 @@ const EstApp = {
           <textarea id="camp-msg" rows="3">${form.mensagem || modelos[form.tipo].mensagem}</textarea>
         </div>
         <p class="notice" style="margin:14px 0">Destinatários estimados: <strong>${estimado.toLocaleString("pt-BR")}</strong> · ${Logic.publicoCampanhaLabel(form.publico)} · ${form.canal}. O Admin vê este pedido e ativa o disparo.</p>
-        <button class="btn btn-gold btn-block" id="enviar-camp-casa">Enviar ao Admin Saidera</button>
+        <button class="btn btn-gold btn-block" id="enviar-camp-casa">Enviar ao Admin Saideira</button>
       </div>`
           : ""
       }
@@ -1334,7 +1334,7 @@ const EstApp = {
     return `<div class="cfg-grid">
     <section class="panel" id="cfg-qr-app">
       <h3>QR do app</h3>
-      <p class="tiny muted" style="margin:6px 0 14px">Imprima e cole na mesa, no balcão ou no cartaz. O cliente lê, cai no cadastro e baixa o Saidera. Quem já tem o app entra direto. Pode repetir este QR quantas vezes quiser.</p>
+      <p class="tiny muted" style="margin:6px 0 14px">Imprima e cole na mesa, no balcão ou no cartaz. O cliente lê, cai no cadastro e baixa o app Saideira. Quem já tem o app entra direto. Pode repetir este QR quantas vezes quiser.</p>
       ${UI.qrApp({ url: convite, casa: est.nome, size: 220 })}
       <p class="tiny" style="margin:14px 0 0;word-break:break-all">${this.esc(convite)}</p>
       <div class="row wrap" style="gap:8px;margin-top:12px">
@@ -1349,7 +1349,7 @@ const EstApp = {
         <select id="cfg-tipo"><option value="bar" ${est.tipo === "bar" ? "selected" : ""}>Bar</option><option value="restaurante" ${est.tipo === "restaurante" ? "selected" : ""}>Restaurante</option></select>
       </div>
       <div class="field" style="margin-top:10px"><span>Horário</span><input id="cfg-hora" placeholder="18h às 2h" value="${this.esc(est.horario || "")}"/></div>
-      <div class="field" style="margin-top:10px"><span>Saidera padrão (Tampas)</span><input id="cfg-meta" type="number" min="1" value="${est.metaPadrao}"/></div>
+      <div class="field" style="margin-top:10px"><span>Saideira padrão (Tampas)</span><input id="cfg-meta" type="number" min="1" value="${est.metaPadrao}"/></div>
       <p class="tiny muted" style="margin:12px 0 8px">Endereço com CEP — o cliente abre no Google Maps.</p>
       <div class="form-grid">
         <div class="field"><span>CEP</span><input id="cfg-cep" inputmode="numeric" maxlength="9" placeholder="49000-000" value="${this.esc(est.cep || "")}"/></div>
@@ -1403,7 +1403,7 @@ const EstApp = {
         return `<p class="tiny muted" style="margin-bottom:10px">Fale com a rede se o cardápio, o QR ou o login não baterem.</p>
           <div class="table-actions">${s.whatsapp ? `<a class="btn btn-gold btn-sm" href="https://wa.me/55${s.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>` : ""}${s.email ? `<a class="btn btn-ghost btn-sm" href="mailto:${s.email}">${s.email}</a>` : ""}</div>`;
       })()}
-      <p class="tiny muted" style="margin-top:16px">Caminho principal: gere o QR, imprima e entregue. O cliente lê no app. Se precisar, leia o QR dele. Para baixar a Saidera, ele informa o ID (SDR-…).</p>
+      <p class="tiny muted" style="margin-top:16px">Caminho principal: gere o QR, imprima e entregue. O cliente lê no app. Se precisar, leia o QR dele. Para baixar a Saideira, ele informa o ID (SDR-…).</p>
     </section>
     </div>`;
   },
@@ -1413,10 +1413,10 @@ const EstApp = {
       UI.modal({
         center: true,
         html: `${UI.celebrate(
-          res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDERA LIBERADA! 🍺",
+          res.ofertaConcluida ? "OFERTA CONCLUÍDA! 🍺" : "SAIDEIRA LIBERADA! 🍺",
           res.ofertaConcluida
             ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo pela regra da casa (${res.metaBar} Tampas): ${res.depois}/${res.meta}.`
-            : `${cliente.primeiroNome} conquistou ${res.ganhas} Saidera de ${bebida.nome}. Ciclo atual: ${res.depois}/${res.meta}.`
+            : `${cliente.primeiroNome} conquistou ${res.ganhas} Saideira de ${bebida.nome}. Ciclo atual: ${res.depois}/${res.meta}.`
         )}
           <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Continuar</button>`,
       });
@@ -1444,7 +1444,7 @@ const EstApp = {
       Brand.dataUrl("10_app_icon_amarelo.png"),
     ]);
     const qr = QR.svg(url, 320, { logo: true, logoSrc: icon });
-    w.document.write(`<!DOCTYPE html><html><head><title>QR Saidera</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>QR Saideira</title>
       <style>
         @page { size: A4 portrait; margin: 8mm; }
         html, body { height: 100%; }
@@ -1497,12 +1497,12 @@ const EstApp = {
         .sub { font-size: 13px; color: #b8b8b8; margin: 12px 0 0; max-width: 42ch; }
       </style></head><body>
       <div class="sheet">
-        <img class="logo" src="${brand}" alt="Saidera"/>
+        <img class="logo" src="${brand}" alt="Saideira"/>
         <p class="kicker">Cadastre-se e baixe o app</p>
         <div class="frame">${qr}</div>
-        <h1>Leia e entre no Saidera</h1>
+        <h1>Leia e entre na Saideira</h1>
         <p class="casa">${casa}</p>
-        <p class="sub">Quem não tem o app cai no cadastro. Quem já tem abre o Saidera.</p>
+        <p class="sub">Quem não tem o app cai no cadastro. Quem já tem abre a Saideira.</p>
       </div>
       </body></html>`);
     w.document.close();
@@ -1843,7 +1843,7 @@ const EstApp = {
   async entregarSai() {
     const raw = this.root.querySelector("#sai-codigo")?.value || "";
     if (!String(raw).trim()) {
-      UI.toast("Digite o ID da Saidera que o cliente mostra no app.");
+      UI.toast("Digite o ID da Saideira que o cliente mostra no app.");
       this.atualizarSaiPreview();
       return;
     }
@@ -1858,8 +1858,8 @@ const EstApp = {
       const c = Logic.clientePorCodigo(d.codigo);
       UI.toast(
         c
-          ? `Isso é o ID de ${c.primeiroNome}, não da Saidera. Peça o código da bebida grátis.`
-          : "Saidera não encontrada nesta casa. Confira o ID."
+          ? `Isso é o ID de ${c.primeiroNome}, não da Saideira. Peça o código da bebida grátis.`
+          : "Saideira não encontrada nesta casa. Confira o ID."
       );
       this.atualizarSaiPreview();
       return;
@@ -2004,7 +2004,7 @@ const EstApp = {
     const est = this.est();
     UI.modal({
       center: true,
-      html: `<h2>Saidera padrão</h2><div class="field" style="margin:12px 0"><span>Tampas</span><input id="meta-pad" type="number" value="${est.metaPadrao}"/></div>
+      html: `<h2>Saideira padrão</h2><div class="field" style="margin:12px 0"><span>Tampas</span><input id="meta-pad" type="number" value="${est.metaPadrao}"/></div>
         <button type="button" class="btn btn-gold btn-block" id="meta-ok">Salvar</button>`,
     });
     document.getElementById("meta-ok")?.addEventListener("click", async () => {
@@ -2085,7 +2085,7 @@ const EstApp = {
       center: true,
       html: `<h2>Pedido de disparo enviado</h2>
         <p class="muted" style="margin:10px 0">Chamar de volta para <strong>${cam.limite} cliente${cam.limite === 1 ? "" : "s"}</strong>.</p>
-        <p class="notice">O Admin Saidera valida e ativa o disparo. Nada entra no app até lá.</p>
+        <p class="notice">O Admin Saideira valida e ativa o disparo. Nada entra no app até lá.</p>
         <button type="button" class="btn btn-gold btn-block" style="margin-top:12px" data-close-modal>Ok</button>`,
     });
   },
@@ -2111,7 +2111,7 @@ const EstApp = {
     const cam = await Logic.solicitarCampanhaCasa(payload);
     UI.modal({
       center: true,
-      html: `<h2>Pedido enviado ao Admin Saidera</h2>
+      html: `<h2>Pedido enviado ao Admin Saideira</h2>
         <p class="muted" style="margin:10px 0 6px">${cam.titulo}</p>
         <p class="small muted">${Logic.publicoCampanhaLabel(cam.publico)} · ${cam.publicoPotencial.toLocaleString("pt-BR")} destinatários · canal ${cam.canal}.</p>
         <p class="notice" style="margin:12px 0">Nada entra no app até o Admin validar e ativar o disparo.</p>

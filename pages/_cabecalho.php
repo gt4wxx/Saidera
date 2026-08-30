@@ -1,6 +1,6 @@
 <?php
 $v = saidera_v();
-$titulo = $titulo ?? 'Saidera';
+$titulo = $titulo ?? 'Saideira';
 $css = $css ?? [];
 ?>
 <!DOCTYPE html>
@@ -24,7 +24,7 @@ $css = $css ?? [];
   <link rel="manifest" href="<?= htmlspecialchars($manifest ?? '../manifest-cliente.webmanifest') ?>"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-title" content="Saidera"/>
+  <meta name="apple-mobile-web-app-title" content="Saideira"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <script src="../assets/js/pwa-captura.js?v=<?= $v ?>"></script>
 <?php endif; ?>

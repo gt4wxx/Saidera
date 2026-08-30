@@ -197,7 +197,7 @@ const ClienteApp = {
     const items = [
       ["explorar", "Explorar", Icons.compass()],
       ["tampas", "Tampas", Icons.tampas()],
-      ["saideras", "Saideras", Icons.gift()],
+      ["saideras", "Saideiras", Icons.gift()],
       ["ofertas", "Ofertas", Icons.flame()],
       ["perfil", "Perfil", Icons.user()],
     ];
@@ -245,9 +245,9 @@ const ClienteApp = {
         <div class="overlay"></div>
         <div class="content">
           <span class="badge badge-gold">VOCÊ GANHOU</span>
-          <h2>Você ganhou uma Saidera! 🍺</h2>
+          <h2>Você ganhou uma Saideira! 🍺</h2>
           <p>${beb.nome} · ${est.nome}</p>
-          <div class="cta-row"><button type="button" class="btn btn-gold btn-sm">Ver Saidera</button></div>
+          <div class="cta-row"><button type="button" class="btn btn-gold btn-sm">Ver Saideira</button></div>
         </div>
       </article>`;
     }
@@ -383,7 +383,7 @@ const ClienteApp = {
     return `${this.top()}
       <p class="muted small">${this.esc(cidade)}</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
-      <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saidera hoje?</p>
+      <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saideira hoje?</p>
       <div class="row" style="gap:8px;margin-bottom:14px">
         <button class="btn btn-gold grow" data-camera-go="#/ler" style="min-height:52px">${Icons.qr()} Ler QR da casa</button>
         <button class="btn btn-dark" data-go="#/qr" style="min-height:52px">Meu QR</button>
@@ -548,7 +548,7 @@ const ClienteApp = {
           ${nota ? `<p class="tiny ${usada ? "muted" : "gold"}">${nota}</p>` : ""}
           <div style="margin:8px 0">${UI.tampas(disp ? meta : atual, meta)}</div>
           ${UI.barra(disp ? meta : atual, meta)}
-          ${disp ? `<span class="badge badge-green" style="margin-top:8px">SAIDERA DISPONÍVEL</span>` : `<p class="small muted" style="margin-top:8px">Faltam ${Math.max(0, meta - atual)}</p>`}
+          ${disp ? `<span class="badge badge-green" style="margin-top:8px">SAIDEIRA DISPONÍVEL</span>` : `<p class="small muted" style="margin-top:8px">Faltam ${Math.max(0, meta - atual)}</p>`}
         </div>`;
       })
       .join("");
@@ -563,7 +563,7 @@ const ClienteApp = {
       </div>
           <div class="row wrap" style="margin-bottom:14px">
         <span class="badge badge-gold">${Logic.tipoEst(e)}</span>
-        ${Logic.patrocinioEm(e.id) ? `<span class="badge badge-navy">Patrocínio ativo</span>` : `<span class="badge badge-navy">Saidera padrão · ${e.metaPadrao} Tampas</span>`}
+        ${Logic.patrocinioEm(e.id) ? `<span class="badge badge-navy">Patrocínio ativo</span>` : `<span class="badge badge-navy">Saideira padrão · ${e.metaPadrao} Tampas</span>`}
         <span class="badge badge-ghost">★ ${e.avaliacao || "—"}</span>
         ${e.horario ? `<span class="badge badge-ghost">${this.esc(e.horario)}</span>` : ""}
       </div>
@@ -623,7 +623,7 @@ const ClienteApp = {
       <div class="pill-tabs" style="margin-bottom:14px">
         <button class="${filtro === "todos" ? "on" : ""}" data-go="#/tampas/todos">Todos</button>
         <button class="${filtro === "quase" ? "on" : ""}" data-go="#/tampas/quase">Quase lá</button>
-        <button class="${filtro === "disp" ? "on" : ""}" data-go="#/tampas/disp">Saidera disponível</button>
+        <button class="${filtro === "disp" ? "on" : ""}" data-go="#/tampas/disp">Saideira disponível</button>
       </div>
       <div class="stack">${cards.length
         ? cards
@@ -636,7 +636,7 @@ const ClienteApp = {
             <div class="row between" style="margin-top:10px">
               ${
                 disp.length
-                  ? `<span class="badge badge-green">SAIDERA DISPONÍVEL</span><button class="btn btn-gold btn-sm" data-go="#/saideras">Ver Saidera</button>`
+                  ? `<span class="badge badge-green">SAIDEIRA DISPONÍVEL</span><button class="btn btn-gold btn-sm" data-go="#/saideras">Ver Saideira</button>`
                   : `<span class="muted small">${falta === 1 ? "Falta 1" : "Faltam " + falta}</span><button class="btn btn-dark btn-sm" data-go="#/est/${e.id}">Ver bar</button>`
               }
             </div>
@@ -645,7 +645,7 @@ const ClienteApp = {
         .join("")
         : this.vazio(
             filtro === "todos" ? "Nenhuma Tampa ainda" : "Nada neste filtro",
-            filtro === "todos" ? "Leia o QR da casa quando pedir. O progresso aparece aqui, por bar e por bebida." : "Quando uma cartela chegar perto ou liberar Saidera, ela entra nesta aba.",
+            filtro === "todos" ? "Leia o QR da casa quando pedir. O progresso aparece aqui, por bar e por bebida." : "Quando uma cartela chegar perto ou liberar Saideira, ela entra nesta aba.",
             "Ler QR da casa",
             "#/ler"
           )}</div>`;
@@ -656,7 +656,7 @@ const ClienteApp = {
     const tab = this.params.id || "disponiveis";
     const filtro = tab === "utilizadas" ? "utilizada" : tab === "expiradas" ? "expirada" : "disponivel";
     const list = Logic.saiderasDe(me.id, filtro);
-    return `${this.top(`<h1>Minhas Saideras</h1><p class="tiny muted">Cada Saidera vale ${Logic.diasValidade()} dias depois de conquistada.</p>`)}
+    return `${this.top(`<h1>Minhas Saideiras</h1><p class="tiny muted">Cada Saideira vale ${Logic.diasValidade()} dias depois de conquistada.</p>`)}
       <div class="pill-tabs" style="margin:12px 0">
         <button class="${tab === "disponiveis" ? "on" : ""}" data-go="#/saideras/disponiveis">Disponíveis</button>
         <button class="${tab === "utilizadas" ? "on" : ""}" data-go="#/saideras/utilizadas">Utilizadas</button>
@@ -670,12 +670,12 @@ const ClienteApp = {
                 const b = Logic.bebida(s.bebidaId);
                 const urgente = s.status === "disponivel" && Logic.diasRestantesSaidera(s) <= 3;
                 return `<article class="saidera-card ${s.status}">
-                  <span class="badge ${s.status === "disponivel" ? (urgente ? "badge-gold" : "badge-green") : "badge-ghost"}">${s.status === "disponivel" ? "SAIDERA DISPONÍVEL" : s.status === "expirada" ? "EXPIRADA" : "UTILIZADA"}</span>
+                  <span class="badge ${s.status === "disponivel" ? (urgente ? "badge-gold" : "badge-green") : "badge-ghost"}">${s.status === "disponivel" ? "SAIDEIRA DISPONÍVEL" : s.status === "expirada" ? "EXPIRADA" : "UTILIZADA"}</span>
                   <h2 style="margin:8px 0 2px">${b.nome}</h2>
                   <p class="muted">${e.nome}</p>
                   <p class="small" style="margin:8px 0">Conquistada em: ${Logic.fmtDate(s.conquistadaEm)}</p>
                   <p class="small ${urgente ? "gold" : "muted"}">${Logic.validadeLabel(s)}${s.expiraEm ? " · " + Logic.fmtDate(s.expiraEm) : ""}</p>
-                  <p class="saidera-id">ID da Saidera</p>
+                  <p class="saidera-id">ID da Saideira</p>
                   <p class="saidera-code">${this.esc(s.codigo)}</p>
                   ${s.status === "disponivel" ? `<p class="small muted" style="margin-top:8px">Mostre este ID à casa para retirar. Se pedirem, mostre também o seu QR.</p>
                   <div class="row" style="gap:8px;margin-top:12px">
@@ -686,10 +686,10 @@ const ClienteApp = {
               })
               .join("")
           : this.vazio(
-              tab === "disponiveis" ? "Nenhuma Saidera pronta" : "Nada nesta aba",
+              tab === "disponiveis" ? "Nenhuma Saideira pronta" : "Nada nesta aba",
               tab === "disponiveis"
-                ? "Complete as Tampas no bar. Quando bater a meta, o ID da Saidera aparece aqui para você retirar."
-                : "Quando você retirar ou uma Saidera vencer, o registro fica nesta lista.",
+                ? "Complete as Tampas no bar. Quando bater a meta, o ID da Saideira aparece aqui para você retirar."
+                : "Quando você retirar ou uma Saideira vencer, o registro fica nesta lista.",
               "Ver minhas Tampas",
               "#/tampas"
             )
@@ -701,11 +701,11 @@ const ClienteApp = {
     const camps = Logic.campanhasPatrocinio(this.me().id);
     const extra = Store.all("notificacoes").filter((n) => n.clienteId === this.me().id && n.tipo === "oferta" && n.campanhaId);
     if (!camps.length) {
-      return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhuma campanha ativa para você no momento.</p>`)}
+      return `${this.top(`<h1>Ofertas e Saideiras 🔥</h1><p class="muted" style="margin:6px 0 14px">Nenhuma campanha ativa para você no momento.</p>`)}
         ${Brand.banner("story", "brand-story")}
-        <p class="notice" style="margin-top:14px">Quando o Admin Saidera ativar um pedido do bar ou um patrocínio de marca, a oferta aparece aqui.</p>`;
+        <p class="notice" style="margin-top:14px">Quando o Admin Saideira ativar um pedido do bar ou um patrocínio de marca, a oferta aparece aqui.</p>`;
     }
-    return `${this.top(`<h1>Ofertas e Saideras 🔥</h1><p class="muted" style="margin:6px 0 14px">Campanhas ativas · Aracaju</p>`)}
+    return `${this.top(`<h1>Ofertas e Saideiras 🔥</h1><p class="muted" style="margin:6px 0 14px">Campanhas ativas · Aracaju</p>`)}
       ${Brand.banner("secundario", "brand-banner")}
       ${camps
         .map((c, i) => {
@@ -735,7 +735,7 @@ const ClienteApp = {
     const c = Store.find("campanhas", this.params.id);
     if (!c || c.status !== "ativa" || !c.disparada) {
       return `${this.back("Oferta")}
-        <p class="muted">Esta oferta ainda não foi ativada pelo Admin Saidera.</p>
+        <p class="muted">Esta oferta ainda não foi ativada pelo Admin Saideira.</p>
         <button class="btn btn-gold" data-go="#/ofertas">Ver ofertas</button>`;
     }
     if (!Logic.clienteNaOferta(this.me().id, c.id)) Logic.aderirCampanha(this.me().id, c.id);
@@ -755,7 +755,7 @@ const ClienteApp = {
             ? `<h2>${Logic.bebida(c.bebidaId)?.nome} · ${c.metaTampas} Tampas</h2>
         <p class="small muted" style="margin-top:6px">${daCasa && c.publico === "aniversario" ? "Oferta de aniversário: uso único nesta casa." : "Uso único em cada casa: ao bater a meta da oferta, aquele bar volta à quantidade de Tampas da casa."}</p>`
             : `<h2>Compareça e mostre o QR</h2>
-        <p class="small muted" style="margin-top:6px">Continue suas Tampas e retire sua Saidera nesta casa.</p>`
+        <p class="small muted" style="margin-top:6px">Continue suas Tampas e retire sua Saideira nesta casa.</p>`
         }
       </div>
       <h2 style="margin-bottom:10px">${daCasa ? "Nesta casa" : "Bares e restaurantes da oferta"}</h2>
@@ -765,7 +765,7 @@ const ClienteApp = {
             return `<article class="card pad" data-go="#/est/${e.id}" style="cursor:pointer">
             <p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p>
             <h3>${e.nome}</h3>
-            <p class="tiny gold" style="margin-top:8px">Mostre o QR no salão para consumo e retirada da Saidera.</p>
+            <p class="tiny gold" style="margin-top:8px">Mostre o QR no salão para consumo e retirada da Saideira.</p>
           </article>`;
           }
           const p = Logic.progresso(me.id, e.id, c.bebidaId);
@@ -812,7 +812,7 @@ const ClienteApp = {
       </div>
       <div class="grid-3" style="margin-bottom:16px">
         <div class="kpi"><b>${m.tampas}</b><span>Tampas</span></div>
-        <div class="kpi"><b>${m.saideras}</b><span>Saideras</span></div>
+        <div class="kpi"><b>${m.saideras}</b><span>Saideiras</span></div>
         <div class="kpi"><b>${m.estabelecimentos}</b><span>Bares</span></div>
       </div>
       <div class="card pad" style="margin-bottom:12px">
@@ -844,7 +844,7 @@ const ClienteApp = {
   conta() {
     const me = this.me();
     return `${this.back("Meus dados")}
-      <p class="muted" style="margin-bottom:14px">Isso aparece para as casas quando você pede e quando elas baixam a sua Saidera.</p>
+      <p class="muted" style="margin-bottom:14px">Isso aparece para as casas quando você pede e quando elas baixam a sua Saideira.</p>
       <div class="stack" style="align-items:center;text-align:center;margin-bottom:16px">
         <img class="avatar" src="${this.foto(me.avatar)}" style="width:96px;height:96px;border-radius:28px;object-fit:cover" alt=""/>
         <label class="btn btn-gold btn-sm" style="margin-top:10px">
@@ -945,7 +945,7 @@ const ClienteApp = {
     UI.modal({
       center: true,
       html: `${UI.celebrate(
-        res.ganhas ? "SAIDERA LIBERADA! 🍺" : "TAMPAS ADICIONADAS",
+        res.ganhas ? "SAIDEIRA LIBERADA! 🍺" : "TAMPAS ADICIONADAS",
         `${itens} no ${res.est.nome}.`
       )}<button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ver minhas Tampas</button>`,
     });
@@ -973,7 +973,7 @@ const ClienteApp = {
 
   qr() {
     const me = this.me();
-    return `${this.back("Meu Saidera")}
+    return `${this.back("Minha Saideira")}
       <div class="qr-stage">
         ${Brand.simbolo(72)}
         ${UI.qrSvg(me.codigo)}
@@ -1013,7 +1013,7 @@ const ClienteApp = {
         <span>Receber ofertas de marcas da rede</span>
         <input type="checkbox" data-pref="perfilPublico" ${prefs.perfilPublico !== false ? "checked" : ""}/>
       </label>
-      <p class="muted small" style="margin-top:12px">As casas onde você pede continuam vendo o seu progresso — é assim que as Tampas e a Saidera funcionam. Se desligar, as campanhas de marca deixam de aparecer para você.</p>`;
+      <p class="muted small" style="margin-top:12px">As casas onde você pede continuam vendo o seu progresso — é assim que as Tampas e a Saideira funcionam. Se desligar, as campanhas de marca deixam de aparecer para você.</p>`;
   },
 
   notificacoes() {
@@ -1036,7 +1036,7 @@ const ClienteApp = {
           </article>`
               )
               .join("")
-          : this.vazio("Caixa vazia", "Quando você ganhar Tampas, Saidera ou uma oferta, o aviso cai aqui.", "Ver ofertas", "#/ofertas")
+          : this.vazio("Caixa vazia", "Quando você ganhar Tampas, Saideira ou uma oferta, o aviso cai aqui.", "Ver ofertas", "#/ofertas")
       }`;
   },
 

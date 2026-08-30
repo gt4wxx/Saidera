@@ -1,5 +1,5 @@
 /**
- * Gera todos os JSON de demonstração do Saidera.
+ * Gera todos os JSON de demonstração da Saideira.
  * IDs fixos do fluxo comercial:
  *   cli-001 Ellisson  |  est-001 Bar do Farol  |  par-001 Heineken (demo)
  *   beb-001 Heineken (meta 8 no Farol)  |  7 tampas iniciais
@@ -402,12 +402,12 @@ const bebidas = [
 
 const PROMOCOES = [
   "Happy hour até 20h",
-  "Saidera acelerada nesta semana",
+  "Saideira acelerada nesta semana",
   "Dobro de Tampas na sexta",
   "Chopp em destaque",
   "Noite especial na orla",
   "Almoço com Tampa em dobro",
-  "Menu executivo + Saidera",
+  "Menu executivo + Saideira",
   "Rodízio com meta reduzida",
   null,
   null,
@@ -491,7 +491,7 @@ const estabelecimentos = EST_NOMES.map(([nome, bairroNome, tipoNome], i) => {
     aberto: i % 11 !== 10,
     horario: tipo === "restaurante" ? pick(["11h às 23h", "12h às 00h", "11h às 22h"]) : "18h às 02h",
     metaPadrao,
-    promocao: i === 0 ? "Heineken com Saidera em 8 Tampas" : pick(PROMOCOES),
+    promocao: i === 0 ? "Heineken com Saideira em 8 Tampas" : pick(PROMOCOES),
     clientes: i === 0 ? 1284 : randInt(80, 980),
     tampas: i === 0 ? 18921 : randInt(400, 9000),
     saideras: i === 0 ? 1742 : randInt(20, 700),
@@ -728,7 +728,7 @@ const parceiros = PARCEIRO_NOMES.map(([nome, categoria], i) => ({
 
 const campanhas = [];
 const campanhaTitulos = [
-  ["Saidera Heineken — Agosto", "par-001", "ativa"],
+  ["Saideira Heineken — Agosto", "par-001", "ativa"],
   ["Fim de semana Budweiser", "par-002", "ativa"],
   ["Stella na Orla", "par-003", "ativa"],
   ["Happy Hour Demo", "par-001", "ativa"],
@@ -758,13 +758,13 @@ campanhaTitulos.forEach(([titulo, parceiroId, status], i) => {
     status,
     mensagem:
       i === 0
-        ? "Essa semana sua Saidera chega mais rápido."
+        ? "Essa semana sua Saideira chega mais rápido."
         : i === 1
-          ? "Seu fim de semana merece uma Saidera."
+          ? "Seu fim de semana merece uma Saideira."
           : pick([
               "Acelere suas Tampas neste mês.",
               "Uma rodada especial te espera.",
-              "Sua próxima Saidera está mais perto.",
+              "Sua próxima Saideira está mais perto.",
               "Noite dourada nos bares participantes.",
             ]),
     metaTampas: i === 0 ? 6 : i === 1 ? 5 : pick([5, 6, 8, 10]),
@@ -785,7 +785,7 @@ const notificacoes = [
     id: "ntf-001",
     clienteId: "cli-001",
     titulo: "Falta só 1 Tampa!",
-    texto: "Heineken no Bar do Farol. Sua Saidera está a uma Tampa de distância.",
+    texto: "Heineken no Bar do Farol. Sua Saideira está a uma Tampa de distância.",
     tipo: "progresso",
     lida: false,
     criadoEm: isoDaysAgo(0, 12),
@@ -793,8 +793,8 @@ const notificacoes = [
   {
     id: "ntf-002",
     clienteId: "cli-001",
-    titulo: "Saidera disponível",
-    texto: "Você conquistou uma Saidera de Stella Artois no Chopp Jardins.",
+    titulo: "Saideira disponível",
+    texto: "Você conquistou uma Saideira de Stella Artois no Chopp Jardins.",
     tipo: "saidera",
     lida: false,
     criadoEm: isoDaysAgo(0, 18),
@@ -803,7 +803,7 @@ const notificacoes = [
     id: "ntf-003",
     clienteId: "cli-001",
     titulo: "Oferta Heineken",
-    texto: "Essa semana sua Saidera chega mais rápido em 3 bares da orla.",
+    texto: "Essa semana sua Saideira chega mais rápido em 3 bares da orla.",
     tipo: "oferta",
     lida: true,
     criadoEm: isoDaysAgo(1, 9),
@@ -811,13 +811,13 @@ const notificacoes = [
 ];
 
 const ntfExtras = [
-  ["Bem-vindo ao Saidera", "Sua conta está pronta. Mostre o QR Code no bar e comece a juntar Tampas.", "sistema"],
+  ["Bem-vindo à Saideira", "Sua conta está pronta. Mostre o QR Code no bar e comece a juntar Tampas.", "sistema"],
   ["Point Orla te espera", "Budweiser com meta especial de 6 Tampas.", "oferta"],
-  ["Você visitou 9 estabelecimentos", "Continue explorando Aracaju e desbloqueie novas Saideras.", "sistema"],
+  ["Você visitou 9 estabelecimentos", "Continue explorando Aracaju e desbloqueie novas Saideiras.", "sistema"],
   ["Aniversariantes no Farol", "O Bar do Farol preparou uma surpresa para aniversariantes do mês.", "oferta"],
   ["Tampas registradas", "João Silva registrou 2 Heineken para você ontem à noite.", "progresso"],
-  ["Nova casa no app", "Atalaia Deck acabou de entrar no Saidera.", "sistema"],
-  ["Quase lá no Beer House", "Você está a 3 Tampas da Saidera de Heineken.", "progresso"],
+  ["Nova casa no app", "Atalaia Deck acabou de entrar na Saideira.", "sistema"],
+  ["Quase lá no Beer House", "Você está a 3 Tampas da Saideira de Heineken.", "progresso"],
   ["Campanha da orla", "Sunset Atalaia com meta reduzida até domingo.", "oferta"],
 ];
 ntfExtras.forEach((n, i) => {
@@ -836,9 +836,9 @@ for (let i = notificacoes.length; i < 30; i++) {
   notificacoes.push({
     id: `ntf-${pad(i + 1)}`,
     clienteId: c.id,
-    titulo: pick(["Você está quase lá", "Nova oferta na sua região", "Saidera disponível", "Bar novo perto de você"]),
+    titulo: pick(["Você está quase lá", "Nova oferta na sua região", "Saideira disponível", "Bar novo perto de você"]),
     texto: pick([
-      "Faltam poucas Tampas para a próxima Saidera.",
+      "Faltam poucas Tampas para a próxima Saideira.",
       "Uma marca demonstrativa acelerou a meta nesta semana.",
       "Passe no estabelecimento e mostre seu QR Code.",
       "Explore os bares da orla e junte Tampas.",
@@ -894,7 +894,7 @@ const audiencias = [
 const meta = {
   versao: "1.0.0",
   geradoEm: "2026-08-19T12:00:00.000Z",
-  aviso: "Todos os dados são fictícios e destinam-se exclusivamente à demonstração comercial do Saidera.",
+  aviso: "Todos os dados são fictícios e destinam-se exclusivamente à demonstração comercial da Saideira.",
   cidade: "Aracaju/SE",
   demo: {
     clienteId: "cli-001",

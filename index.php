@@ -82,11 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Saidera</title>
+  <title>Saideira</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=25"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=25"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=35"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=35"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <meta name="theme-color" content="#171717"/>
 </head>
@@ -109,10 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
     </section>
   </main>
-  <script src="assets/js/icons.js?v=25"></script>
-  <script src="assets/js/ui.js?v=25"></script>
+  <script src="assets/js/icons.js?v=35"></script>
+  <script src="assets/js/ui.js?v=35"></script>
   <script>
-    document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Saidera</span>`;
+    document.getElementById("landing-brand").innerHTML = `${Brand.principal()}<span class="badge badge-navy" style="margin-top:10px">Saideira</span>`;
   </script>
 </body>
 </html>

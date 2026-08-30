@@ -340,7 +340,7 @@ const Logic = {
       { id: "registrar", nome: "Gerar QR" },
       { id: "atender", nome: "QR do cliente" },
       { id: "bebidas", nome: "Bebidas" },
-      { id: "saideras", nome: "Saideras" },
+      { id: "saideras", nome: "Saideiras" },
       { id: "funcionarios", nome: "Funcionários" },
       { id: "inteligencia", nome: "Conheça seus clientes" },
       { id: "campanhas", nome: "Campanhas" },
@@ -574,7 +574,7 @@ const Logic = {
         todos: "Quem frequenta e usa o app",
         aniversario: "Aniversariantes do mês",
         inativos: "Sem retornar há 30 dias",
-        quase: "Próximos da Saidera",
+        quase: "Próximos da Saideira",
       }[publico] || "Público da casa"
     );
   },
@@ -585,7 +585,7 @@ const Logic = {
       comparecer: {
         tipo: "comparecer",
         titulo: `Sua mesa te espera no ${nome}`,
-        mensagem: `Sua mesa te espera no ${nome}. Mostre o QR, continue suas Tampas e retire sua Saidera aqui.`,
+        mensagem: `Sua mesa te espera no ${nome}. Mostre o QR, continue suas Tampas e retire sua Saideira aqui.`,
         publico: "todos",
         metaTampas: null,
         alteraMeta: false,
@@ -593,15 +593,15 @@ const Logic = {
       aniversario: {
         tipo: "aniversario",
         titulo: `Aniversário no ${nome}`,
-        mensagem: `Feliz aniversário! Neste mês sua Saidera chega mais rápido no ${nome}. Mostre o QR e aproveite.`,
+        mensagem: `Feliz aniversário! Neste mês sua Saideira chega mais rápido no ${nome}. Mostre o QR e aproveite.`,
         publico: "aniversario",
         metaTampas: 6,
         alteraMeta: true,
       },
       tampas: {
         tipo: "tampas",
-        titulo: `Saidera acelerada no ${nome}`,
-        mensagem: `Essa semana sua Saidera chega mais rápido no ${nome}. Mostre o QR, complete as Tampas e retire sua rodada.`,
+        titulo: `Saideira acelerada no ${nome}`,
+        mensagem: `Essa semana sua Saideira chega mais rápido no ${nome}. Mostre o QR, complete as Tampas e retire sua rodada.`,
         publico: "todos",
         metaTampas: 6,
         alteraMeta: true,
@@ -609,7 +609,7 @@ const Logic = {
       chamar: {
         tipo: "chamar",
         titulo: `Chamar de volta · ${nome}`,
-        mensagem: `Sua mesa te espera no ${nome}. Faz tempo que você não aparece. Mostre o QR, continue suas Tampas e retire sua Saidera aqui.`,
+        mensagem: `Sua mesa te espera no ${nome}. Faz tempo que você não aparece. Mostre o QR, continue suas Tampas e retire sua Saideira aqui.`,
         publico: "inativos",
         metaTampas: null,
         alteraMeta: false,
@@ -775,7 +775,7 @@ const Logic = {
         parceiroId: cam.parceiroId,
         campanhaId: cam.id,
         titulo: `Oferta de ${par?.nome || "parceiro"}`,
-        texto: `${par?.nome || "Um parceiro"} fez uma oferta de ${cam.metaTampas} Tampas para a Saidera de ${beb?.nome || "bebida"} ${periodo}.`,
+        texto: `${par?.nome || "Um parceiro"} fez uma oferta de ${cam.metaTampas} Tampas para a Saideira de ${beb?.nome || "bebida"} ${periodo}.`,
         lida: false,
         criadoEm: new Date().toISOString(),
       });
@@ -868,7 +868,7 @@ const Logic = {
     exp.setDate(exp.getDate() + this.diasValidade());
     rec.expiraEm = exp.toISOString();
     Store.data.saideras.unshift(rec);
-    this.auditar("Saidera conquistada", `${this.cliente(clienteId)?.primeiroNome || ""} · ${this.bebida(bebidaId)?.nome || ""}`);
+    this.auditar("Saideira conquistada", `${this.cliente(clienteId)?.primeiroNome || ""} · ${this.bebida(bebidaId)?.nome || ""}`);
     return rec;
   },
 
@@ -941,7 +941,7 @@ const Logic = {
               campanhaId: campanha.id,
             });
           }
-          est.promocao = `${beb?.nome || "Oferta"} com Saidera em ${meta} Tampas`;
+          est.promocao = `${beb?.nome || "Oferta"} com Saideira em ${meta} Tampas`;
         });
       }
       Store.all("tampas")

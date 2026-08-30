@@ -30,8 +30,8 @@ const ParceiroApp = {
       this.sol = {
         bebidaId: drinks[0]?.id || Logic.primeiraBebida()?.id || null,
         meta: 6,
-        obj: "Acelerar Saidera",
-        msg: "Essa semana sua Saidera chega mais rápido.",
+        obj: "Acelerar Saideira",
+        msg: "Essa semana sua Saideira chega mais rápido.",
         inicio: per.inicio,
         fim: per.fim,
         umDia: false,
@@ -108,13 +108,13 @@ const ParceiroApp = {
         ["Clientes alcançados", p.clientesAlcancados.toLocaleString("pt-BR")],
         ["Participações", p.participacoes.toLocaleString("pt-BR")],
         ["Tampas registradas", p.tampas.toLocaleString("pt-BR")],
-        ["Saideras", p.saideras.toLocaleString("pt-BR")],
+        ["Saideiras", p.saideras.toLocaleString("pt-BR")],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${v}</b></div>`)
         .join("")}
     </div>
     <section class="panel">
-      <h3>Evolução de Saideras — Agosto (demo)</h3>
+      <h3>Evolução de Saideiras — Agosto (demo)</h3>
       ${UI.lineChart(week.values, week.labels)}
     </section>`;
   },
@@ -190,7 +190,7 @@ const ParceiroApp = {
         ["Estabelecimentos", c.estabelecimentos.length],
         ["Público potencial", c.publicoPotencial.toLocaleString("pt-BR")],
         ["Participantes", c.participantes.toLocaleString("pt-BR")],
-        ["Saideras", c.saideras.toLocaleString("pt-BR")],
+        ["Saideiras", c.saideras.toLocaleString("pt-BR")],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${v}</b></div>`)
         .join("")}
@@ -217,11 +217,11 @@ const ParceiroApp = {
     const selected = s.selected.filter((id) => ests.some((e) => e.id === id));
     s.selected = selected;
     return `<section class="panel" style="max-width:760px">
-      <p class="muted" style="margin-bottom:12px">Só aparecem bares e restaurantes que já vendem a bebida desta marca. O Admin Saidera ainda precisa ativar o disparo.</p>
+      <p class="muted" style="margin-bottom:12px">Só aparecem bares e restaurantes que já vendem a bebida desta marca. O Admin Saideira ainda precisa ativar o disparo.</p>
       <div class="form-grid">
         <div class="field"><span>Objetivo</span>
           <select id="obj">
-            ${["Acelerar Saidera", "Lançamento de produto", "Reativar inativos", "Aumentar penetração"]
+            ${["Acelerar Saideira", "Lançamento de produto", "Reativar inativos", "Aumentar penetração"]
               .map((o) => `<option ${s.obj === o ? "selected" : ""}>${o}</option>`)
               .join("")}
           </select>
@@ -240,7 +240,7 @@ const ParceiroApp = {
         <textarea id="msg" rows="3">${s.msg}</textarea>
       </div>
       <h3 style="margin:16px 0 8px">Casas que vendem ${beb?.nome || "esta bebida"}</h3>
-      <p class="tiny muted">${ests.length} bar${ests.length === 1 ? "" : "es"} e restaurante${ests.length === 1 ? "" : "s"} no Saidera. Escolha com quem fazer a parceria.</p>
+      <p class="tiny muted">${ests.length} bar${ests.length === 1 ? "" : "es"} e restaurante${ests.length === 1 ? "" : "s"} na Saideira. Escolha com quem fazer a parceria.</p>
       <div class="search" style="margin:10px 0">${Icons.search()}<input id="sol-busca" placeholder="Filtrar por nome ou bairro" value="${(s.busca || "").replace(/"/g, "&quot;")}"/></div>
       <div class="row wrap" style="margin-bottom:8px;gap:8px">
         <button type="button" class="btn btn-dark btn-sm" id="sel-visiveis">Selecionar visíveis</button>
@@ -257,7 +257,7 @@ const ParceiroApp = {
             .join("") || "<p class='muted' style='padding:12px'>Nenhuma casa vende esta bebida na demonstração.</p>"
         }
       </div>
-      <button class="btn btn-gold btn-block" style="margin-top:16px" id="enviar-sol">Enviar solicitação ao Saidera</button>
+      <button class="btn btn-gold btn-block" style="margin-top:16px" id="enviar-sol">Enviar solicitação à Saideira</button>
     </section>`;
   },
 
@@ -336,7 +336,7 @@ const ParceiroApp = {
       UI.modal({
         center: true,
         html: `<h2>Solicitação enviada para análise.</h2>
-          <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas. O Admin Saidera ainda precisa ativar o disparo.</p>
+          <p class="muted" style="margin:10px 0">As ${selected.length} casas foram avisadas. O Admin Saideira ainda precisa ativar o disparo.</p>
           <button type="button" class="btn btn-gold btn-block" data-close-modal>Ok</button>`,
       });
     } catch (err) {

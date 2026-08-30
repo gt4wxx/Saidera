@@ -30,17 +30,17 @@ const Brand = {
       return abs;
     }
   },
-  img(file, cls = "", alt = "Saidera") {
+  img(file, cls = "", alt = "Saideira") {
     return `<img class="${cls}" src="${this.src(file)}" alt="${alt}"/>`;
   },
   mark(size = 38) {
-    return `<img class="brand-mark" src="${this.src("11_app_icon_preto.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+    return `<img class="brand-mark" src="${this.src("11_app_icon_preto.png")}" alt="Saideira" width="${size}" height="${size}"/>`;
   },
   markGold(size = 64) {
-    return `<img class="brand-mark" src="${this.src("10_app_icon_amarelo.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+    return `<img class="brand-mark" src="${this.src("10_app_icon_amarelo.png")}" alt="Saideira" width="${size}" height="${size}"/>`;
   },
   simbolo(size = 56) {
-    return `<img class="brand-simbolo" src="${this.src("02_simbolo_logo.png")}" alt="Saidera" width="${size}" height="${size}"/>`;
+    return `<img class="brand-simbolo" src="${this.src("02_simbolo_logo.png")}" alt="Saideira" width="${size}" height="${size}"/>`;
   },
   horizontal(cls = "brand-h") {
     return this.img("03_logo_horizontal.png", cls);
@@ -55,7 +55,7 @@ const Brand = {
         : tipo === "secundario"
           ? "08_banner_secundario.png"
           : "07_banner_principal.png";
-    return `<img class="${cls}" src="${this.kitDir()}/${file}" alt="Saidera"/>`;
+    return `<img class="${cls}" src="${this.kitDir()}/${file}" alt="Saideira"/>`;
   },
   sideHead(role) {
     return `<div class="brand-side pad">
@@ -248,9 +248,9 @@ const UI = {
       <div class="qr-app-brand">${Brand.horizontal("brand-h brand-h-qr")}</div>
       <p class="qr-app-kicker">Cadastre-se e baixe o app</p>
       <div class="qr-app-frame">${qr}</div>
-      <h3 class="qr-app-title">Leia e entre no Saidera</h3>
+      <h3 class="qr-app-title">Leia e entre na Saideira</h3>
       ${casaTxt ? `<p class="qr-app-casa">${casaTxt}</p>` : ""}
-      <p class="qr-app-sub">Quem não tem o app cai no cadastro. Quem já tem abre o Saidera.</p>
+      <p class="qr-app-sub">Quem não tem o app cai no cadastro. Quem já tem abre a Saideira.</p>
     </div>`;
   },
 
@@ -472,10 +472,10 @@ const UI = {
   ajudaPermissao(tipo) {
     const oque = tipo === "camera" ? "Câmera" : "Localização";
     if (this.pwaIos()) {
-      return `No iPhone: Ajustes → Saidera (ou Safari) → ${oque} → Permitir.`;
+      return `No iPhone: Ajustes → Saideira (ou Safari) → ${oque} → Permitir.`;
     }
     if (this.pwaStandalone()) {
-      return `No Android: mantenha o ícone Saidera → Informações do app → Permissões → ${oque} → Permitir.`;
+      return `No Android: mantenha o ícone Saideira → Informações do app → Permissões → ${oque} → Permitir.`;
     }
     return `No Android: toque no cadeado do Chrome → Permissões → ${oque} → Permitir. Ou menu ⋮ → Configurações do site.`;
   },
@@ -527,7 +527,7 @@ const UI = {
             <img src="${icon}" alt=""/>
             <div>
               <p class="tiny muted">Permissão do iPhone</p>
-              <h2 id="pwa-ios-tit">Adicionar o Saidera à tela inicial?</h2>
+              <h2 id="pwa-ios-tit">Adicionar a Saideira à tela inicial?</h2>
             </div>
           </div>
           <p class="muted" style="margin:12px 0 14px">O iPhone não abre o aviso sozinho. Autorize aqui e confirme nos 2 toques do Safari — o item fica <strong>no fim</strong> da lista de compartilhar.</p>
@@ -545,7 +545,7 @@ const UI = {
             <img src="${icon}" alt=""/>
             <div>
               <p class="tiny muted">Permissão do iPhone</p>
-              <h2 id="pwa-ios-tit">Adicionar o Saidera à tela inicial?</h2>
+              <h2 id="pwa-ios-tit">Adicionar a Saideira à tela inicial?</h2>
             </div>
           </div>
           <p class="muted" style="margin:12px 0 14px">Este navegador <strong>não mostra</strong> “Adicionar à Tela de Início”. A permissão só existe no <strong>Safari</strong>.</p>
@@ -576,7 +576,7 @@ const UI = {
   pwaBox() {
     if (this.pwaStandalone()) return "";
     return `<div class="pwa-box" data-pwa-box>
-      <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar o Saidera</button>
+      <button class="btn btn-gold btn-block" type="button" data-pwa-install>Instalar a Saideira</button>
       <p class="tiny muted" style="margin-top:8px">${this.pwaIos() ? "No iPhone a permissão abre aqui. Depois confirme no Safari." : "Opcional. Chrome ou Edge no celular ou no PC."}</p>
     </div>`;
   },
@@ -603,7 +603,7 @@ const UI = {
         window.SaideraPwa.ev = null;
         window.SaideraPwa.installed = true;
       }
-      this.toast("Saidera instalado neste aparelho.");
+      this.toast("Saideira instalada neste aparelho.");
       document.querySelectorAll("[data-pwa-box]").forEach((el) => el.classList.add("hidden"));
     });
   },
@@ -627,7 +627,7 @@ const UI = {
         .then((c) => {
           if (c.outcome === "accepted") {
             if (window.SaideraPwa) window.SaideraPwa.installed = true;
-            this.toast("Saidera instalado. Abra pelo ícone.");
+            this.toast("Saideira instalada. Abra pelo ícone.");
           }
         })
         .catch(() => {});

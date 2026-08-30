@@ -1,7 +1,7 @@
 {
   "id": "saidera-cliente",
-  "name": "Saidera",
-  "short_name": "Saidera",
+  "name": "Saideira",
+  "short_name": "Saideira",
   "description": "Fidelização para a noite de Aracaju.",
   "start_url": "pages/cliente.php",
   "scope": ".",
