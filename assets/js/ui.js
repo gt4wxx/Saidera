@@ -473,9 +473,6 @@ const UI = {
   pwaInit() {
     if (this._pwaReady) return;
     this._pwaReady = true;
-    if ("serviceWorker" in navigator && this.pwaCliente()) {
-      navigator.serviceWorker.register(this.pwaSwUrl()).catch(() => {});
-    }
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       this._pwaPrompt = e;

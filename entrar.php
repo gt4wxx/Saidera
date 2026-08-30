@@ -41,19 +41,12 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <script>
-    window.SaideraPwa = window.SaideraPwa || { ev: null, installed: false };
-    window.addEventListener("beforeinstallprompt", function (e) {
-      e.preventDefault();
-      window.SaideraPwa.ev = e;
-    });
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
-  </script>
+  <script src="assets/js/pwa-captura.js?v=25"></script>
   <title>Saidera · Entrar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/app.css?v=24"/>
-  <link rel="stylesheet" href="assets/css/client.css?v=24"/>
+  <link rel="stylesheet" href="assets/css/app.css?v=25"/>
+  <link rel="stylesheet" href="assets/css/client.css?v=25"/>
   <link rel="icon" type="image/png" href="assets/brand/icon-192.png"/>
   <link rel="apple-touch-icon" href="assets/brand/apple-touch.png"/>
   <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png"/>
@@ -64,7 +57,6 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Saidera"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <script src="assets/js/pwa-captura.js?v=24"></script>
 </head>
 <body>
   <main class="landing">
@@ -105,9 +97,9 @@ $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
     window.SAIDERA_CLIENTE_LOGADO = <?= $clienteLogado ? 'true' : 'false' ?>;
     window.SAIDERA_CASA_CONVITE = <?= json_encode($casa) ?>;
   </script>
-  <script src="assets/js/icons.js?v=24"></script>
-  <script src="assets/js/api.js?v=24"></script>
-  <script src="assets/js/ui.js?v=24"></script>
-  <script src="assets/js/entrar.js?v=24"></script>
+  <script src="assets/js/icons.js?v=25"></script>
+  <script src="assets/js/api.js?v=25"></script>
+  <script src="assets/js/ui.js?v=25"></script>
+  <script src="assets/js/entrar.js?v=25"></script>
 </body>
 </html>

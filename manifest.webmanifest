@@ -5,7 +5,7 @@
   "description": "Fidelização para a noite de Aracaju.",
   "start_url": "/index.php",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait",
   "background_color": "#0e0e0e",
   "theme_color": "#171717",
