@@ -48,8 +48,7 @@ const ClienteApp = {
   },
 
   me() {
-    const id = Store.demo()?.clienteId;
-    return Logic.cliente(id) || Store.all("clientes")[0] || null;
+    return Logic.cliente(Store.session?.clienteId) || null;
   },
 
   badgeFreq(f) {
@@ -181,7 +180,7 @@ const ClienteApp = {
       this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell">
         <div class="phone-body">${html()}</div>
         ${this.nav()}
-      </div></div>${UI.demoWidget()}`;
+      </div></div>`;
       this.bind();
     } catch (e) {
       this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">

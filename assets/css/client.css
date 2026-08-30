@@ -339,10 +339,6 @@ body.client-page #app {
   height: 100dvh;
   overflow: hidden;
 }
-body.client-page .demo-fab {
-  bottom: calc(70px + var(--safe-b));
-}
-
 @media (min-width: 700px) {
   body.client-page { background: #070707; }
   .phone-shell { max-width: 960px; }
@@ -385,7 +381,6 @@ body.client-page .demo-fab {
     pointer-events: none;
   }
   .est-list { grid-template-columns: 1fr; }
-  body.client-page .demo-fab { bottom: 18px; left: 18px; }
 }
 
 .waiter-body { padding-bottom: 28px; }

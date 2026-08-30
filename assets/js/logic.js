@@ -77,12 +77,10 @@ const Logic = {
   },
 
   hidratar() {
-    const demo = Store.data?.meta?.demo;
-    if (!demo) return;
-    const saved = sessionStorage.getItem("saidera_cliente");
-    if (saved && this.cliente(saved)) demo.clienteId = saved;
+    if (!Store.data) return;
     if (!Store.data.auditoria) Store.data.auditoria = [];
     if (!Store.data.tickets) Store.data.tickets = [];
+    if (!Store.data.meta) Store.data.meta = {};
     if (!Store.data.meta.cidade) Store.data.meta.cidade = "Aracaju/SE";
     if (Store.data.meta.metaPadraoRede == null) Store.data.meta.metaPadraoRede = 10;
     this.hidratarSaideras();
@@ -119,10 +117,6 @@ const Logic = {
     return `Expira em ${n} dias`;
   },
 
-  clientesDemo() {
-    return [];
-  },
-
   async buscarCliente(q) {
     const c = await API.get("clientes/codigo", { q });
     if (c && !this.cliente(c.id)) {
@@ -151,16 +145,6 @@ const Logic = {
     const data = await API.post("prefs", patch);
     if (data.store) Store.replace(data.store);
     return this.prefsCliente(clienteId);
-  },
-
-  auditar(acao, detalhe) {
-    Store.data.auditoria = Store.data.auditoria || [];
-    Store.data.auditoria.unshift({
-      em: new Date().toISOString(),
-      acao,
-      detalhe: detalhe || "",
-    });
-    Store.data.auditoria = Store.data.auditoria.slice(0, 80);
   },
 
   logsAuditoria() {
@@ -769,28 +753,42 @@ const Logic = {
     return Store.all("estabelecimentos").filter((e) => e.status === "ativo" && ids.some((id) => this.vendeBebida(e, id)));
   },
 
-  avisarEstabelecimentosParceiro(cam) {
-    if (!cam) return;
-    Store.data.avisosEstabelecimento = Store.data.avisosEstabelecimento || [];
-    const par = Store.find("parceiros", cam.parceiroId);
-    const beb = this.bebida(cam.bebidaId);
-    const periodo = this.periodoTexto(cam);
-    (cam.estabelecimentos || []).forEach((estId, i) => {
-      Store.data.avisosEstabelecimento.unshift({
-        id: `aviso-${Date.now()}-${i}-${estId}`,
-        estabelecimentoId: estId,
-        parceiroId: cam.parceiroId,
-        campanhaId: cam.id,
-        titulo: `Oferta de ${par?.nome || "parceiro"}`,
-        texto: `${par?.nome || "Um parceiro"} fez uma oferta de ${cam.metaTampas} Tampas para a Saideira de ${beb?.nome || "bebida"} ${periodo}.`,
-        lida: false,
-        criadoEm: new Date().toISOString(),
+  avisosDoEst(estId) {
+    return Store.all("campanhas")
+      .filter((c) => c.parceiroId && ((c.estabelecimentos || []).includes(estId) || c.estabelecimentoId === estId))
+      .filter((c) => c.status === "solicitada" || (c.status === "ativa" && c.disparada))
+      .sort((a, b) => String(b.solicitadaEm || "").localeCompare(String(a.solicitadaEm || "")))
+      .map((c) => {
+        const par = Store.find("parceiros", c.parceiroId);
+        const beb = this.bebida(c.bebidaId);
+        const periodo = this.periodoTexto(c);
+        return {
+          id: c.id,
+          estabelecimentoId: estId,
+          titulo: `Oferta de ${par?.nome || "parceiro"}`,
+          texto: c.mensagem || `${par?.nome || "Um parceiro"} ${c.metaTampas ? `propôs ${c.metaTampas} Tampas` : "fez uma oferta"} para ${beb?.nome || "a marca"} ${periodo}`.trim(),
+          criadoEm: c.solicitadaEm,
+        };
       });
-    });
   },
 
-  avisosDoEst(estId) {
-    return (Store.data.avisosEstabelecimento || []).filter((a) => a.estabelecimentoId === estId);
+  resumoParceiro(parId) {
+    const cams = Store.all("campanhas").filter((c) => c.parceiroId === parId);
+    const ativas = cams.filter((c) => c.status === "ativa" && c.disparada);
+    const casas = new Set();
+    cams.forEach((c) => (c.estabelecimentos || []).forEach((id) => casas.add(id)));
+    const drinks = this.bebidasDoParceiro(parId).map((b) => b.id);
+    const cons = Store.all("consumos").filter((c) => drinks.includes(c.bebidaId));
+    const camIds = new Set(cams.map((c) => c.id));
+    const sais = Store.all("saideras").filter((s) => drinks.includes(s.bebidaId) || camIds.has(s.campanhaId));
+    return {
+      campanhasAtivas: ativas.length,
+      estabelecimentos: casas.size || this.estsQueVendem(drinks).length,
+      clientesAlcancados: new Set(cons.map((c) => c.clienteId)).size,
+      participacoes: cams.reduce((a, c) => a + (c.participantes || 0), 0),
+      tampas: cons.reduce((a, c) => a + (c.quantidade || 0), 0),
+      saideras: sais.length,
+    };
   },
 
   ofertaConsumida(clienteId, campanhaId, estId, bebidaId) {
@@ -857,143 +855,6 @@ const Logic = {
       /* a adesão local vale até o próximo bootstrap */
     }
     return Store.find("campanhas", campanhaId) || cam;
-  },
-
-  novaSaidera({ clienteId, estabelecimentoId, bebidaId, campanhaId }) {
-    const rec = {
-      id: `sai-live-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-      codigo: `SDR-${8800 + Store.data.saideras.length}`,
-      clienteId,
-      estabelecimentoId,
-      bebidaId,
-      status: "disponivel",
-      conquistadaEm: new Date().toISOString(),
-      utilizadaEm: null,
-      campanhaId: campanhaId || null,
-    };
-    const exp = this.hoje();
-    exp.setDate(exp.getDate() + this.diasValidade());
-    rec.expiraEm = exp.toISOString();
-    Store.data.saideras.unshift(rec);
-    this.auditar("Saideira conquistada", `${this.cliente(clienteId)?.primeiroNome || ""} · ${this.bebida(bebidaId)?.nome || ""}`);
-    return rec;
-  },
-
-  ajustarProgressoMeta(p, novaMeta, campanha) {
-    if (!p || !novaMeta || novaMeta < 1) return [];
-    const novas = [];
-    const est = this.est(p.estabelecimentoId);
-    const metaBar = this.metaOriginal(est, p.bebidaId);
-    if (p.atual >= novaMeta) {
-      novas.push(
-        this.novaSaidera({
-          clienteId: p.clienteId,
-          estabelecimentoId: p.estabelecimentoId,
-          bebidaId: p.bebidaId,
-          campanhaId: campanha?.id || p.campanhaId,
-        })
-      );
-      const resto = p.atual - novaMeta;
-      this.consumirOferta(p.clienteId, campanha?.id || p.campanhaId, p.estabelecimentoId, p.bebidaId);
-      const extra = Math.floor(resto / metaBar);
-      for (let i = 0; i < extra; i++) {
-        novas.push(
-          this.novaSaidera({
-            clienteId: p.clienteId,
-            estabelecimentoId: p.estabelecimentoId,
-            bebidaId: p.bebidaId,
-          })
-        );
-      }
-      p.atual = resto % metaBar;
-      p.meta = metaBar;
-    } else {
-      p.meta = novaMeta;
-    }
-    p.atualizadoEm = new Date().toISOString();
-    return novas;
-  },
-
-  ativarPatrocinio(campanha, { canal } = {}) {
-    if (!campanha) return null;
-    campanha.status = "ativa";
-    campanha.disparada = true;
-    if (canal) campanha.canal = canal;
-    campanha.ativadaEm = new Date().toISOString();
-    this.auditar("Disparo de campanha", campanha.titulo);
-    const alteraMeta = campanha.alteraMeta !== false && campanha.metaTampas;
-    campanha.patrocinioBar = Boolean(alteraMeta);
-    if (alteraMeta) {
-      const beb = this.bebida(campanha.bebidaId);
-      const meta = campanha.metaTampas;
-      const soPublico = campanha.origem === "estabelecimento" && campanha.publico && campanha.publico !== "todos";
-      if (!soPublico) {
-        (campanha.estabelecimentos || []).forEach((estId) => {
-          const est = this.est(estId);
-          if (!est) return;
-          const item = (est.bebidas || []).find((b) => b.id === campanha.bebidaId);
-          if (item) {
-            if (item.metaOriginal == null) item.metaOriginal = item.meta || est.metaPadrao || 10;
-            item.meta = meta;
-            item.regra = "patrocinio";
-            item.campanhaId = campanha.id;
-          } else {
-            est.bebidas = est.bebidas || [];
-            est.bebidas.push({
-              id: campanha.bebidaId,
-              nome: beb?.nome || campanha.bebidaId,
-              meta,
-              metaOriginal: est.metaPadrao || 10,
-              regra: "patrocinio",
-              campanhaId: campanha.id,
-            });
-          }
-          est.promocao = `${beb?.nome || "Oferta"} com Saideira em ${meta} Tampas`;
-        });
-      }
-      Store.all("tampas")
-        .filter(
-          (t) => t.bebidaId === campanha.bebidaId && (campanha.estabelecimentos || []).includes(t.estabelecimentoId)
-        )
-        .forEach((t) => {
-          if (campanha.origem === "estabelecimento" && !this.clienteNoPublico(t.clienteId, campanha)) return;
-          t.campanhaId = campanha.id;
-          this.ajustarProgressoMeta(t, meta, campanha);
-        });
-    }
-    this.notificarDisparoCampanha(campanha);
-    Store.save();
-    return campanha;
-  },
-
-  notificarDisparoCampanha(cam) {
-    const extra = cam.metaTampas ? ` ${cam.metaTampas} Tampas nesta casa.` : "";
-    let ids;
-    if (cam.origem === "estabelecimento") {
-      ids = this.publicoCampanha(cam).map((c) => c.id);
-      const soLista = cam.clienteIds?.length || cam.tipo === "chamar" || cam.publico === "aniversario";
-      if (!soLista) {
-        const demoId = Store.demo().clienteId;
-        if (!ids.includes(demoId)) ids.unshift(demoId);
-      }
-      ids = ids.slice(0, cam.limite || 80);
-    } else {
-      ids = [Store.demo().clienteId];
-    }
-    ids.forEach((cliId, i) => {
-      const ja = Store.all("notificacoes").some((n) => n.campanhaId === cam.id && n.clienteId === cliId);
-      if (ja) return;
-      Store.data.notificacoes.unshift({
-        id: `ntf-oferta-${Date.now()}-${i}-${cliId}`,
-        clienteId: cliId,
-        titulo: cam.titulo,
-        texto: `${cam.mensagem}${extra}`,
-        tipo: "oferta",
-        lida: false,
-        criadoEm: new Date().toISOString(),
-        campanhaId: cam.id,
-      });
-    });
   },
 
   progresso(clienteId, estId, bebidaId) {
@@ -1318,9 +1179,13 @@ const Logic = {
     };
   },
 
-  semanaTampas(estId, clienteId, dias = 7) {
+  semanaTampas(estId, clienteId, dias = 7, bebidaIds) {
+    const bebs = bebidaIds == null ? null : new Set(Array.isArray(bebidaIds) ? bebidaIds : [bebidaIds]);
     const cons = Store.all("consumos").filter(
-      (c) => (!estId || c.estabelecimentoId === estId) && (!clienteId || c.clienteId === clienteId)
+      (c) =>
+        (!estId || c.estabelecimentoId === estId) &&
+        (!clienteId || c.clienteId === clienteId) &&
+        (!bebs || bebs.has(c.bebidaId))
     );
     const n = Math.min(31, Math.max(7, Number(dias) || 7));
     const labels = [];
@@ -1364,10 +1229,6 @@ const Logic = {
       });
     }
     return ids.size;
-  },
-
-  ofertarCampanhaCliente(campanha) {
-    return this.ativarPatrocinio(campanha);
   },
 };
 

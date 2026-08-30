@@ -2,6 +2,7 @@ const ParceiroApp = {
   root: null,
   view: "dashboard",
   parId: null,
+  camId: "",
   sol: null,
   camPage: 1,
   estPage: 1,
@@ -10,7 +11,7 @@ const ParceiroApp = {
   async boot() {
     const ok = await Store.init({ papel: "parceiro" });
     if (!ok) return;
-    this.parId = Store.demo().parceiroId;
+    this.parId = Store.session?.parceiroId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     this.root.addEventListener("click", (e) => this.onClick(e));
@@ -59,11 +60,20 @@ const ParceiroApp = {
   },
 
   route() {
-    this.view = (location.hash || "#/dashboard").slice(2).split("/")[0] || "dashboard";
+    const parts = (location.hash || "#/dashboard").replace(/^#\/?/, "").split("/").filter(Boolean);
+    this.view = parts[0] || "dashboard";
+    this.camId = parts[1] || "";
     this.render();
   },
 
   render() {
+    if (!this.par()) {
+      this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
+        <p class="muted">Esta conta de parceiro está incompleta.</p>
+        <a class="btn btn-gold" style="margin-top:16px" href="../index.php">Voltar</a>
+      </main>`;
+      return;
+    }
     const map = {
       dashboard: () => this.dashboard(),
       campanhas: () => this.campanhas(),
@@ -94,28 +104,30 @@ const ParceiroApp = {
         </div>
         ${html}
       </main>
-    </div>${UI.demoWidget()}`;
+    </div>`;
     this.bind();
   },
 
   dashboard() {
-    const p = this.par();
-    const week = { labels: ["Sem 1", "Sem 2", "Sem 3", "Sem 4"], values: [420, 610, 880, 1742] };
+    const r = Logic.resumoParceiro(this.parId);
+    const drinks = Logic.bebidasDoParceiro(this.par()).map((b) => b.id);
+    const week = Logic.semanaTampas(null, null, 14, drinks);
+    const n = (v) => Number(v || 0).toLocaleString("pt-BR");
     return `${Brand.banner("secundario", "brand-banner")}<div class="kpis">
       ${[
-        ["Campanhas ativas", p.campanhasAtivas],
-        ["Estabelecimentos", p.estabelecimentos],
-        ["Clientes alcançados", p.clientesAlcancados.toLocaleString("pt-BR")],
-        ["Participações", p.participacoes.toLocaleString("pt-BR")],
-        ["Tampas registradas", p.tampas.toLocaleString("pt-BR")],
-        ["Saideiras", p.saideras.toLocaleString("pt-BR")],
+        ["Campanhas ativas", n(r.campanhasAtivas)],
+        ["Estabelecimentos", n(r.estabelecimentos)],
+        ["Clientes alcançados", n(r.clientesAlcancados)],
+        ["Participações", n(r.participacoes)],
+        ["Tampas registradas", n(r.tampas)],
+        ["Saideiras", n(r.saideras)],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${v}</b></div>`)
         .join("")}
     </div>
     <section class="panel">
-      <h3>Evolução de Saideiras — Agosto (demo)</h3>
-      ${UI.lineChart(week.values, week.labels)}
+      <h3>Tampas da marca nos últimos 14 dias</h3>
+      ${week.values.some((v) => v) ? UI.lineChart(week.values, week.labels, week.keys) : `<p class="muted empty-msg">Ainda não há consumos desta marca.</p>`}
     </section>`;
   },
 
@@ -162,7 +174,7 @@ const ParceiroApp = {
       <p class="muted small" style="margin-bottom:12px">${total ? `${from}–${to} de ${total} campanhas` : "Nenhuma campanha desta marca."}</p>
       ${slice
         .map(
-          (c) => `<a class="row between" href="#/detalhe" style="padding:14px 0;border-bottom:1px solid #2a2a2a;display:flex">
+          (c) => `<a class="row between" href="#/detalhe/${c.id}" style="padding:14px 0;border-bottom:1px solid #2a2a2a;display:flex">
           <div>
             <strong>${c.titulo}</strong>
             <p class="tiny muted">${c.status} · ${(c.estabelecimentos || []).length} estabelecimentos · ${(c.participantes || 0).toLocaleString("pt-BR")} participantes</p>
@@ -176,29 +188,38 @@ const ParceiroApp = {
   },
 
   detalhe() {
-    const c = Store.find("campanhas", "cam-001");
-    const rank = [
-      ["Bar do Farol", 412],
-      ["Point Orla", 301],
-      ["Orla Lounge", 274],
-      ["Aracaju Beer House", 198],
-      ["Bar da Passarela", 176],
-    ];
-    return `<div class="kpis">
+    const c = Store.find("campanhas", this.camId);
+    if (!c || c.parceiroId !== this.parId) {
+      return `<section class="panel"><p class="muted">Campanha não encontrada.</p><a class="btn btn-ghost" href="#/campanhas">Voltar</a></section>`;
+    }
+    const n = (v) => Number(v || 0).toLocaleString("pt-BR");
+    const week = Logic.semanaTampas(null, null, 14, c.bebidaId || null);
+    const rank = (c.estabelecimentos || [])
+      .map((id) => {
+        const e = Logic.est(id);
+        const qtd = Store.all("saideras").filter(
+          (s) => s.estabelecimentoId === id && (s.campanhaId === c.id || (c.bebidaId && s.bebidaId === c.bebidaId))
+        ).length;
+        return { nome: e?.nome || id, qtd };
+      })
+      .sort((a, b) => b.qtd - a.qtd);
+    const status = c.status === "ativa" && c.disparada ? "Ativa" : c.status || "—";
+    return `<p class="tiny muted" style="margin-bottom:12px"><a href="#/campanhas" style="color:#F5B800">Campanhas</a> · ${c.titulo}</p>
+    <div class="kpis">
       ${[
-        ["Status", "Ativa"],
-        ["Estabelecimentos", c.estabelecimentos.length],
-        ["Público potencial", c.publicoPotencial.toLocaleString("pt-BR")],
-        ["Participantes", c.participantes.toLocaleString("pt-BR")],
-        ["Saideiras", c.saideras.toLocaleString("pt-BR")],
+        ["Status", status],
+        ["Estabelecimentos", n((c.estabelecimentos || []).length)],
+        ["Público potencial", n(c.publicoPotencial)],
+        ["Participantes", n(c.participantes)],
+        ["Saideiras", n(c.saideras)],
       ]
         .map(([l, v]) => `<div class="kpi"><span>${l}</span><b>${v}</b></div>`)
         .join("")}
     </div>
     <div class="grid-2">
-      <section class="panel"><h3>Evolução</h3>${UI.lineChart([180, 420, 890, 1320, 1742], ["S1", "S2", "S3", "S4", "S5"])}</section>
-      <section class="panel"><h3>Ranking de estabelecimentos</h3>
-        ${rank.map((r, i) => `<div class="row between" style="padding:8px 0"><span>${i + 1}. ${r[0]}</span><strong>${r[1]}</strong></div>`).join("")}
+      <section class="panel"><h3>Tampas nos últimos 14 dias</h3>${week.values.some((v) => v) ? UI.lineChart(week.values, week.labels, week.keys) : `<p class="muted empty-msg">Ainda não há consumos desta campanha.</p>`}</section>
+      <section class="panel"><h3>Casas desta campanha</h3>
+        ${rank.length ? rank.map((r, i) => `<div class="row between" style="padding:8px 0"><span>${i + 1}. ${r.nome}</span><strong>${n(r.qtd)}</strong></div>`).join("") : `<p class="muted empty-msg">Nenhuma casa vinculada.</p>`}
       </section>
     </div>
     <p class="notice" style="margin-top:14px">Parceiros não visualizam dados pessoais dos consumidores. Apenas totais agregados.</p>`;
@@ -254,7 +275,7 @@ const ParceiroApp = {
               (e) =>
                 `<label><input type="checkbox" value="${e.id}" ${selected.includes(e.id) ? "checked" : ""}/> ${e.nome} · ${Logic.tipoEst(e)} · ${e.bairro}</label>`
             )
-            .join("") || "<p class='muted' style='padding:12px'>Nenhuma casa vende esta bebida na demonstração.</p>"
+            .join("") || "<p class='muted' style='padding:12px'>Nenhuma casa vende esta bebida nesta marca.</p>"
         }
       </div>
       <button class="btn btn-gold btn-block" style="margin-top:16px" id="enviar-sol">Enviar solicitação à Saideira</button>
@@ -273,7 +294,7 @@ const ParceiroApp = {
       ${slice
         .map(
           (e) =>
-            `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a"><div><strong>${e.nome}</strong><p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro}</p></div><span class="muted">${e.clientes} clientes</span></div>`
+            `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a"><div><strong>${e.nome}</strong><p class="tiny muted">${Logic.tipoEst(e)} · ${e.bairro || ""}</p></div><span class="muted">${e.status === "ativo" ? "Ativa" : e.status || ""}</span></div>`
         )
         .join("")}
       ${this.pager(page, pages, "Páginas de estabelecimentos")}

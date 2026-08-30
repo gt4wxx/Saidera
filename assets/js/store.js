@@ -128,10 +128,6 @@ const Store = {
   find(key, id) {
     return this.all(key).find((x) => x.id === id);
   },
-
-  demo() {
-    return this.session || this.data?.meta?.demo || {};
-  },
 };
 
 window.Store = Store;

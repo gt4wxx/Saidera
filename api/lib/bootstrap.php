@@ -162,12 +162,6 @@ function bootstrap_store(array $u): array
         'pixChave' => '',
         'pixNome' => cfg('pix_nome', 'Saideira') ?: 'Saideira',
         'pixCidade' => cfg('pix_cidade', '') ?: '',
-        'demo' => [
-            'clienteId' => null,
-            'estabelecimentoId' => null,
-            'parceiroId' => null,
-            'funcionarioId' => null,
-        ],
     ];
     $empty = [
         'meta' => $meta,
@@ -192,7 +186,6 @@ function bootstrap_store(array $u): array
         $cli = cliente_por_usuario((int) $u['id']);
         if (!$cli) fail('Perfil de cliente incompleto.', 403);
         $cli['email'] = $u['email'];
-        $empty['meta']['demo']['clienteId'] = pub('cli', $cli['id']);
         $empty['clientes'] = [row_cliente($cli)];
         hidratar_cliente_ofertas($empty['clientes'][0], (int) $cli['id']);
         $empty['estabelecimentos'] = array_map(fn($e) => row_est($e), db()->query("SELECT * FROM estabelecimentos WHERE status = 'ativo' ORDER BY nome")->fetchAll());
@@ -237,8 +230,6 @@ function bootstrap_store(array $u): array
     if ($u['papel'] === 'funcionario') {
         $f = funcionario_por_usuario((int) $u['id']);
         if (!$f) fail('Perfil de funcionário incompleto.', 403);
-        $empty['meta']['demo']['funcionarioId'] = pub('fun', $f['id']);
-        $empty['meta']['demo']['estabelecimentoId'] = pub('est', $f['estabelecimento_id']);
         $est = db()->prepare('SELECT * FROM estabelecimentos WHERE id = ?');
         $est->execute([$f['estabelecimento_id']]);
         $e = $est->fetch();
@@ -270,7 +261,6 @@ function bootstrap_store(array $u): array
     if ($u['papel'] === 'estabelecimento') {
         $eid = gestor_est_id((int) $u['id']);
         if (!$eid) fail('Nenhum estabelecimento vinculado a esta conta.', 403);
-        $empty['meta']['demo']['estabelecimentoId'] = pub('est', $eid);
         $est = db()->prepare('SELECT * FROM estabelecimentos WHERE id = ?');
         $est->execute([$eid]);
         $empty['estabelecimentos'] = [row_est($est->fetch())];
@@ -334,7 +324,15 @@ function bootstrap_store(array $u): array
     if ($u['papel'] === 'parceiro') {
         $p = parceiro_por_usuario((int) $u['id']);
         if (!$p) fail('Perfil de parceiro incompleto.', 403);
-        $empty['meta']['demo']['parceiroId'] = pub('par', $p['id']);
+        $pid = (int) $p['id'];
+        $bebs = [];
+        try {
+            $st = db()->prepare('SELECT bebida_id FROM parceiro_bebidas WHERE parceiro_id = ?');
+            $st->execute([$pid]);
+            $bebs = array_map(fn($r) => (int) $r['bebida_id'], $st->fetchAll());
+        } catch (Throwable $e) {
+            $bebs = [];
+        }
         $empty['parceiros'] = [[
             'id' => pub('par', $p['id']),
             'nome' => $p['nome'],
@@ -342,11 +340,28 @@ function bootstrap_store(array $u): array
             'selo' => $p['selo'],
             'status' => $p['status'],
             'logoCor' => $p['logo_cor'],
+            'bebidaIds' => array_map(fn($id) => pub('beb', $id), $bebs),
         ]];
         $empty['estabelecimentos'] = array_map(fn($e) => row_est($e), db()->query("SELECT * FROM estabelecimentos WHERE status = 'ativo'")->fetchAll());
         $st = db()->prepare('SELECT * FROM campanhas WHERE parceiro_id = ? ORDER BY solicitada_em DESC');
-        $st->execute([$p['id']]);
+        $st->execute([$pid]);
         $empty['campanhas'] = array_map('row_campanha', $st->fetchAll());
+        if ($bebs) {
+            $in = implode(',', array_fill(0, count($bebs), '?'));
+            $st = db()->prepare("SELECT * FROM consumos WHERE bebida_id IN ($in) ORDER BY criado_em DESC LIMIT 400");
+            $st->execute($bebs);
+            $empty['consumos'] = array_map(fn($c) => [
+                'id' => pub('con', $c['id']),
+                'clienteId' => pub('cli', $c['cliente_id']),
+                'estabelecimentoId' => pub('est', $c['estabelecimento_id']),
+                'bebidaId' => pub('beb', $c['bebida_id']),
+                'quantidade' => (int) $c['quantidade'],
+                'criadoEm' => iso($c['criado_em']),
+            ], $st->fetchAll());
+            $st = db()->prepare("SELECT * FROM saideras WHERE bebida_id IN ($in) ORDER BY conquistada_em DESC LIMIT 250");
+            $st->execute($bebs);
+            $empty['saideras'] = array_map('row_saidera', $st->fetchAll());
+        }
         return $empty;
     }
 

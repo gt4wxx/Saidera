@@ -13,8 +13,8 @@ const GarcomApp = {
   async boot() {
     const ok = await Store.init({ papel: "funcionario" });
     if (!ok) return;
-    this.funId = Store.demo().funcionarioId;
-    this.estId = Store.demo().estabelecimentoId;
+    this.funId = Store.session?.funcionarioId;
+    this.estId = Store.session?.estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     this.drinkId = Logic.primeiraBebida(this.est())?.id || null;
@@ -86,7 +86,7 @@ const GarcomApp = {
             : this.home();
     this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell waiter-shell">
       <div class="phone-body waiter-body">${html}</div>
-    </div></div>${UI.demoWidget()}`;
+    </div></div>`;
     this.bind();
   },
 
@@ -129,7 +129,7 @@ const GarcomApp = {
         <div class="search" style="margin-top:8px">${Icons.search()}<input id="busca-id" placeholder="ID do cliente · SDR-…"/></div>
         <p class="tiny muted" style="margin:14px 0 8px">ID da Saideira</p>
         <div class="row" style="gap:8px">
-          <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="SDR-8842"/></div>
+          <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="ID da Saideira · SDR-…"/></div>
           <button class="btn btn-navy btn-sm" id="sai-ok-home">Baixar</button>
         </div>
       </div>
@@ -164,7 +164,7 @@ const GarcomApp = {
         <button class="btn btn-dark grow" id="torch-btn">${Icons.torch()} Lanterna</button>
         <button class="btn btn-ghost grow" id="cancel-scan">Cancelar</button>
       </div>
-      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-28491" : "Ou ID da Saideira · SDR-8842"}"/></div>
+      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-…" : "Ou ID da Saideira · SDR-…"}"/></div>
       ${cliente ? "" : `<button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
   },
 
@@ -209,7 +209,7 @@ const GarcomApp = {
       <div class="card pad" style="margin-bottom:14px">
         <p class="tiny muted">Baixar pelo ID da Saideira</p>
         <div class="row" style="gap:8px;margin-top:8px">
-          <div class="search grow">${Icons.search()}<input id="sai-id-comanda" placeholder="SDR-8842"/></div>
+          <div class="search grow">${Icons.search()}<input id="sai-id-comanda" placeholder="ID da Saideira · SDR-…"/></div>
           <button class="btn btn-navy btn-sm" id="sai-ok-comanda">Baixar</button>
         </div>
       </div>

@@ -25,7 +25,7 @@ const EstApp = {
   async boot() {
     const ok = await Store.init({ papel: "estabelecimento" });
     if (!ok) return;
-    this.estId = Store.demo().estabelecimentoId;
+    this.estId = Store.session?.estabelecimentoId;
     UI.bindGlobal();
     this.root = document.getElementById("app");
     this.syncDrink();
@@ -821,7 +821,7 @@ const EstApp = {
     const p = c ? Logic.garantirProgresso(c.id, this.estId, this.drinkId) : null;
     return `<section class="panel" style="max-width:720px">
       <p class="notice" style="margin-bottom:14px">Use quando o cliente mostrar o QR dele. O caminho principal continua sendo o cupom impresso em Gerar QR.</p>
-      <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-28491" value="${c ? c.nome : ""}"/></div>
+      <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-…" value="${c ? c.nome : ""}"/></div>
       <div class="row wrap" style="margin-bottom:16px;gap:8px">
         <button class="btn btn-navy btn-sm" id="scan-qr">${Icons.qr()} Escanear QR do cliente</button>
       </div>
@@ -953,7 +953,7 @@ const EstApp = {
       <h3>Baixar Saideira</h3>
       <p class="muted small" style="margin:6px 0 12px">Peça o ID da Saideira no app do cliente (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
       <div class="row wrap" style="gap:8px">
-        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saideira · SDR-8842" maxlength="24" autocomplete="off"/></div>
+        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saideira · SDR-…" maxlength="24" autocomplete="off"/></div>
         <button class="btn btn-gold" id="entregar-sai">Revisar e entregar</button>
       </div>
       <div id="sai-preview" class="sai-preview"></div>
@@ -1918,7 +1918,7 @@ const EstApp = {
           </div>
         </div>
         <p class="tiny muted" id="scan-hint-est" style="text-align:center;margin-bottom:12px">Aponte para o QR pessoal do cliente</p>
-        <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-28491"/></div>
+        <div class="search">${Icons.search()}<input id="busca-qr-modal" placeholder="Ou ID · SDR-…"/></div>
         <div class="row wrap" style="margin-top:12px;gap:8px">
           <button type="button" class="btn btn-ghost btn-sm" data-close-modal>Cancelar</button>
         </div>`,

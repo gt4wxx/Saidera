@@ -311,23 +311,6 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
   pointer-events: none;
 }
 
-.demo-fab {
-  position: fixed; left: 14px; bottom: 14px; z-index: 60;
-}
-.demo-fab summary {
-  list-style: none; cursor: pointer;
-  background: #111; color: #8A8A8A; border: 1px solid #2a2a2a;
-  border-radius: 999px; padding: 8px 12px; font-size: 0.68rem; font-weight: 800;
-  letter-spacing: 0.08em;
-}
-.demo-fab summary::-webkit-details-marker { display: none; }
-.demo-panel {
-  position: absolute; bottom: 42px; left: 0; width: 250px;
-  background: #1a1a1a; border-radius: 18px; padding: 14px;
-  box-shadow: var(--shadow-d); border: 1px solid #2a2a2a;
-}
-.demo-panel p { color: #8A8A8A; font-size: 0.78rem; margin: 8px 0 12px; }
-
 .pill-tabs {
   display: flex; gap: 8px; overflow: auto; padding-bottom: 4px;
 }

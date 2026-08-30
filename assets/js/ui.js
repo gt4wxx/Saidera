@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "42");
+    return String(window.SAIDERA_V || "43");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -274,32 +274,14 @@ const UI = {
   },
 
   qrSvg(codigo) {
-    const payload = window.QR ? QR.payload(codigo || "SDR-28491") : String(codigo || "SDR-28491");
+    const raw = String(codigo || "").trim();
+    if (!raw) return `<p class="muted">Sem código para o QR.</p>`;
+    const payload = window.QR ? QR.payload(raw) : raw;
     if (window.QR?.svg) {
       const svg = QR.svg(payload, 188);
       if (svg) return svg;
     }
-    const cells = [];
-    const seed = 28491;
-    for (let y = 0; y < 21; y++) {
-      for (let x = 0; x < 21; x++) {
-        const finder = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
-        let on = false;
-        if (finder) {
-          const dx = x < 7 ? x : x > 13 ? x - 14 : x;
-          const dy = y < 7 ? y : y > 13 ? y - 14 : y;
-          on = dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx > 1 && dx < 5 && dy > 1 && dy < 5);
-        } else {
-          on = ((x * 13 + y * 7 + seed) * 17) % 5 > 1;
-        }
-        if (on) cells.push(`<rect x="${x}" y="${y}" width="1" height="1" rx="0.12"/>`);
-      }
-    }
-    return `<svg viewBox="0 0 21 21" width="188" height="188" fill="#171717">${cells.join("")}</svg>`;
-  },
-
-  demoWidget() {
-    return "";
+    return `<p class="muted">Não foi possível desenhar o QR. Recarregue a página.</p>`;
   },
 
   celebrate(title, sub) {
@@ -324,10 +306,6 @@ const UI = {
     document.addEventListener("click", (e) => {
       const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-close-modal], [data-close-menu], [data-pwa-install], [data-camera-go], [data-action]");
       if (!el) return;
-      if (el.closest('[data-action="reset-demo"]')) {
-        location.href = API?.home?.() || "../index.php";
-        return;
-      }
       if (el.closest("[data-close-modal]")) {
         e.preventDefault();
         QR?.stopScan();
