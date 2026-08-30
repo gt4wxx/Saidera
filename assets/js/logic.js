@@ -468,6 +468,24 @@ const Logic = {
     return Store.find("funcionarios", id);
   },
 
+  saideraPorCodigo(q, estId) {
+    const raw = String(q || "").trim();
+    if (!raw) return null;
+    const d = window.QR?.decode ? QR.decode(raw) : { codigo: raw };
+    const codigo = String(d.codigo || raw)
+      .trim()
+      .toUpperCase()
+      .replace(/^(SDR)(\d)/, "SDR-$2");
+    if (!codigo) return null;
+    const norm = (c) => String(c || "").toUpperCase().replace(/-/g, "");
+    return (
+      Store.all("saideras").find((s) => {
+        if (estId && s.estabelecimentoId !== estId) return false;
+        return String(s.codigo || "").toUpperCase() === codigo || norm(s.codigo) === norm(codigo);
+      }) || null
+    );
+  },
+
   clientePorCodigo(q) {
     const s = (q || "").trim().toLowerCase();
     if (!s) return null;

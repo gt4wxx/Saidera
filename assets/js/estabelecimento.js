@@ -85,6 +85,112 @@ const EstApp = {
     return Number(v || 0).toLocaleString("pt-BR");
   },
 
+  saiStatusLab(s) {
+    return { disponivel: "Disponível", utilizada: "Entregue", expirada: "Expirada" }[s?.status] || s?.status || "—";
+  },
+
+  saiFicha(s) {
+    const c = Logic.cliente(s?.clienteId);
+    const b = Logic.bebida(s?.bebidaId);
+    return `<div class="sai-ficha">
+      <img src="${this.avatar(c?.avatar)}" alt=""/>
+      <div>
+        <strong>${this.esc(c?.nome || "Cliente")}</strong>
+        <p class="sai-ficha-id">${this.esc(s?.codigo || "—")}</p>
+        <p class="tiny muted">${this.esc(b?.nome || "Bebida")} · ${this.esc(Logic.validadeLabel(s))}</p>
+      </div>
+    </div>`;
+  },
+
+  atualizarSaiPreview() {
+    const box = this.root?.querySelector("#sai-preview");
+    if (!box) return;
+    const raw = this.root.querySelector("#sai-codigo")?.value || "";
+    if (!String(raw).trim()) {
+      box.innerHTML = `<p class="tiny muted">Digite o ID. Vamos mostrar quem é e qual bebida antes de baixar.</p>`;
+      return;
+    }
+    const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: raw };
+    if (d.tipo === "ticket") {
+      box.innerHTML = `<p class="notice">Este é o cupom da casa (TKT-…). O cliente lê no app. A Saidera tem outro ID.</p>`;
+      return;
+    }
+    const s = Logic.saideraPorCodigo(raw, this.estId);
+    if (s) {
+      const aviso =
+        s.status === "disponivel"
+          ? `<p class="tiny gold" style="margin-top:8px">Encontrada e disponível. Confira e confirme a entrega.</p>`
+          : s.status === "utilizada"
+            ? `<p class="notice" style="margin-top:8px">Esta Saidera já foi entregue. Não dá para baixar de novo.</p>`
+            : `<p class="notice" style="margin-top:8px">Esta Saidera expirou e não pode ser entregue.</p>`;
+      box.innerHTML = `${this.saiFicha(s)}${aviso}`;
+      return;
+    }
+    const c = Logic.clientePorCodigo(d.codigo);
+    if (c) {
+      box.innerHTML = `<p class="notice">Isso é o ID do cliente <strong>${this.esc(c.nome)}</strong>, não da Saidera. Peça no app dele o código da bebida grátis.</p>`;
+      return;
+    }
+    box.innerHTML = `<p class="tiny muted">Nenhuma Saidera com este ID nesta casa.</p>`;
+  },
+
+  pedirConfirmacaoSaidera(s) {
+    if (!s) {
+      UI.toast("Saidera não encontrada nesta casa.");
+      return;
+    }
+    if (s.status !== "disponivel") {
+      UI.modal({
+        center: true,
+        html: `<h2>Não dá para entregar</h2>
+          <p class="muted" style="margin:8px 0 14px">${s.status === "utilizada" ? "Esta Saidera já foi baixada." : "Esta Saidera expirou."}</p>
+          ${this.saiFicha(s)}
+          <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ok</button>`,
+      });
+      return;
+    }
+    const c = Logic.cliente(s.clienteId);
+    const b = Logic.bebida(s.bebidaId);
+    const m = UI.modal({
+      center: true,
+      html: `<h2>Confirmar entrega</h2>
+        <p class="muted" style="margin:8px 0 14px">A bebida vai para a mesa agora? Depois de confirmar, este ID acaba e não volta.</p>
+        ${this.saiFicha(s)}
+        <ul class="sai-check">
+          <li>Cliente <strong>${this.esc(c?.nome || "—")}</strong></li>
+          <li>Bebida <strong>${this.esc(b?.nome || "—")}</strong></li>
+          <li>ID <strong>${this.esc(s.codigo)}</strong></li>
+          <li>${this.esc(Logic.validadeLabel(s))}</li>
+        </ul>
+        <div class="row" style="margin-top:18px;gap:8px">
+          <button type="button" class="btn btn-ghost grow" data-close-modal>Ainda não</button>
+          <button type="button" class="btn btn-gold grow" id="sai-confirmar-ok">Sim, entregar</button>
+        </div>`,
+    });
+    m.el.querySelector("#sai-confirmar-ok")?.addEventListener("click", async () => {
+      const btn = m.el.querySelector("#sai-confirmar-ok");
+      if (btn) btn.disabled = true;
+      const res = await Logic.entregarSaidera(s.id);
+      m.close();
+      if (!res) {
+        UI.toast("Não foi possível entregar. Confira se ainda está disponível.");
+        return;
+      }
+      this.mostrarSaideraEntregue(res);
+    });
+  },
+
+  mostrarSaideraEntregue(s) {
+    const c = Logic.cliente(s.clienteId);
+    const b = Logic.bebida(s.bebidaId);
+    UI.modal({
+      center: true,
+      html: `${UI.celebrate("Saidera entregue", `${this.esc(b?.nome || "Bebida")} · ${this.esc(s.codigo)}`)}
+        <p class="sai-ok-txt">Baixada para <strong>${this.esc(c?.nome || "o cliente")}</strong>. Pode servir a bebida. Este ID não vale mais.</p>
+        <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ok</button>`,
+    });
+  },
+
   isoOffset(n) {
     const d = Logic.hoje();
     d.setDate(d.getDate() + n);
@@ -844,11 +950,12 @@ const EstApp = {
     </div>
     <section class="panel" style="margin-bottom:14px">
       <h3>Baixar Saidera</h3>
-      <p class="muted small" style="margin:6px 0 12px">O cliente informa o ID (SDR-…). Confirme só quando a bebida for para a mesa.</p>
+      <p class="muted small" style="margin:6px 0 12px">Peça o ID da Saidera no app do cliente (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
       <div class="row wrap" style="gap:8px">
-        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saidera · SDR-8842" maxlength="16"/></div>
-        <button class="btn btn-gold" id="entregar-sai">Confirmar entrega</button>
+        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saidera · SDR-8842" maxlength="24" autocomplete="off"/></div>
+        <button class="btn btn-gold" id="entregar-sai">Revisar e entregar</button>
       </div>
+      <div id="sai-preview" class="sai-preview"></div>
     </section>
     <section class="panel">
       <div class="toolbar">
@@ -865,8 +972,8 @@ const EstApp = {
             <td>${c ? `<a href="#/cliente/${c.id}">${this.esc(c.nome)}</a>` : "—"}</td>
             <td>${this.esc(Logic.bebida(s.bebidaId)?.nome || "—")}</td>
             <td>${this.esc(Logic.validadeLabel(s))}</td>
-            <td><span class="badge ${s.status === "disponivel" ? "badge-green" : "badge-ghost"}">${this.esc(s.status)}</span></td>
-            <td>${s.status === "disponivel" ? `<button class="btn btn-gold btn-sm" data-act="sai-entregar" data-id="${s.id}">Entregar</button>` : ""}</td>
+            <td><span class="badge ${s.status === "disponivel" ? "badge-green" : "badge-ghost"}">${this.esc(this.saiStatusLab(s))}</span></td>
+            <td>${s.status === "disponivel" ? `<button class="btn btn-gold btn-sm" data-act="sai-entregar" data-id="${s.id}">Revisar</button>` : ""}</td>
           </tr>`;
         })
         .join("")}</tbody>
@@ -1368,9 +1475,7 @@ const EstApp = {
       return;
     }
     if (act === "sai-entregar") {
-      if (!confirm("Marcar esta Saidera como entregue na mesa?")) return;
-      const res = await Logic.entregarSaidera(id);
-      UI.toast(res ? `Saidera ${res.codigo || ""} entregue.` : "Não foi possível entregar. Confira o ID e se ainda está disponível.");
+      this.pedirConfirmacaoSaidera(Store.find("saideras", id));
       return;
     }
     if (act === "fun-editar") {
@@ -1609,15 +1714,30 @@ const EstApp = {
   },
 
   async entregarSai() {
-    const codigo = this.root.querySelector("#sai-codigo")?.value || "";
-    const res = await Logic.entregarSaideraPorCodigo(codigo, this.estId);
-    if (!res.ok) {
-      UI.toast(res.erro);
+    const raw = this.root.querySelector("#sai-codigo")?.value || "";
+    if (!String(raw).trim()) {
+      UI.toast("Digite o ID da Saidera que o cliente mostra no app.");
+      this.atualizarSaiPreview();
       return;
     }
-    UI.toast(`Saidera ${res.saidera.codigo} entregue.`);
-    const inp = this.root.querySelector("#sai-codigo");
-    if (inp) inp.value = "";
+    const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: raw };
+    if (d.tipo === "ticket") {
+      UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
+      this.atualizarSaiPreview();
+      return;
+    }
+    const s = Logic.saideraPorCodigo(raw, this.estId);
+    if (!s) {
+      const c = Logic.clientePorCodigo(d.codigo);
+      UI.toast(
+        c
+          ? `Isso é o ID de ${c.primeiroNome}, não da Saidera. Peça o código da bebida grátis.`
+          : "Saidera não encontrada nesta casa. Confira o ID."
+      );
+      this.atualizarSaiPreview();
+      return;
+    }
+    this.pedirConfirmacaoSaidera(s);
   },
 
   async doReg() {
@@ -1946,9 +2066,11 @@ const EstApp = {
         el.setSelectionRange(n, n);
       }
     });
+    this.root.querySelector("#sai-codigo")?.addEventListener("input", () => this.atualizarSaiPreview());
     this.root.querySelector("#sai-codigo")?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.entregarSai();
     });
+    this.atualizarSaiPreview();
     this.root.querySelector("#busca-cli")?.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
       const d = QR.decode(e.target.value);
