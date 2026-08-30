@@ -18,6 +18,7 @@ const EstApp = {
   saiQ: "",
   tktFiltro: "",
   funNovo: false,
+  bebQ: "",
 
   async boot() {
     const ok = await Store.init({ papel: "estabelecimento" });
@@ -66,6 +67,13 @@ const EstApp = {
       .replace(/"/g, "&quot;");
   },
 
+  norm(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  },
+
   avatar(src) {
     if (!src) return "../assets/brand/icon-192.png";
     return Logic.midiaUrl(src);
@@ -73,6 +81,13 @@ const EstApp = {
 
   n(v) {
     return Number(v || 0).toLocaleString("pt-BR");
+  },
+
+  norm(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   },
 
   telaBloqueada() {
@@ -671,41 +686,70 @@ const EstApp = {
 
   bebidas() {
     const est = this.est();
-    const noCard = new Set((est.bebidas || []).map((b) => b.id));
-    const rede = Store.all("bebidas").filter((b) => !noCard.has(b.id));
+    const cardapio = est.bebidas || [];
+    const noCard = new Set(cardapio.map((b) => b.id));
+    const q = this.norm(this.bebQ);
+    const rede = Store.all("bebidas")
+      .filter((b) => !noCard.has(b.id))
+      .filter((b) => !q || this.norm(`${b.nome} ${b.marca || ""} ${b.tipo || ""}`).includes(q));
     return `<div class="kpis">
       <div class="kpi"><span>Saidera padrão da casa</span><b>${est.metaPadrao} Tampas</b></div>
-      <div class="kpi"><span>No cardápio</span><b>${(est.bebidas || []).length}</b></div>
+      <div class="kpi"><span>No cardápio</span><b>${cardapio.length}</b></div>
+      <div class="kpi"><span>Ainda no catálogo</span><b>${Store.all("bebidas").filter((b) => !noCard.has(b.id)).length}</b></div>
     </div>
-    <div class="row wrap" style="margin-bottom:14px;gap:8px">
+    <div class="row wrap" style="margin-bottom:16px;gap:8px">
       <button class="btn btn-gold" id="add-drink">Nova bebida</button>
-      <button class="btn btn-navy" id="scan-nota">Incluir do catálogo</button>
-      <button class="btn btn-ghost" id="edit-meta">Meta padrão</button>
+      <button class="btn btn-navy" id="scan-nota">Incluir várias</button>
+      <button class="btn btn-ghost" id="edit-meta">Meta padrão · ${est.metaPadrao}</button>
     </div>
-    <section class="panel" style="margin-bottom:14px">
-      <h3>Incluir bebida da rede</h3>
-      <p class="tiny muted" style="margin:6px 0 10px">O admin cadastra o catálogo. Você escolhe o que vende aqui e a meta desta casa.</p>
-      <div class="row wrap" style="gap:8px">
-        <select id="casa-beb-nova" style="flex:1;min-width:180px">${rede.map((b) => `<option value="${b.id}">${this.esc(b.nome)}${b.marca ? " · " + this.esc(b.marca) : ""}</option>`).join("") || `<option value="">Tudo já está no cardápio</option>`}</select>
-        <input id="casa-beb-meta" type="number" min="1" placeholder="Meta" style="width:90px"/>
-        <button class="btn btn-gold" data-act="casa-beb-on" ${rede.length ? "" : "disabled"}>Incluir</button>
+    <section class="panel" style="margin-bottom:16px">
+      <h3>Catálogo da rede</h3>
+      <p class="tiny muted" style="margin:6px 0 12px">O admin cadastra a rede. Você inclui o que esta casa vende. Deixe a meta vazia para usar a padrão (${est.metaPadrao}).</p>
+      <div class="field" style="margin-bottom:12px">
+        <span>Buscar no catálogo</span>
+        <input id="casa-beb-busca" type="search" placeholder="Nome, marca ou tipo" value="${this.esc(this.bebQ)}" autocomplete="off"/>
       </div>
+      ${rede.length
+        ? `<div class="beb-cat">${rede
+            .map(
+              (b) => `<article class="beb-cat-item">
+            <div>
+              <strong>${this.esc(b.nome)}</strong>
+              <p class="tiny muted">${this.esc([b.marca, { cerveja: "Cerveja", "nao-alcoolico": "Não alcoólico", destilado: "Destilado", outros: "Outros" }[b.tipo] || b.tipo].filter(Boolean).join(" · ") || "Bebida da rede")}</p>
+            </div>
+            <div class="beb-cat-actions">
+              <label class="field" style="margin:0;min-width:88px">
+                <span>Meta</span>
+                <input class="ctrl" data-casa-meta="${b.id}" type="number" min="1" placeholder="${est.metaPadrao}" inputmode="numeric"/>
+              </label>
+              <button type="button" class="btn btn-gold" data-act="casa-beb-on" data-id="${b.id}">Incluir</button>
+            </div>
+          </article>`
+            )
+            .join("")}</div>`
+        : `<p class="muted empty-msg">${q ? "Nenhuma bebida com essa busca." : "Tudo do catálogo já está no cardápio."}</p>`}
     </section>
     <section class="panel">
-      ${(est.bebidas || []).length
-        ? est.bebidas.map((b) => {
-          const cam = Logic.patrocinioEm(est.id, b.id);
-          const meta = Logic.metaDe(est, b.id);
-          const regra = cam ? `Patrocínio ativo · ${cam.titulo}` : b.meta ? "Meta própria desta casa" : "Usa a padrão da casa";
-          return `<div class="row between" style="padding:14px 0;border-bottom:1px solid #2a2a2a;gap:8px">
-            <div><strong>${this.esc(b.nome)}</strong><p class="tiny muted">${this.esc(regra)}</p></div>
-            <div class="table-actions">
-              <span class="badge ${cam ? "badge-gold" : "badge-ghost"}">${meta} Tampas</span>
-              <button class="btn btn-ghost btn-sm" data-act="casa-beb-meta" data-id="${b.id}">Meta</button>
-              <button class="btn btn-danger btn-sm" data-act="casa-beb-off" data-id="${b.id}">Tirar</button>
-            </div>
-          </div>`;
-        }).join("")
+      <h3 style="margin-bottom:12px">Cardápio desta casa</h3>
+      ${cardapio.length
+        ? `<div class="beb-lista">${cardapio
+            .map((b) => {
+              const cam = Logic.patrocinioEm(est.id, b.id);
+              const meta = Logic.metaDe(est, b.id);
+              const regra = cam ? `Patrocínio · ${cam.titulo}` : b.meta ? "Meta própria desta casa" : "Usa a padrão da casa";
+              return `<article class="beb-card">
+                <div>
+                  <strong>${this.esc(b.nome)}</strong>
+                  <p class="tiny muted">${this.esc(regra)}</p>
+                </div>
+                <div class="beb-card-actions">
+                  <span class="badge ${cam ? "badge-gold" : "badge-ghost"}">${meta} Tampas</span>
+                  <button type="button" class="btn btn-ghost btn-sm" data-act="casa-beb-meta" data-id="${b.id}">Meta</button>
+                  <button type="button" class="btn btn-danger btn-sm" data-act="casa-beb-off" data-id="${b.id}">Tirar</button>
+                </div>
+              </article>`;
+            })
+            .join("")}</div>`
         : `<p class="muted empty-msg">Nenhuma bebida no cardápio. Inclua do catálogo ou cadastre uma nova.</p>`}
     </section>`;
   },
@@ -1221,15 +1265,16 @@ const EstApp = {
       return;
     }
     if (act === "casa-beb-on") {
-      const bebidaId = this.val("#casa-beb-nova");
+      const bebidaId = id || this.val("#casa-beb-nova");
       if (!bebidaId) {
         UI.toast("Escolha uma bebida.");
         return;
       }
+      const metaInp = this.root.querySelector(`[data-casa-meta="${bebidaId}"]`);
       await this.post("estabelecimentos/bebida", {
         estabelecimentoId: this.estId,
         bebidaId,
-        meta: this.val("#casa-beb-meta") || null,
+        meta: metaInp?.value || this.val("#casa-beb-meta") || null,
       }, "Bebida incluída no cardápio.");
       return;
     }
@@ -1779,6 +1824,26 @@ const EstApp = {
         this.render();
       })
     );
+    this.root.querySelector("#casa-beb-busca")?.addEventListener("input", (e) => {
+      this.bebQ = e.target.value;
+      this.render();
+      const el = this.root.querySelector("#casa-beb-busca");
+      if (el) {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    });
+    this.root.querySelector("#casa-beb-busca")?.addEventListener("input", (e) => {
+      this.bebQ = e.target.value;
+      this.render();
+      const el = this.root.querySelector("#casa-beb-busca");
+      if (el) {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    });
     this.root.querySelector("#q-sai-casa")?.addEventListener("input", (e) => {
       this.saiQ = e.target.value;
       this.render();

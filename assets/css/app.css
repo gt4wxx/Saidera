@@ -459,8 +459,11 @@ a.insight-card:hover, button.insight-card:hover { background: #222; }
   box-shadow: 0 0 0 1000px #FFF9E8 inset;
   transition: background-color 9999s ease-out;
 }
-.field select {
+.field select,
+.field select option,
+select option {
   color: #171717;
+  background-color: #FFF9E8;
 }
 
 .notice {

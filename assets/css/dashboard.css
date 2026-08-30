@@ -356,6 +356,42 @@ a.kpi-go:hover { outline: 2px solid var(--gold); outline-offset: 0; }
   gap: 12px; background: transparent; color: inherit; padding: 0; text-align: left;
 }
 .form-novo-body { margin-top: 16px; }
+
+body.dash select,
+body.dash select option,
+body.dash .ctrl {
+  color-scheme: light;
+  background-color: #FFF9E8;
+  color: #171717;
+  -webkit-text-fill-color: #171717;
+  caret-color: #171717;
+}
+body.dash select {
+  border: 1px solid #d8c98a;
+  border-radius: 14px;
+  padding: 13px 14px;
+  font-weight: 650;
+}
+.beb-cat, .beb-lista { display: grid; gap: 10px; }
+.beb-cat-item, .beb-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+}
+.beb-cat-item strong, .beb-card strong { display: block; margin-bottom: 2px; }
+.beb-cat-actions, .beb-card-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.beb-cat-actions .field span { font-size: 0.68rem; }
 .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 920px; }
 @media (max-width: 800px) {
   .cfg-grid { grid-template-columns: 1fr; }
