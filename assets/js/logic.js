@@ -1290,7 +1290,7 @@ const Logic = {
     return { labels, values, keys };
   },
 
-  audienciasEstimar(a = {}) {
+  audienciasListar(a = {}) {
     const bairros = a.bairros;
     const bebidaId = a.bebidaId;
     const periodoDias = a.periodoDias ?? a.dias;
@@ -1316,7 +1316,11 @@ const Logic = {
         ids.add(cli.id);
       });
     }
-    return ids.size;
+    return [...ids].map((id) => this.cliente(id)).filter(Boolean);
+  },
+
+  audienciasEstimar(a = {}) {
+    return this.audienciasListar(a).length;
   },
 };
 

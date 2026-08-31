@@ -27,6 +27,29 @@ body.dash {
   padding: 10px 12px; border-radius: 14px;
   color: #b8b8b8; font-weight: 650; font-size: 0.9rem;
 }
+.sidebar nav .side-lab { flex: 1; }
+.sidebar nav .side-n {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #F5B800;
+  color: #171717;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: inline-grid;
+  place-items: center;
+}
+.list-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #2a2a2a;
+}
 .sidebar nav a.on, .sidebar nav button.on,
 .sidebar nav a:hover, .sidebar nav button:hover {
   background: #1c1c1c; color: var(--gold);
