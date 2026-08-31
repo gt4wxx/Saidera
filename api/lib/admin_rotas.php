@@ -442,7 +442,7 @@ function admin_rota(string $method, string $path, array $in): bool
     }
 
     if ($path === 'tickets/cancelar') {
-        $u = auth_require(['admin', 'estabelecimento']);
+        $u = auth_require(['admin', 'estabelecimento', 'funcionario']);
         $tid = nid('tkt', $in['id'] ?? '');
         if (!$tid) fail('Cupom não encontrado.');
         $st = db()->prepare('SELECT codigo, usado, estabelecimento_id FROM tickets WHERE id = ?');
@@ -453,9 +453,14 @@ function admin_rota(string $method, string $path, array $in): bool
             $eid = gestor_est_id((int) $u['id']);
             if (!$eid || (int) $t['estabelecimento_id'] !== $eid) fail('Este cupom não é da sua casa.');
         }
+        if ($u['papel'] === 'funcionario') {
+            $f = funcionario_por_usuario((int) $u['id']);
+            if (!$f || (int) $t['estabelecimento_id'] !== (int) $f['estabelecimento_id']) fail('Este cupom não é da sua casa.');
+        }
         if ((int) $t['usado']) fail('Este cupom já foi usado ou cancelado.');
         db()->prepare('UPDATE tickets SET usado = 1, usado_por = NULL, usado_em = NOW() WHERE id = ?')->execute([$tid]);
-        auditar($u['papel'] === 'admin' ? 'Admin cancelou cupom' : 'Casa cancelou cupom', $t['codigo']);
+        $quem = $u['papel'] === 'admin' ? 'Admin' : ($u['papel'] === 'funcionario' ? 'Garçom' : 'Casa');
+        auditar($quem . ' cancelou cupom', $t['codigo']);
         admin_ok_store();
     }
 

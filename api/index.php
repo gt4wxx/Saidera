@@ -109,8 +109,14 @@ function rota(string $method, string $path): void
     }
 
     if ($path === 'tickets' && $method === 'POST') {
-        $u = auth_require(['estabelecimento', 'admin']);
-        $est = nid('est', $in['estabelecimentoId'] ?? '') ?: gestor_est_id((int) $u['id']);
+        $u = auth_require(['estabelecimento', 'admin', 'funcionario']);
+        $est = nid('est', $in['estabelecimentoId'] ?? '');
+        if ($u['papel'] === 'estabelecimento') {
+            $est = gestor_est_id((int) $u['id']) ?: $est;
+        } elseif ($u['papel'] === 'funcionario') {
+            $f = funcionario_por_usuario((int) $u['id']);
+            $est = $f['estabelecimento_id'] ?? null;
+        }
         if (!$est) fail('Estabelecimento não encontrado.');
         $t = criar_ticket((int) $est, $in['itens'] ?? []);
         ok(['ticket' => $t, 'sync' => $u['papel'] === 'admin' ? null : sync_vivo($u), 'store' => $u['papel'] === 'admin' ? bootstrap_store($u) : null]);

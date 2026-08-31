@@ -655,7 +655,10 @@ body.dash select {
   .dash-head,
   .ticket-composer,
   .ticket-list,
-  .menu-btn {
+  .menu-btn,
+  .topbar,
+  .waiter-actions,
+  .phone-shell::before {
     display: none !important;
   }
   .dash-app { display: block; background: #fff; }
@@ -672,6 +675,24 @@ body.dash select {
     break-after: page;
   }
   body { background: #fff !important; color: #171717; }
+  .phone-stage,
+  .phone-shell,
+  .waiter-shell,
+  .phone-body,
+  .waiter-body {
+    display: block !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
 }
 
 .pix-box .pix-valor {

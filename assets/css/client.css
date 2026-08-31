@@ -198,10 +198,7 @@
   font-size: 0.72rem; font-weight: 700; color: #e6d9a8;
   cursor: pointer; border: 0;
 }
-.chip.patrocinio {
-  background: var(--gold);
-  color: #171717;
-}
+.chip.on { background: var(--gold); color: #171717; }
 
 .bottom-nav {
   flex: 0 0 auto;

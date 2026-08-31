@@ -9,6 +9,11 @@ const GarcomApp = {
   torchOn: false,
   sessao: [],
   recentes: [],
+  ticketQtys: null,
+  tktLote: 1,
+  ticketGeradoId: null,
+  ticketLoteIds: [],
+  tktFiltro: "",
 
   async boot() {
     const ok = await Store.init({ papel: "funcionario" });
@@ -88,9 +93,11 @@ const GarcomApp = {
         ? this.scanView("cliente")
         : this.mode === "scan-sai"
           ? this.scanView("saidera")
-          : this.mode === "comanda" && this.clienteId
-            ? this.comanda()
-            : this.home();
+          : this.mode === "qr"
+            ? this.qrView()
+            : this.mode === "comanda" && this.clienteId
+              ? this.comanda()
+              : this.home();
     this.root.innerHTML = `<div class="phone-stage"><div class="phone-shell waiter-shell">
       <div class="phone-body waiter-body">${html}</div>
     </div></div>`;
@@ -130,6 +137,11 @@ const GarcomApp = {
           <strong>Ler código da Saideira</strong>
           <span>Câmera ou digite o SAI-… da bebida grátis</span>
         </button>
+        <button class="waiter-action" id="start-qr" style="grid-column:1/-1">
+          ${Icons.printer()}
+          <strong>Gerar QR das Tampas</strong>
+          <span>Imprima o cupom. O cliente lê no app dele</span>
+        </button>
       </div>
       <div class="card pad" style="margin-top:14px">
         <p class="tiny muted">Cliente · ID SDR-…</p>
@@ -157,7 +169,7 @@ const GarcomApp = {
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
         <div class="kpi"><span>Saideiras entregues</span><b>${f.saiderasEntregues}</b></div>
       </div>
-      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (SDR-…) e não expira. A Saideira é outro código (SAI-…), em Minhas Saideiras no app dele.</p>`;
+      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (SDR-…) e não expira. A Saideira é o SAI-…. O cupom impresso (TKT-…) o cliente lê no app dele.</p>`;
   },
 
   scanView(kind) {
@@ -180,6 +192,217 @@ const GarcomApp = {
       ${cliente ? "" : `<div id="sai-preview" class="sai-preview"></div><button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
   },
 
+  ensureTicketQtys() {
+    const drinks = this.est()?.bebidas || [];
+    if (!this.ticketQtys) {
+      this.ticketQtys = {};
+      drinks.forEach((d, i) => {
+        this.ticketQtys[d.id] = i === 0 ? 1 : 0;
+      });
+      return;
+    }
+    drinks.forEach((d) => {
+      if (this.ticketQtys[d.id] == null) this.ticketQtys[d.id] = 0;
+    });
+  },
+
+  ticketItens() {
+    this.ensureTicketQtys();
+    return (this.est()?.bebidas || [])
+      .map((d) => ({
+        bebidaId: d.id,
+        nome: d.nome,
+        quantidade: Number(this.ticketQtys[d.id]) || 0,
+      }))
+      .filter((i) => i.quantidade > 0);
+  },
+
+  ticketSlip(t, { mark } = {}) {
+    const est = this.est();
+    const payload = window.QR?.payloadTicket ? QR.payloadTicket(t.codigo) : t.codigo;
+    const svg = window.QR?.svg ? QR.svg(payload, 200) : UI.qrSvg(t.codigo);
+    return `<article class="ticket-print"${mark ? ` id="ticket-print"` : ""}>
+      ${Brand.horizontal("brand-h")}
+      <p class="ticket-house">${this.esc(est.nome)}</p>
+      <div class="ticket-qr">${svg}</div>
+      <h2>${this.esc(t.codigo)}</h2>
+      <ul class="ticket-itens">${(t.itens || []).map((i) => `<li><strong>${i.quantidade}×</strong> ${this.esc(i.nome)}</li>`).join("")}</ul>
+      <p class="badge badge-gold">USO ÚNICO</p>
+      <p class="tiny" style="margin-top:10px">O cliente lê este QR no app Saideira. Depois de usado, o cupom acaba.</p>
+    </article>`;
+  },
+
+  ticketLoteHtml(ids) {
+    const list = (ids || []).map((id) => Store.find("tickets", id)).filter(Boolean);
+    if (!list.length) return "";
+    return `<div class="ticket-lote" id="ticket-print">${list.map((t) => this.ticketSlip(t)).join("")}</div>`;
+  },
+
+  aplicarModeloTicket(tipo) {
+    this.ensureTicketQtys();
+    const drinks = this.est()?.bebidas || [];
+    Object.keys(this.ticketQtys).forEach((k) => {
+      this.ticketQtys[k] = 0;
+    });
+    if (tipo === "uma" && drinks[0]) this.ticketQtys[drinks[0].id] = 1;
+    if (tipo === "rodada" && drinks[0]) this.ticketQtys[drinks[0].id] = 4;
+    if (tipo === "cada") {
+      drinks.slice(0, 8).forEach((d) => {
+        this.ticketQtys[d.id] = 1;
+      });
+    }
+  },
+
+  qrView() {
+    this.ensureTicketQtys();
+    const est = this.est();
+    const drinks = est.bebidas || [];
+    const itens = this.ticketItens();
+    const total = itens.reduce((a, i) => a + i.quantidade, 0);
+    const loteIds = (this.ticketLoteIds || []).filter((id) => Store.find("tickets", id));
+    const gerado = this.ticketGeradoId ? Store.find("tickets", this.ticketGeradoId) : null;
+    let tickets = Store.all("tickets").filter((t) => t.estabelecimentoId === this.estId);
+    if (this.tktFiltro) tickets = tickets.filter((t) => Logic.ticketStatus(t) === this.tktFiltro);
+    tickets = tickets.slice(0, 20);
+    const primeira = drinks[0]?.nome || "primeira bebida";
+    return `${this.top()}
+      <div class="row between no-print" style="margin-bottom:12px">
+        <div>
+          <p class="tiny muted">Cupom impresso</p>
+          <h1 style="margin:4px 0 0">Gerar QR</h1>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="cancel-qr">Voltar</button>
+      </div>
+      <p class="notice no-print" style="margin-bottom:14px">Monte o cupom, imprima e entregue. Quem lê o QR é o celular do cliente — você não precisa do ID dele.</p>
+      <section class="card pad no-print" style="margin-bottom:14px">
+        <p class="tiny muted" style="margin-bottom:8px">Modelos prontos</p>
+        <div class="chips">
+          <button type="button" class="chip" data-tkt-modelo="uma">1× ${this.esc(primeira)}</button>
+          <button type="button" class="chip" data-tkt-modelo="rodada">Rodada 4× ${this.esc(primeira)}</button>
+          <button type="button" class="chip" data-tkt-modelo="cada">1 de cada</button>
+        </div>
+        <h3 style="margin:14px 0 10px">Bebidas neste cupom</h3>
+        ${
+          drinks.length
+            ? drinks
+                .map((d) => {
+                  const q = Number(this.ticketQtys[d.id]) || 0;
+                  return `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a">
+              <div><strong>${this.esc(d.nome)}</strong><p class="tiny muted">Tampas neste QR</p></div>
+              <div class="qty">
+                <button type="button" data-tkt-qty="${d.id}" data-dir="-1">−</button>
+                <strong style="min-width:24px;text-align:center">${q}</strong>
+                <button type="button" data-tkt-qty="${d.id}" data-dir="1">+</button>
+              </div>
+            </div>`;
+                })
+                .join("")
+            : `<p class="muted">A casa ainda não tem bebidas no cardápio.</p>`
+        }
+        <p class="small" style="margin:14px 0 10px">${total ? `${total} Tampa${total > 1 ? "s" : ""} · ${itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ")}` : "Escolha pelo menos uma bebida."}</p>
+        <p class="tiny muted" style="margin-bottom:8px">Quantos iguais para imprimir</p>
+        <div class="chips" style="margin-bottom:12px">
+          ${[1, 5, 10, 20].map((n) => `<button type="button" class="chip ${this.tktLote === n ? "on" : ""}" data-tkt-lote="${n}">${n}</button>`).join("")}
+        </div>
+        <button class="btn btn-gold btn-block" id="gerar-ticket" style="min-height:56px" ${total ? "" : "disabled"}>Gerar ${this.tktLote > 1 ? this.tktLote + " QRs" : "QR"} para imprimir</button>
+      </section>
+      ${
+        loteIds.length || (gerado && !gerado.usado)
+          ? `<section class="card pad" style="margin-bottom:14px">
+              <div class="row between no-print" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                <h3>${loteIds.length > 1 ? loteIds.length + " cupons prontos" : "Pronto para imprimir"}</h3>
+                <div class="row" style="gap:8px">
+                  <button class="btn btn-gold btn-sm" id="print-ticket">${Icons.printer()} Imprimir</button>
+                  <button class="btn btn-ghost btn-sm" id="novo-ticket">Novo cupom</button>
+                </div>
+              </div>
+              ${loteIds.length > 1 ? this.ticketLoteHtml(loteIds) : this.ticketSlip(gerado || Store.find("tickets", loteIds[0]), { mark: true })}
+            </section>`
+          : `<section class="card pad no-print" style="margin-bottom:14px"><p class="muted">O cupom impresso traz as bebidas, a quantidade e um QR de uso único. Use um modelo ou monte na mão.</p></section>`
+      }
+      <section class="card pad no-print">
+        <h3 style="margin-bottom:10px">Cupons desta casa</h3>
+        <div class="chips">
+          ${[
+            ["", "Todos"],
+            ["aberto", "Abertos"],
+            ["usado", "Usados"],
+            ["cancelado", "Cancelados"],
+          ]
+            .map(([v, lab]) => `<button type="button" class="chip ${this.tktFiltro === v ? "on" : ""}" data-tkt-filtro="${v}">${lab}</button>`)
+            .join("")}
+        </div>
+        ${
+          tickets.length
+            ? tickets
+                .map((t) => {
+                  const resumo = (t.itens || []).map((i) => `${i.quantidade}× ${i.nome}`).join(", ");
+                  const st = Logic.ticketStatus(t);
+                  return `<div class="row between" style="padding:10px 0;border-bottom:1px solid #2a2a2a;gap:8px;align-items:flex-start">
+                    <div>
+                      <strong>${this.esc(t.codigo)}</strong>
+                      <p class="tiny muted">${this.esc(resumo || "—")} · ${this.esc(st)}</p>
+                    </div>
+                    <div class="table-actions">
+                      ${st === "aberto" ? `<button class="btn btn-dark btn-sm" data-ver-ticket="${t.id}">Imprimir</button><button class="btn btn-ghost btn-sm" data-tkt-cancelar="${t.id}">Cancelar</button>` : ""}
+                    </div>
+                  </div>`;
+                })
+                .join("")
+            : `<p class="muted">Nenhum cupom gerado ainda.</p>`
+        }
+      </section>`;
+  },
+
+  async gerarTicket() {
+    const itens = this.ticketItens();
+    if (!itens.length) {
+      UI.toast("Escolha pelo menos uma bebida.");
+      return;
+    }
+    const n = Math.max(1, Math.min(20, Number(this.tktLote) || 1));
+    try {
+      const ids = [];
+      let ultimo = null;
+      for (let i = 0; i < n; i++) {
+        const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
+        if (!t) break;
+        ids.push(t.id);
+        ultimo = t;
+      }
+      if (!ids.length) {
+        UI.toast("Não foi possível gerar o QR.");
+        return;
+      }
+      this.ticketLoteIds = ids;
+      this.ticketGeradoId = ids[0];
+      this.mode = "qr";
+      this.render();
+      UI.toast(
+        ids.length > 1
+          ? `${ids.length} cupons gerados. Imprima e entregue na mesa.`
+          : `QR ${ultimo.codigo} gerado. Imprima e entregue ao cliente.`
+      );
+    } catch (e) {
+      UI.toast(e.message);
+    }
+  },
+
+  async cancelarTicket(id) {
+    const t = Store.find("tickets", id);
+    if (!t || !confirm(`Cancelar o cupom ${t.codigo}? Ele deixa de valer.`)) return;
+    try {
+      const data = await API.post("tickets/cancelar", { id });
+      Store.aplicarResposta(data);
+      if (this.ticketGeradoId === id) this.ticketGeradoId = null;
+      this.ticketLoteIds = (this.ticketLoteIds || []).filter((x) => x !== id);
+      this.render();
+      UI.toast("Cupom cancelado.");
+    } catch (e) {
+      UI.toast(e.message);
+    }
+  },
+
   comanda() {
     const c = Logic.cliente(this.clienteId);
     const est = this.est();
@@ -199,6 +422,7 @@ const GarcomApp = {
         </div>
         <div class="row wrap" style="gap:8px">
           <button class="btn btn-ghost btn-sm" id="fechar-comanda">Outro cliente</button>
+          <button class="btn btn-dark btn-sm" id="start-qr">${Icons.printer()} Gerar QR</button>
           <button class="btn btn-dark btn-sm" id="scan-again">${Icons.qr()} Ler de novo</button>
         </div>
       </div>
@@ -517,7 +741,7 @@ const GarcomApp = {
   },
 
   onClick(e) {
-    const t = e.target.closest("button, [data-open], [data-drink], [data-entregar]");
+    const t = e.target.closest("button, [data-open], [data-drink], [data-entregar], [data-tkt-qty], [data-tkt-modelo], [data-tkt-lote], [data-tkt-filtro], [data-ver-ticket], [data-tkt-cancelar]");
     if (!t || t.disabled) return;
     if (t.closest("[data-close-modal]")) return;
     const id = t.id;
@@ -532,6 +756,64 @@ const GarcomApp = {
     }
     if (t.hasAttribute("data-entregar")) {
       this.entregarBtn(t.getAttribute("data-entregar"));
+      return;
+    }
+    if (t.hasAttribute("data-tkt-qty")) {
+      this.ensureTicketQtys();
+      const kid = t.getAttribute("data-tkt-qty");
+      const dir = Number(t.getAttribute("data-dir")) || 0;
+      const atual = Number(this.ticketQtys[kid]) || 0;
+      this.ticketQtys[kid] = Math.max(0, Math.min(20, atual + dir));
+      this.mode = "qr";
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-modelo")) {
+      this.aplicarModeloTicket(t.getAttribute("data-tkt-modelo"));
+      this.mode = "qr";
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-lote")) {
+      this.tktLote = Math.max(1, Math.min(20, Number(t.getAttribute("data-tkt-lote")) || 1));
+      this.mode = "qr";
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-filtro")) {
+      this.tktFiltro = t.getAttribute("data-tkt-filtro") || "";
+      this.mode = "qr";
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-ver-ticket")) {
+      const id = t.getAttribute("data-ver-ticket");
+      this.ticketGeradoId = id;
+      this.ticketLoteIds = [id];
+      this.mode = "qr";
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-cancelar")) {
+      return void this.cancelarTicket(t.getAttribute("data-tkt-cancelar"));
+    }
+    if (id === "start-qr" || id === "gerar-qr-comanda") {
+      this.ir("qr");
+      return;
+    }
+    if (id === "cancel-qr") {
+      this.ir(this.clienteId ? "comanda" : "home");
+      return;
+    }
+    if (id === "gerar-ticket") return void this.gerarTicket();
+    if (id === "print-ticket") {
+      window.print();
+      return;
+    }
+    if (id === "novo-ticket") {
+      this.ticketGeradoId = null;
+      this.ticketLoteIds = [];
+      this.render();
       return;
     }
     if (id === "start-scan") {
