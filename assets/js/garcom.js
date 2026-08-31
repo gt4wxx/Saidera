@@ -122,6 +122,8 @@ const GarcomApp = {
     const f = this.fun();
     const recentes = this.recentes.map((id) => Logic.cliente(id)).filter(Boolean);
     return `${this.top()}
+      <div class="waiter-desk">
+      <div class="waiter-desk-main">
       <p class="tiny muted">Turno no salão</p>
       <h1 style="margin:8px 0 6px">Pronto no salão</h1>
       <p class="muted" style="margin-bottom:14px">Abra a comanda pelo QR do cliente, ou baixe a Saideira pelo código SAI-…</p>
@@ -137,12 +139,14 @@ const GarcomApp = {
           <strong>Ler código da Saideira</strong>
           <span>Câmera ou digite o SAI-… da bebida grátis</span>
         </button>
-        <button class="waiter-action" id="start-qr" style="grid-column:1/-1">
+        <button class="waiter-action" id="start-qr">
           ${Icons.printer()}
           <strong>Gerar QR das Tampas</strong>
           <span>Imprima o cupom. O cliente lê no app dele</span>
         </button>
       </div>
+      </div>
+      <div class="waiter-desk-side">
       <div class="card pad" style="margin-top:14px">
         <p class="tiny muted">Cliente · ID SDR-…</p>
         <div class="row" style="gap:8px;margin-top:8px">
@@ -169,12 +173,16 @@ const GarcomApp = {
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
         <div class="kpi"><span>Saideiras entregues</span><b>${f.saiderasEntregues}</b></div>
       </div>
-      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (SDR-…) e não expira. A Saideira é o SAI-…. O cupom impresso (TKT-…) o cliente lê no app dele.</p>`;
+      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (SDR-…) e não expira. A Saideira é o SAI-…. O cupom impresso (TKT-…) o cliente lê no app dele.</p>
+      </div>
+      </div>`;
   },
 
   scanView(kind) {
     const cliente = kind === "cliente";
     return `${this.top()}
+      <div class="waiter-desk waiter-scan-desk">
+      <div class="waiter-desk-main">
       <div class="scan-stage waiter-scan">
         <div class="scan-frame live scan-lg">
           <video id="scan-video" playsinline muted autoplay></video>
@@ -184,12 +192,16 @@ const GarcomApp = {
         <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "QR pessoal · SDR-…" : "Código da bebida grátis · SAI-…"}</p>
         <button type="button" class="btn btn-gold btn-block" id="abrir-camera" style="margin-top:12px">Permitir câmera</button>
       </div>
+      </div>
+      <div class="waiter-desk-side">
       <div class="row" style="gap:8px;margin-top:14px">
         <button class="btn btn-dark grow" id="torch-btn">${Icons.torch()} Lanterna</button>
         <button class="btn btn-ghost grow" id="cancel-scan">Cancelar</button>
       </div>
       <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-…" : "Ou código da Saideira · SAI-…"}" autocomplete="off" maxlength="24"/></div>
-      ${cliente ? "" : `<div id="sai-preview" class="sai-preview"></div><button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
+      ${cliente ? "" : `<div id="sai-preview" class="sai-preview"></div><button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}
+      </div>
+      </div>`;
   },
 
   ensureTicketQtys() {
@@ -274,6 +286,8 @@ const GarcomApp = {
         <button class="btn btn-ghost btn-sm" id="cancel-qr">Voltar</button>
       </div>
       <p class="notice no-print" style="margin-bottom:14px">Monte o cupom, imprima e entregue. Quem lê o QR é o celular do cliente — você não precisa do ID dele.</p>
+      <div class="waiter-desk">
+      <div class="waiter-desk-main">
       <section class="card pad no-print" style="margin-bottom:14px">
         <p class="tiny muted" style="margin-bottom:8px">Modelos prontos</p>
         <div class="chips">
@@ -306,6 +320,8 @@ const GarcomApp = {
         </div>
         <button class="btn btn-gold btn-block" id="gerar-ticket" style="min-height:56px" ${total ? "" : "disabled"}>Gerar ${this.tktLote > 1 ? this.tktLote + " QRs" : "QR"} para imprimir</button>
       </section>
+      </div>
+      <div class="waiter-desk-side">
       ${
         loteIds.length || (gerado && !gerado.usado)
           ? `<section class="card pad" style="margin-bottom:14px">
@@ -351,7 +367,9 @@ const GarcomApp = {
                 .join("")
             : `<p class="muted">Nenhum cupom gerado ainda.</p>`
         }
-      </section>`;
+      </section>
+      </div>
+      </div>`;
   },
 
   async gerarTicket() {
@@ -426,6 +444,8 @@ const GarcomApp = {
           <button class="btn btn-dark btn-sm" id="scan-again">${Icons.qr()} Ler de novo</button>
         </div>
       </div>
+      <div class="waiter-desk">
+      <div class="waiter-desk-side">
       ${
         todasDisp.length
           ? `<article class="saidera-alert">
@@ -451,6 +471,8 @@ const GarcomApp = {
         </div>
         <div id="sai-preview" class="sai-preview"></div>
       </div>
+      </div>
+      <div class="waiter-desk-main">
       <h3 style="margin:4px 0 10px">Bebida</h3>
       <div class="drink-pick waiter-drinks">
         ${est.bebidas
@@ -493,7 +515,9 @@ const GarcomApp = {
               .map((it) => `<p class="small">+${it.qtd} ${it.nome}</p>`)
               .join("")}`
           : `<p class="tiny muted" style="margin-top:12px;text-align:center">Pode escanear o mesmo QR de novo. A comanda fica neste cliente até você encerrar.</p>`
-      }`;
+      }
+      </div>
+      </div>`;
   },
 
   afterRegister(res, cliente, bebida) {

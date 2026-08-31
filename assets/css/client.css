@@ -406,12 +406,12 @@ body.client-page #app {
 }
 
 @media (min-width: 1400px) {
-  .phone-stage {
+  .phone-stage:not(:has(.waiter-shell)) {
     padding: 24px 16px;
     display: grid;
     place-items: center;
   }
-  .phone-shell {
+  .phone-shell:not(.waiter-shell) {
     width: 430px;
     max-width: 430px;
     height: min(860px, 94dvh);
@@ -422,13 +422,13 @@ body.client-page #app {
     box-shadow: 0 40px 80px rgba(0,0,0,0.55), inset 0 0 0 1px #2a2a2a;
     overflow: hidden;
   }
-  .phone-body { padding-top: 28px; }
-  .phone-body .topbar {
+  .phone-shell:not(.waiter-shell) .phone-body { padding-top: 28px; }
+  .phone-shell:not(.waiter-shell) .phone-body .topbar {
     top: -28px;
     padding-top: 28px;
     margin-top: -28px;
   }
-  .phone-shell::before {
+  .phone-shell:not(.waiter-shell)::before {
     content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     width: 118px; height: 22px; background: #0a0a0a; border-radius: 0 0 16px 16px; z-index: 5;
     pointer-events: none;
@@ -460,9 +460,11 @@ body.client-page #app {
 .waiter-action span { font-size: 0.75rem; color: #9a9a9a; line-height: 1.35; }
 .waiter-action.gold { background: var(--gold-dim); border-color: rgba(245,184,0,0.4); }
 .waiter-action.navy { background: #14213D; border-color: #1c3260; }
+.waiter-action:last-child { grid-column: 1 / -1; }
 .scan-frame.scan-lg { width: min(260px, 72vw); height: min(260px, 72vw); }
 @media (max-width: 420px) {
   .waiter-actions { grid-template-columns: 1fr; }
+  .waiter-action:last-child { grid-column: auto; }
   .scan-frame, .scan-frame.scan-lg {
     width: min(200px, 78vw);
     height: min(200px, 78vw);
@@ -612,3 +614,80 @@ body.client-page #app {
 .pwa-ios-apontar { text-align: center; padding: 8px 4px 4px; }
 .pwa-ios-apontar .pwa-ios-share { width: 42px; height: 42px; }
 .pwa-ios-apontar h2 { margin: 10px 0 8px; font-size: 1.2rem; }
+
+body.waiter-page {
+  background: #0f0f0f;
+}
+body.waiter-page .waiter-shell {
+  max-width: 100%;
+}
+@media (min-width: 800px) {
+  body.waiter-page .phone-stage {
+    display: block;
+    padding: 0;
+    height: 100%;
+    max-height: none;
+  }
+  body.waiter-page .waiter-shell {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+  body.waiter-page .waiter-shell::before { display: none !important; content: none; }
+  body.waiter-page .waiter-body {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 28px 48px;
+    padding-left: max(28px, var(--safe-l, 0px));
+    padding-right: max(28px, var(--safe-r, 0px));
+  }
+  body.waiter-page .waiter-body .topbar {
+    margin-left: calc(-1 * max(28px, var(--safe-l, 0px)));
+    margin-right: calc(-1 * max(28px, var(--safe-r, 0px)));
+    padding-left: max(28px, var(--safe-l, 0px));
+    padding-right: max(28px, var(--safe-r, 0px));
+    top: calc(-22px - var(--safe-t, 0px));
+    margin-top: calc(-22px - var(--safe-t, 0px));
+  }
+  body.waiter-page .waiter-desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.9fr);
+    gap: 22px;
+    align-items: start;
+  }
+  body.waiter-page .waiter-scan-desk {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(280px, 1.1fr);
+    align-items: center;
+  }
+  body.waiter-page .waiter-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  body.waiter-page .waiter-action:last-child { grid-column: auto; }
+  body.waiter-page .waiter-action { min-height: 150px; cursor: pointer; }
+  body.waiter-page .waiter-action:hover { border-color: rgba(245,184,0,0.55); }
+  body.waiter-page .scan-frame.scan-lg {
+    width: min(360px, 38vw);
+    height: min(360px, 38vw);
+  }
+  body.waiter-page .waiter-drinks {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  body.waiter-page .brand-banner {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 20px;
+  }
+  body.waiter-page h1 { font-size: 2rem; }
+}
+@media (min-width: 1200px) {
+  body.waiter-page .waiter-body { max-width: 1280px; padding: 24px 36px 56px; }
+  body.waiter-page .waiter-desk { gap: 28px; }
+}
+
