@@ -42,6 +42,13 @@ const GarcomApp = {
     return Logic.est(this.estId);
   },
 
+  esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+  },
+
   lembrarRecente(clienteId) {
     this.recentes = [clienteId, ...this.recentes.filter((id) => id !== clienteId)].slice(0, 4);
     sessionStorage.setItem("saidera_garcom_recentes", JSON.stringify(this.recentes));
@@ -110,7 +117,7 @@ const GarcomApp = {
     return `${this.top()}
       <p class="tiny muted">Turno no salão</p>
       <h1 style="margin:8px 0 6px">Pronto no salão</h1>
-      <p class="muted" style="margin-bottom:14px">Dois caminhos: ler o QR do cliente ou baixar a Saideira pelo ID.</p>
+      <p class="muted" style="margin-bottom:14px">Abra a comanda pelo QR do cliente, ou baixe a Saideira pelo código SAI-…</p>
       ${Brand.banner("secundario", "brand-banner")}
       <div class="waiter-actions">
         <button class="waiter-action gold" id="start-scan">
@@ -120,18 +127,23 @@ const GarcomApp = {
         </button>
         <button class="waiter-action navy" id="start-sai">
           ${Icons.gift()}
-          <strong>Baixar Saideira</strong>
-          <span>O cliente informa o ID (SDR-…)</span>
+          <strong>Ler código da Saideira</strong>
+          <span>Câmera ou digite o SAI-… da bebida grátis</span>
         </button>
       </div>
       <div class="card pad" style="margin-top:14px">
-        <p class="tiny muted">ID do cliente</p>
-        <div class="search" style="margin-top:8px">${Icons.search()}<input id="busca-id" placeholder="ID do cliente · SDR-…"/></div>
-        <p class="tiny muted" style="margin:14px 0 8px">ID da Saideira</p>
+        <p class="tiny muted">Cliente · ID SDR-…</p>
+        <div class="row" style="gap:8px;margin-top:8px">
+          <div class="search grow">${Icons.search()}<input id="busca-id" placeholder="SDR-…" autocomplete="off"/></div>
+          <button class="btn btn-dark btn-sm" id="cli-ok-home">Abrir</button>
+        </div>
+        <p class="tiny muted" style="margin:16px 0 8px">Saideira · código SAI-…</p>
         <div class="row" style="gap:8px">
-          <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="ID da Saideira · SDR-…"/></div>
+          <div class="search grow">${Icons.search()}<input id="sai-id-home" placeholder="SAI-…" autocomplete="off" maxlength="24"/></div>
+          <button class="btn btn-ghost btn-sm" id="sai-ler-home" title="Ler com a câmera">${Icons.qr()}</button>
           <button class="btn btn-navy btn-sm" id="sai-ok-home">Baixar</button>
         </div>
+        <div id="sai-preview" class="sai-preview"></div>
       </div>
       ${
         recentes.length
@@ -139,13 +151,13 @@ const GarcomApp = {
             <div class="row wrap" style="gap:8px">${recentes
               .map((c) => `<button class="btn btn-dark btn-sm" data-open="${c.id}">${c.primeiroNome}</button>`)
               .join("")}</div>`
-          : `<p class="tiny muted" style="margin:16px 0 8px">Leia o QR do cliente ou digite o ID SDR-…</p>`
+          : `<p class="tiny muted" style="margin:16px 0 8px">Leia o QR do cliente (SDR-…) ou o código da Saideira (SAI-…)</p>`
       }
       <div class="grid-2" style="margin-top:22px">
         <div class="kpi"><span>Tampas hoje</span><b>${f.tampasHoje}</b></div>
         <div class="kpi"><span>Saideiras entregues</span><b>${f.saiderasEntregues}</b></div>
       </div>
-      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele e não expira. O cupom impresso da casa o cliente lê no app dele.</p>`;
+      <p class="notice" style="margin-top:16px">O QR do cliente é o ID dele (SDR-…) e não expira. A Saideira é outro código (SAI-…), em Minhas Saideiras no app dele.</p>`;
   },
 
   scanView(kind) {
@@ -156,16 +168,16 @@ const GarcomApp = {
           <video id="scan-video" playsinline muted autoplay></video>
           <i></i><i></i><i></i><i></i>
         </div>
-        <p class="muted" style="margin-top:18px;text-align:center">${cliente ? "Aponte para o QR do cliente" : "Aponte para um QR ou use o ID da Saideira"}</p>
-        <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "SAIDERA:SDR-… · identificação" : "ID da Saideira · SDR-…"}</p>
+        <p class="muted" style="margin-top:18px;text-align:center">${cliente ? "Aponte para o QR do cliente" : "Aponte para o QR da Saideira ou digite o SAI-…"}</p>
+        <p class="tiny muted" style="text-align:center" id="scan-hint">${cliente ? "QR pessoal · SDR-…" : "Código da bebida grátis · SAI-…"}</p>
         <button type="button" class="btn btn-gold btn-block" id="abrir-camera" style="margin-top:12px">Permitir câmera</button>
       </div>
       <div class="row" style="gap:8px;margin-top:14px">
         <button class="btn btn-dark grow" id="torch-btn">${Icons.torch()} Lanterna</button>
         <button class="btn btn-ghost grow" id="cancel-scan">Cancelar</button>
       </div>
-      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-…" : "Ou ID da Saideira · SDR-…"}"/></div>
-      ${cliente ? "" : `<button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
+      <div class="search" style="margin-top:12px">${Icons.search()}<input id="${cliente ? "busca-id-scan" : "sai-id-scan"}" placeholder="${cliente ? "Ou ID do cliente · SDR-…" : "Ou código da Saideira · SAI-…"}" autocomplete="off" maxlength="24"/></div>
+      ${cliente ? "" : `<div id="sai-preview" class="sai-preview"></div><button class="btn btn-gold btn-block" id="sai-ok-scan" style="margin-top:10px">Confirmar entrega</button>`}`;
   },
 
   comanda() {
@@ -207,11 +219,13 @@ const GarcomApp = {
           : ""
       }
       <div class="card pad" style="margin-bottom:14px">
-        <p class="tiny muted">Baixar pelo ID da Saideira</p>
+        <p class="tiny muted">Baixar pelo código da Saideira (SAI-…)</p>
         <div class="row" style="gap:8px;margin-top:8px">
-          <div class="search grow">${Icons.search()}<input id="sai-id-comanda" placeholder="ID da Saideira · SDR-…"/></div>
+          <div class="search grow">${Icons.search()}<input id="sai-id-comanda" placeholder="SAI-…" autocomplete="off" maxlength="24"/></div>
+          <button class="btn btn-ghost btn-sm" id="sai-ler-comanda" title="Ler com a câmera">${Icons.qr()}</button>
           <button class="btn btn-navy btn-sm" id="sai-ok-comanda">Baixar</button>
         </div>
+        <div id="sai-preview" class="sai-preview"></div>
       </div>
       <h3 style="margin:4px 0 10px">Bebida</h3>
       <div class="drink-pick waiter-drinks">
@@ -268,7 +282,7 @@ const GarcomApp = {
             ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo: regra da casa ${res.metaBar} Tampas · agora ${res.depois}/${res.meta}.`
             : `${cliente.primeiroNome} conquistou ${res.ganhas} Saideira de ${bebida.nome}. Ciclo agora: ${res.depois}/${res.meta}.`
         )}
-          <p class="tiny muted">Peça o ID da Saideira para baixar, ou entregue na comanda.</p>
+          <p class="tiny muted">Peça o código SAI-… da Saideira para baixar, ou entregue na comanda.</p>
           <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Continuar na comanda</button>`,
       });
     } else {
@@ -284,10 +298,20 @@ const GarcomApp = {
   },
 
   async abrirPorLeitura(raw) {
-    const d = window.QR?.decode ? QR.decode(raw) : { tipo: "desconhecido", codigo: raw };
+    const texto = String(raw || "").trim();
+    if (!texto) {
+      UI.toast("Digite o ID SDR-… do cliente.");
+      return false;
+    }
+    const d = window.QR?.decode ? QR.decode(texto) : { tipo: "desconhecido", codigo: texto };
     if (d.tipo === "ticket") {
       UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
       return false;
+    }
+    const sai = Logic.saideraPorCodigo(texto, this.estId);
+    if (sai || d.tipo === "saidera") {
+      await this.baixarSaidera(texto);
+      return true;
     }
     const codigo = d.codigo;
     let c = Logic.clientePorCodigo(codigo);
@@ -302,41 +326,152 @@ const GarcomApp = {
       this.abrir(c.id);
       return true;
     }
-    UI.toast("Cliente não encontrado. Confira o QR ou o ID.");
+    UI.toast("Cliente não encontrado. Confira o QR ou o ID SDR-…");
     return false;
   },
 
-  async baixarSaidera(raw) {
-    const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: String(raw || "").trim() };
-    if (d.tipo === "ticket") {
-      UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
+  saiFicha(s) {
+    const c = Logic.cliente(s?.clienteId);
+    const b = Logic.bebida(s?.bebidaId);
+    return `<div class="sai-ficha">
+      <img src="${Logic.avatarUrl(c?.avatar)}" alt=""/>
+      <div>
+        <strong>${this.esc(c?.nome || "Cliente")}</strong>
+        <p class="sai-ficha-id">${this.esc(s?.codigo || "—")}</p>
+        <p class="tiny muted">${this.esc(b?.nome || "Bebida")} · ${this.esc(Logic.validadeLabel(s))}</p>
+      </div>
+    </div>`;
+  },
+
+  atualizarSaiPreview() {
+    const box = this.root?.querySelector("#sai-preview");
+    if (!box) return;
+    const raw =
+      this.root.querySelector("#sai-id-home, #sai-id-scan, #sai-id-comanda")?.value || "";
+    if (!String(raw).trim()) {
+      box.innerHTML = `<p class="tiny muted">Digite ou leia o SAI-…. Mostramos quem é e qual bebida antes de baixar.</p>`;
       return;
     }
-    if (d.tipo === "cliente") {
-      const c = Logic.clientePorCodigo(d.codigo);
-      if (c) {
-        UI.toast(`Este é o QR de ${c.primeiroNome}. Abrindo a comanda.`);
-        this.abrir(c.id);
+    const d = window.QR?.decode ? QR.decode(raw) : { tipo: "sdr", codigo: raw };
+    if (d.tipo === "ticket") {
+      box.innerHTML = `<p class="notice">Este é o cupom da casa (TKT-…). A Saideira tem o código SAI-…</p>`;
+      return;
+    }
+    const s = Logic.saideraPorCodigo(raw, this.estId);
+    if (s) {
+      const aviso =
+        s.status === "disponivel"
+          ? `<p class="tiny gold" style="margin-top:8px">Encontrada e disponível. Confira e confirme a entrega.</p>`
+          : s.status === "utilizada"
+            ? `<p class="notice" style="margin-top:8px">Esta Saideira já foi entregue.</p>`
+            : `<p class="notice" style="margin-top:8px">Esta Saideira expirou e não pode ser entregue.</p>`;
+      box.innerHTML = `${this.saiFicha(s)}${aviso}`;
+      return;
+    }
+    const c = Logic.clientePorCodigo(d.codigo);
+    if (c) {
+      box.innerHTML = `<p class="notice">Isso é o ID do cliente <strong>${this.esc(c.nome)}</strong> (SDR-…), não da Saideira. Peça o SAI-… em Minhas Saideiras.</p>`;
+      return;
+    }
+    box.innerHTML = `<p class="tiny muted">Nenhuma Saideira com este código nesta casa.</p>`;
+  },
+
+  pedirConfirmacaoSaidera(s) {
+    if (!s) {
+      UI.toast("Saideira não encontrada nesta casa.");
+      return;
+    }
+    if (s.status !== "disponivel") {
+      UI.modal({
+        center: true,
+        html: `<h2>Não dá para entregar</h2>
+          <p class="muted" style="margin:8px 0 14px">${s.status === "utilizada" ? "Esta Saideira já foi baixada." : "Esta Saideira expirou."}</p>
+          ${this.saiFicha(s)}
+          <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Ok</button>`,
+      });
+      return;
+    }
+    const c = Logic.cliente(s.clienteId);
+    const b = Logic.bebida(s.bebidaId);
+    const m = UI.modal({
+      center: true,
+      html: `<h2>Confirmar entrega</h2>
+        <p class="muted" style="margin:8px 0 14px">A bebida vai para a mesa agora? Depois de confirmar, este código acaba e não volta.</p>
+        ${this.saiFicha(s)}
+        <ul class="sai-check">
+          <li>Cliente <strong>${this.esc(c?.nome || "—")}</strong></li>
+          <li>Bebida <strong>${this.esc(b?.nome || "—")}</strong></li>
+          <li>Código <strong>${this.esc(s.codigo)}</strong></li>
+          <li>${this.esc(Logic.validadeLabel(s))}</li>
+        </ul>
+        <div class="row" style="margin-top:18px;gap:8px">
+          <button type="button" class="btn btn-ghost grow" data-close-modal>Ainda não</button>
+          <button type="button" class="btn btn-gold grow" id="sai-confirmar-ok">Sim, entregar</button>
+        </div>`,
+    });
+    m.el.querySelector("#sai-confirmar-ok")?.addEventListener("click", async () => {
+      const btn = m.el.querySelector("#sai-confirmar-ok");
+      if (btn) btn.disabled = true;
+      const res = await Logic.entregarSaidera(s.id, this.funId);
+      m.close();
+      if (!res) {
+        UI.toast("Não foi possível entregar. Confira se ainda está disponível.");
         return;
       }
+      this.mostrarSaideraEntregue(res);
+    });
+  },
+
+  mostrarSaideraEntregue(s) {
+    this.mode = this.clienteId ? "comanda" : "home";
+    this.render();
+    const b = Logic.bebida(s.bebidaId);
+    const c = Logic.cliente(s.clienteId);
+    UI.modal({
+      center: true,
+      html: `${UI.celebrate("Saideira entregue", `${b?.nome || "Bebida"} · ${s.codigo}${c ? " · " + c.primeiroNome : ""}`)}
+        <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
+    });
+  },
+
+  async baixarSaidera(raw) {
+    const texto = String(raw || "").trim();
+    if (!texto) {
+      UI.toast("Digite ou leia o código SAI-… da Saideira.");
+      this.atualizarSaiPreview();
+      return;
+    }
+    const d = window.QR?.decode ? QR.decode(texto) : { tipo: "sdr", codigo: texto };
+    if (d.tipo === "ticket") {
+      UI.toast("Este é o cupom da casa. O cliente lê no app dele.");
+      this.atualizarSaiPreview();
+      return;
+    }
+    const s = Logic.saideraPorCodigo(texto, this.estId);
+    if (s) {
+      QR.stopScan();
+      this.pedirConfirmacaoSaidera(s);
+      return;
+    }
+    const c = Logic.clientePorCodigo(d.codigo);
+    if (c || d.tipo === "cliente") {
+      UI.toast(
+        c
+          ? `Isso é o ID de ${c.primeiroNome}, não da Saideira. Peça o SAI-… em Minhas Saideiras.`
+          : "Isso é o QR do cliente. Peça o código SAI-… da Saideira."
+      );
+      this.atualizarSaiPreview();
+      if (this.mode === "scan-sai") this.ligarCamera("saidera");
+      return;
     }
     const res = await Logic.entregarSaideraPorCodigo(d.codigo, this.estId, this.funId);
     if (!res.ok) {
-      const c = Logic.clientePorCodigo(d.codigo);
-      if (c) {
-        this.abrir(c.id);
-        return;
-      }
       UI.toast(res.erro);
+      this.atualizarSaiPreview();
+      if (this.mode === "scan-sai") this.ligarCamera("saidera");
       return;
     }
-    this.mode = this.clienteId ? "comanda" : "home";
-    this.render();
-    UI.modal({
-      center: true,
-      html: `${UI.celebrate("Saideira entregue", `${Logic.bebida(res.saidera.bebidaId)?.nome || ""} · ${res.saidera.codigo}`)}
-        <button class="btn btn-gold btn-block" style="margin-top:14px" data-close-modal>Continuar</button>`,
-    });
+    this.mostrarSaideraEntregue(res.saidera);
   },
 
   ligarBusca(sel, fn) {
@@ -427,6 +562,13 @@ const GarcomApp = {
       return;
     }
     if (id === "torch-btn") return void this.ligarLanterna();
+    if (id === "cli-ok-home") return void this.abrirPorLeitura(this.root.querySelector("#busca-id")?.value);
+    if (id === "sai-ler-home" || id === "sai-ler-comanda") {
+      const ir = () => this.ir("scan-sai");
+      if (window.QR?.pedirStream) QR.pedirStream().then(ir).catch((e) => { UI.toast(e.message); ir(); });
+      else ir();
+      return;
+    }
     if (id === "sai-ok-home") return void this.baixarSaidera(this.root.querySelector("#sai-id-home")?.value);
     if (id === "sai-ok-scan") return void this.baixarSaidera(this.root.querySelector("#sai-id-scan")?.value);
     if (id === "sai-ok-comanda") return void this.baixarSaidera(this.root.querySelector("#sai-id-comanda")?.value);
@@ -487,6 +629,10 @@ const GarcomApp = {
     this.ligarBusca("#sai-id-home", (v) => this.baixarSaidera(v));
     this.ligarBusca("#sai-id-scan", (v) => this.baixarSaidera(v));
     this.ligarBusca("#sai-id-comanda", (v) => this.baixarSaidera(v));
+    ["#sai-id-home", "#sai-id-scan", "#sai-id-comanda"].forEach((sel) => {
+      this.root.querySelector(sel)?.addEventListener("input", () => this.atualizarSaiPreview());
+    });
+    this.atualizarSaiPreview();
     if (this.mode === "scan-cli") this.ligarCamera("cliente");
     if (this.mode === "scan-sai") this.ligarCamera("saidera");
   },

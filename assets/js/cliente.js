@@ -812,11 +812,12 @@ const ClienteApp = {
                   <p class="muted">${e.nome}</p>
                   <p class="small" style="margin:8px 0">Conquistada em: ${Logic.fmtDate(s.conquistadaEm)}</p>
                   <p class="small ${urgente ? "gold" : "muted"}">${Logic.validadeLabel(s)}${s.expiraEm ? " · " + Logic.fmtDate(s.expiraEm) : ""}</p>
-                  <p class="saidera-id">ID da Saideira</p>
+                  <p class="saidera-id">Código da Saideira</p>
                   <p class="saidera-code">${this.esc(s.codigo)}</p>
-                  ${s.status === "disponivel" ? `<p class="small muted" style="margin-top:8px">Mostre este ID à casa para retirar. Se pedirem, mostre também o seu QR.</p>
+                  ${s.status === "disponivel" ? `<div class="saidera-qr">${UI.qrSvg(s.codigo)}</div>
+                  <p class="small muted" style="margin-top:8px">Mostre o QR ou o código SAI-… à casa para retirar.</p>
                   <div class="row" style="gap:8px;margin-top:12px">
-                    <button class="btn btn-ghost grow" data-copiar="${this.esc(s.codigo)}">Copiar ID</button>
+                    <button class="btn btn-ghost grow" data-copiar="${this.esc(s.codigo)}">Copiar código</button>
                     <button class="btn btn-dark grow" data-go="#/qr">Meu QR</button>
                   </div>` : ""}
                 </article>`;

@@ -1006,9 +1006,9 @@ const EstApp = {
     }
     <section class="panel" style="margin-bottom:14px">
       <h3>Baixar Saideira</h3>
-      <p class="muted small" style="margin:6px 0 12px">Leia o QR da Saideira no app do cliente ou digite o ID (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
+      <p class="muted small" style="margin:6px 0 12px">Leia o QR da Saideira no app do cliente ou digite o código SAI-…. Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o código acaba.</p>
       <div class="row wrap" style="gap:8px">
-        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saideira · SDR-…" maxlength="24" autocomplete="off"/></div>
+        <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="Código da Saideira · SAI-…" maxlength="24" autocomplete="off"/></div>
         <button class="btn btn-navy" id="scan-sai">${Icons.qr()} Ler QR</button>
         <button class="btn btn-gold" id="entregar-sai">Revisar e entregar</button>
       </div>
@@ -1481,7 +1481,7 @@ const EstApp = {
         return `<p class="tiny muted" style="margin-bottom:10px">Fale com a rede se o cardápio, o QR ou o login não baterem.</p>
           <div class="table-actions">${s.whatsapp ? `<a class="btn btn-gold btn-sm" href="https://wa.me/55${s.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>` : ""}${s.email ? `<a class="btn btn-ghost btn-sm" href="mailto:${s.email}">${s.email}</a>` : ""}</div>`;
       })()}
-      <p class="tiny muted" style="margin-top:16px">Caminho principal: gere o QR, imprima e entregue. O cliente lê no app. Se precisar, leia o QR dele. Para baixar a Saideira, ele informa o ID (SDR-…).</p>
+      <p class="tiny muted" style="margin-top:16px">Caminho principal: gere o QR, imprima e entregue. O cliente lê no app. Se precisar, leia o QR dele. Para baixar a Saideira, ele mostra o código SAI-…</p>
     </section>
     </div>`;
   },

@@ -341,6 +341,17 @@
   color: var(--gold);
   margin-top: 2px;
 }
+.saidera-qr {
+  margin: 14px 0 4px;
+  display: flex;
+  justify-content: center;
+}
+.saidera-qr .qr-real {
+  width: 168px;
+  height: 168px;
+  background: #FFF9E8;
+  border-radius: 16px;
+}
 
 .celebrate {
   text-align: center; padding: 12px 8px 4px;

@@ -18,13 +18,8 @@ const QR = {
   },
 
   parseCliente(text) {
-    const t = String(text || "").trim();
-    if (this.parseTicket(t)) return null;
-    const tagged = t.match(/SAIDERA:\s*([A-Z0-9\-]+)/i);
-    if (tagged) return tagged[1].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase();
-    const sdr = t.match(/\bSDR-?\d+\b/i);
-    if (sdr) return sdr[0].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase();
-    return null;
+    const d = this.decode(text);
+    return d.tipo === "cliente" || d.tipo === "sdr" ? d.codigo : null;
   },
 
   decode(text) {
@@ -33,11 +28,21 @@ const QR = {
     if (ticket) return { tipo: "ticket", codigo: ticket };
     const tagged = t.match(/SAIDERA:\s*([A-Z0-9\-]+)/i);
     if (tagged) {
-      return { tipo: "cliente", codigo: tagged[1].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase() };
+      const codigo = this.normCodigo(tagged[1]);
+      if (/^SAI-/.test(codigo)) return { tipo: "saidera", codigo };
+      return { tipo: "cliente", codigo };
     }
-    const sdr = t.match(/\bSDR-?\d+\b/i);
-    if (sdr) return { tipo: "sdr", codigo: sdr[0].replace(/^(SDR)(\d)/i, "SDR-$2").toUpperCase() };
+    const sai = t.match(/\bSAI-?[A-Z0-9]+\b/i);
+    if (sai) return { tipo: "saidera", codigo: this.normCodigo(sai[0]) };
+    const sdr = t.match(/\bSDR-?[A-Z0-9]+\b/i);
+    if (sdr) return { tipo: "sdr", codigo: this.normCodigo(sdr[0]) };
     return { tipo: "desconhecido", codigo: t };
+  },
+
+  normCodigo(raw) {
+    let c = String(raw || "").replace(/\s/g, "").toUpperCase();
+    c = c.replace(/^(SDR)(?!-)/, "SDR-").replace(/^(SAI)(?!-)/, "SAI-");
+    return c;
   },
 
   parse(text) {

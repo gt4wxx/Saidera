@@ -514,10 +514,16 @@ function resgatar_ticket(string $codigo, int $cliId): array
 function entregar_saidera_codigo(string $codigo, int $estId, ?int $funId = null): array
 {
     $codigo = strtoupper(trim($codigo));
-    $st = db()->prepare('SELECT * FROM saideras WHERE codigo = ?');
-    $st->execute([$codigo]);
+    if (preg_match('/SAIDERA:\s*([A-Z0-9\-]+)/i', $codigo, $m)) {
+        $codigo = strtoupper($m[1]);
+    }
+    $codigo = preg_replace('/\s+/', '', $codigo);
+    if (preg_match('/^(SAI)(?!-)/', $codigo)) $codigo = 'SAI-' . substr($codigo, 3);
+    $norm = str_replace('-', '', $codigo);
+    $st = db()->prepare('SELECT * FROM saideras WHERE codigo = ? OR REPLACE(codigo, "-", "") = ?');
+    $st->execute([$codigo, $norm]);
     $s = $st->fetch();
-    if (!$s) fail('Saideira não encontrada. Confira o ID com o cliente.');
+    if (!$s) fail('Saideira não encontrada. Confira o código SAI-… no app do cliente.');
     if ((int) $s['estabelecimento_id'] !== $estId) fail('Esta Saideira é de outro estabelecimento.');
     return entregar_saidera((int) $s['id'], $funId);
 }

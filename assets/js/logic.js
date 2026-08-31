@@ -556,10 +556,13 @@ const Logic = {
     const raw = String(q || "").trim();
     if (!raw) return null;
     const d = window.QR?.decode ? QR.decode(raw) : { codigo: raw };
-    const codigo = String(d.codigo || raw)
-      .trim()
-      .toUpperCase()
-      .replace(/^(SDR)(\d)/, "SDR-$2");
+    const codigo = window.QR?.normCodigo
+      ? QR.normCodigo(d.codigo || raw)
+      : String(d.codigo || raw)
+          .trim()
+          .toUpperCase()
+          .replace(/^(SDR)(?!-)/, "SDR-")
+          .replace(/^(SAI)(?!-)/, "SAI-");
     if (!codigo) return null;
     const norm = (c) => String(c || "").toUpperCase().replace(/-/g, "");
     return (
