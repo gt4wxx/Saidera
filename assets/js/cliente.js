@@ -257,6 +257,15 @@ const ClienteApp = {
 
   render() {
     if (!this.root) return;
+    if (this._mapa) {
+      if (this.view === "mapa") {
+        this._mapEstado = { center: this._mapa.getCenter(), zoom: this._mapa.getZoom() };
+      } else {
+        this._mapEstado = null;
+      }
+      this._mapa.remove();
+      this._mapa = null;
+    }
     if (this.view !== "ler" && window.QR?.stopScan) QR.stopScan();
     if (!this.me()) {
       this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
@@ -395,7 +404,7 @@ const ClienteApp = {
     </article>`;
   },
 
-  estMini(e, { campanha, pin } = {}) {
+  estMini(e, { campanha, pin, on } = {}) {
     const me = this.me();
     const drinks = (e.bebidas || [])
       .slice(0, 3)
@@ -407,7 +416,7 @@ const ClienteApp = {
       })
       .join("");
     const camBar = campanha || Logic.patrocinioEm(e.id);
-    return `<article class="est-card" ${pin ? `data-pin="${e.id}"` : `data-go="#/est/${e.id}"`}>
+    return `<article class="est-card${on ? " on" : ""}" ${pin ? `data-pin="${e.id}"` : `data-go="#/est/${e.id}"`}>
       <div class="thumb photo"><img src="${Logic.imagemEst(e)}" alt="${e.nome}" onerror="this.onerror=null;this.src='${Logic.imagemPadraoEst(e)}'"/></div>
       <div class="body">
         <h3>${this.esc(e.nome)}</h3>
@@ -579,6 +588,22 @@ const ClienteApp = {
     return { left, top };
   },
 
+  htmlMapaCard(escolhido) {
+    if (!escolhido) {
+      return `<p class="notice" id="mapa-card" style="margin-top:12px">Toque na logo da Saideira no mapa para ver a casa.</p>`;
+    }
+    return `<div class="card pad" id="mapa-card" style="margin-top:12px">
+      <div class="row between" style="align-items:flex-start;gap:10px">
+        <div>
+          <strong>${this.esc(escolhido.nome)}</strong>
+          <p class="small muted" style="margin-top:4px">${Logic.tipoEst(escolhido)} · ${Logic.enderecoLinha(escolhido)}</p>
+        </div>
+        <button class="btn btn-gold btn-sm" data-go="#/est/${escolhido.id}">Ver</button>
+      </div>
+      <a class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" href="${Logic.mapsLink(escolhido)}" target="_blank" rel="noopener">Abrir no Google Maps</a>
+    </div>`;
+  },
+
   mapa() {
     const bairros = this.bairrosMapa();
     const bairro = this.mapBairro;
@@ -589,46 +614,134 @@ const ClienteApp = {
     if (this.mapPage < 1) this.mapPage = 1;
     const start = (this.mapPage - 1) * per;
     const slice = locais.slice(start, start + per);
-    const sel = this.mapSel && locais.some((e) => e.id === this.mapSel) ? this.mapSel : locais[0]?.id;
+    const sel = this.mapSel && locais.some((e) => String(e.id) === String(this.mapSel)) ? this.mapSel : null;
     const escolhido = sel ? Logic.est(sel) : null;
-    const mapaAlvo = escolhido
-      ? escolhido
-      : this.geo
-        ? { lat: this.geo.lat, lng: this.geo.lng }
-        : { endereco: bairro ? `${bairro}, Aracaju - SE` : "Aracaju, SE" };
+    const noMapa = locais.filter((e) => Logic.pontoEst(e)).length;
+    const dica = !this.geo && !bairro
+      ? "GPS desligado e nenhuma área escolhida: todas as casas aparecem de uma vez, cada uma com a logo da Saideira."
+      : this.geo && !bairro
+        ? "Sua localização e todas as casas cadastradas. Toque na logo para abrir."
+        : `Casas em ${bairro}. Toque na logo da Saideira.`;
 
     return `${this.back("Mapa")}
-      <p class="muted small" style="margin-bottom:10px">${this.geoLabel?.label ? `Você está em ${this.esc(this.geoLabel.label)}. ` : ""}Endereço real no Google Maps. Toque numa casa da lista para ver o ponto.</p>
+      <p class="muted small" style="margin-bottom:10px">${this.geoLabel?.label ? `Você está em ${this.esc(this.geoLabel.label)}. ` : ""}${dica}</p>
       <button type="button" class="btn btn-ghost btn-sm btn-block" style="margin-bottom:12px" data-onde>${this.geo ? "Atualizar minha localização" : "Usar minha localização"}</button>
       <div class="pill-tabs" style="margin-bottom:12px">
         <button class="${!bairro ? "on" : ""}" data-map-bairro="">Todos</button>
         ${bairros.map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`).join("")}
       </div>
-      <div class="map-google">
-        <iframe title="Google Maps" src="${Logic.mapsEmbed(mapaAlvo)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-      </div>
-      ${
-        escolhido
-          ? `<div class="card pad" style="margin-top:12px">
-              <div class="row between" style="align-items:flex-start;gap:10px">
-                <div>
-                  <strong>${escolhido.nome}</strong>
-                  <p class="small muted" style="margin-top:4px">${Logic.tipoEst(escolhido)} · ${Logic.enderecoLinha(escolhido)}</p>
-                </div>
-                <button class="btn btn-gold btn-sm" data-go="#/est/${escolhido.id}">Ver</button>
-              </div>
-              <a class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" href="${Logic.mapsLink(escolhido)}" target="_blank" rel="noopener">Abrir no Google Maps</a>
-            </div>`
-          : `<p class="notice" style="margin-top:12px">Nenhuma casa cadastrada neste filtro.</p>`
-      }
+      <div class="map-google"><div id="saidera-mapa" class="saidera-mapa" role="application" aria-label="Mapa das casas"></div></div>
+      ${this.htmlMapaCard(escolhido)}
+      <p class="tiny muted" style="margin-top:8px">${noMapa} ${noMapa === 1 ? "casa no mapa" : "casas no mapa"}${locais.length !== noMapa ? ` · ${locais.length - noMapa} sem endereço no mapa` : ""}</p>
       <div class="row between" style="margin:16px 0 10px" id="lista-mapa">
         <div>
           <h2>${bairro || "Aracaju"}</h2>
           <p class="tiny muted">${locais.length} estabelecimento${locais.length === 1 ? "" : "s"}</p>
         </div>
       </div>
-      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e, { pin: true })).join("") : `<p class="muted">Nenhum estabelecimento neste bairro.</p>`}</div>
+      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e, { pin: true, on: String(e.id) === String(sel) })).join("") : `<p class="muted">Nenhum estabelecimento neste bairro.</p>`}</div>
       ${this.pager(this.mapPage, pages)}`;
+  },
+
+  iconeMapa(on) {
+    const Lref = window.L || window.leaflet;
+    return Lref.divIcon({
+      className: `saidera-pin${on ? " on" : ""}`,
+      html: `<span class="saidera-pin-dot"><img src="${Brand.src("10_app_icon_amarelo.png")}" alt="Saideira"/></span>`,
+      iconSize: [40, 48],
+      iconAnchor: [20, 46],
+      popupAnchor: [0, -40],
+    });
+  },
+
+  pintarMapa() {
+    const el = document.getElementById("saidera-mapa");
+    const Lref = window.L || window.leaflet;
+    if (!el || !Lref?.map) return;
+    if (this._mapa) {
+      this._mapa.remove();
+      this._mapa = null;
+    }
+    const bairro = this.mapBairro;
+    const pontos = this.estsDoBairro(bairro)
+      .map((e) => ({ e, p: Logic.pontoEst(e) }))
+      .filter((x) => x.p);
+    const centro = Logic.centroCidade();
+    const map = Lref.map(el, {
+      zoomControl: true,
+      scrollWheelZoom: false,
+      tap: true,
+    });
+    this._mapa = map;
+    Lref.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OSM &copy; CARTO",
+    }).addTo(map);
+
+    this._mapaMarkers = [];
+    const bounds = [];
+    pontos.forEach(({ e, p }) => {
+      const on = String(e.id) === String(this.mapSel);
+      const m = Lref.marker([p.lat, p.lng], {
+        icon: this.iconeMapa(on),
+        estId: e.id,
+        title: e.nome,
+      });
+      m.bindPopup(`<strong>${this.esc(e.nome)}</strong><br/><span>${this.esc(e.bairro || Logic.tipoEst(e))}</span>`);
+      m.on("click", () => this.selecionarNoMapa(e.id));
+      m.addTo(map);
+      this._mapaMarkers.push(m);
+      bounds.push([p.lat, p.lng]);
+    });
+
+    if (this.geo?.lat && this.geo?.lng) {
+      Lref.circleMarker([this.geo.lat, this.geo.lng], {
+        radius: 8,
+        color: "#F5B800",
+        weight: 3,
+        fillColor: "#FFF9E8",
+        fillOpacity: 1,
+      })
+        .addTo(map)
+        .bindPopup("Você está aqui");
+      bounds.push([this.geo.lat, this.geo.lng]);
+    }
+
+    const aplicarVista = () => {
+      map.invalidateSize();
+      if (this._mapEstado) {
+        map.setView(this._mapEstado.center, this._mapEstado.zoom);
+        return;
+      }
+      if (bounds.length > 1) map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+      else if (bounds.length === 1) map.setView(bounds[0], 16);
+      else map.setView([centro.lat, centro.lng], centro.zoom);
+    };
+    requestAnimationFrame(() => {
+      aplicarVista();
+      setTimeout(aplicarVista, 180);
+    });
+  },
+
+  selecionarNoMapa(id) {
+    if (!id) return;
+    this.mapSel = id;
+    const est = Logic.est(id);
+    const card = this.root?.querySelector("#mapa-card");
+    if (card) {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = this.htmlMapaCard(est);
+      card.replaceWith(wrap.firstElementChild);
+    }
+    this.root?.querySelectorAll(".est-card[data-pin]").forEach((el) => {
+      el.classList.toggle("on", el.getAttribute("data-pin") === String(id));
+    });
+    this._mapaMarkers?.forEach((m) => {
+      const on = String(m.options.estId) === String(id);
+      const iconEl = m.getElement();
+      if (iconEl) iconEl.classList.toggle("on", on);
+      if (on && this._mapa) this._mapa.panTo(m.getLatLng(), { animate: true });
+    });
   },
 
   detalhe() {
@@ -1237,6 +1350,7 @@ const ClienteApp = {
     this.root.querySelector("[data-foto-off]")?.addEventListener("click", () => this.enviarFoto(""));
     if (this.view === "ler" && window.QR?.temStream?.()) this.iniciarScanCliente();
     if (this.view === "notificacoes") this.marcarLidas();
+    if (this.view === "mapa") this.pintarMapa();
   },
 
   async marcarLidas() {

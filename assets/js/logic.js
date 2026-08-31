@@ -216,6 +216,44 @@ const Logic = {
     }
   },
 
+  centroCidade() {
+    return { lat: -10.9472, lng: -37.0731, zoom: 12 };
+  },
+
+  geoBairros() {
+    return {
+      Atalaia: [-10.9802, -37.0388],
+      "Coroa do Meio": [-10.9751, -37.0456],
+      Jardins: [-10.9448, -37.0689],
+      "13 de Julho": [-10.9321, -37.0574],
+      Farolândia: [-10.9587, -37.0812],
+      Centro: [-10.9095, -37.0717],
+      "Siqueira Campos": [-10.9214, -37.0518],
+      "São José": [-10.9188, -37.0482],
+      Luzia: [-10.9276, -37.0621],
+      Grageru: [-10.9365, -37.0734],
+      "Inácio Barbosa": [-10.9512, -37.0921],
+      "Ponto Novo": [-10.9154, -37.0798],
+    };
+  },
+
+  pontoEst(est) {
+    if (!est) return null;
+    const lat = Number(est.lat);
+    const lng = Number(est.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      return { lat, lng, exato: true };
+    }
+    const base = this.geoBairros()[est.bairro];
+    if (!base) return null;
+    const n = Math.abs(Number(String(est.id).replace(/\D/g, "")) || 1);
+    return {
+      lat: base[0] + ((n % 7) - 3) * 0.00115,
+      lng: base[1] + ((n % 5) - 2) * 0.00115,
+      exato: false,
+    };
+  },
+
   mapsQuery(est) {
     if (!est) return "Aracaju, SE";
     if (est.lat && est.lng) return `${est.lat},${est.lng}`;

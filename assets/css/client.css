@@ -266,6 +266,61 @@
   border: 0;
   display: block;
 }
+.saidera-mapa {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+}
+.saidera-mapa .leaflet-container,
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #111;
+  font-family: inherit;
+}
+.saidera-pin {
+  background: none !important;
+  border: none !important;
+}
+.saidera-pin-dot {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #0e0e0e;
+  box-shadow: 0 0 0 2px var(--gold), 0 8px 16px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.saidera-pin-dot img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.saidera-pin.on .saidera-pin-dot {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px var(--gold), 0 0 0 8px rgba(245, 184, 0, 0.28);
+}
+.est-card.on {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(14, 14, 14, 0.72) !important;
+  color: #8a8a8a !important;
+}
+.leaflet-popup-content-wrapper {
+  background: #171717;
+  color: #fff9e8;
+  border-radius: 16px;
+  box-shadow: var(--shadow-d);
+}
+.leaflet-popup-content {
+  margin: 10px 14px;
+  font-size: 0.88rem;
+}
+.leaflet-popup-tip { background: #171717; }
 .map-art {
   position: relative; height: 420px; border-radius: 28px; overflow: hidden;
   background:

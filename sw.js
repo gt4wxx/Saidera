@@ -1,4 +1,4 @@
-const CACHE = "saidera-pwa-v10";
+const CACHE = "saidera-pwa-v11";
 const PRECACHE = [
   "./offline.html",
   "./index.php",
@@ -7,10 +7,13 @@ const PRECACHE = [
   "./assets/css/app.css",
   "./assets/css/client.css",
   "./assets/js/shell.js",
+  "./assets/js/vendor/leaflet.js",
+  "./assets/css/vendor/leaflet.css",
   "./assets/brand/icon-192.png",
   "./assets/brand/icon-512.png",
   "./assets/brand/icon-maskable-512.png",
   "./assets/brand/apple-touch.png",
+  "./assets/brand/10_app_icon_amarelo.png",
   "./Saidera_Kit_Marca/03_logo_horizontal.png",
 ];
 

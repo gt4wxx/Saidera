@@ -2,7 +2,7 @@
 require __DIR__ . '/_proteger.php';
 saidera_proteger('cliente');
 $titulo = 'Saideira · Cliente';
-$css = ['../assets/css/client.css'];
+$css = ['../assets/css/vendor/leaflet.css', '../assets/css/client.css'];
 $manifest = '../manifest-cliente.webmanifest';
 $swCliente = true;
 require __DIR__ . '/_cabecalho.php';
@@ -19,6 +19,8 @@ $v = saidera_v();
   <script src="../assets/js/vendor/jsQR.js"></script>
   <script src="../assets/js/qr.js?v=<?= $v ?>"></script>
   <script src="../assets/js/ui.js?v=<?= $v ?>"></script>
+  <script src="../assets/js/vendor/leaflet.js?v=<?= $v ?>"></script>
+  <script>window.L = window.L || window.leaflet;</script>
   <script src="../assets/js/cliente.js?v=<?= $v ?>"></script>
 </body>
 </html>

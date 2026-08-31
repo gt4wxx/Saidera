@@ -412,10 +412,7 @@ const UI = {
       const pin = el.closest("[data-pin]");
       if (pin && window.ClienteApp) {
         e.preventDefault();
-        window.ClienteApp.mapSel = pin.getAttribute("data-pin");
-        const est = window.Logic?.est?.(window.ClienteApp.mapSel);
-        if (est?.bairro) window.ClienteApp.mapBairro = est.bairro;
-        window.ClienteApp.render();
+        window.ClienteApp.selecionarNoMapa?.(pin.getAttribute("data-pin"));
         return;
       }
       const mb = el.closest("[data-map-bairro]");
@@ -425,6 +422,7 @@ const UI = {
         window.ClienteApp.homeBairro = window.ClienteApp.mapBairro;
         window.ClienteApp.mapSel = null;
         window.ClienteApp.mapPage = 1;
+        window.ClienteApp._mapEstado = null;
         window.ClienteApp.guardarLugar?.();
         window.ClienteApp.render();
       }
