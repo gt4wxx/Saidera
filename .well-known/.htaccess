@@ -1,0 +1,8 @@
+<IfModule mod_mime.c>
+  AddType application/json .json
+</IfModule>
+<IfModule mod_headers.c>
+  Header set Content-Type "application/json; charset=utf-8"
+  Header unset Cache-Control
+  Header set Cache-Control "no-cache"
+</IfModule>

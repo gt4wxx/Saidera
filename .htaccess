@@ -16,6 +16,7 @@ DirectoryIndex index.php index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^\.well-known/ - [L]
   RewriteRule ^serve\.js$ - [F,L]
   RewriteRule ^index\.html$ index.php [R=302,L]
   RewriteRule ^pages/([a-z]+)\.html$ pages/$1.php [R=302,L]
