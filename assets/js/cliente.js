@@ -71,6 +71,16 @@ const ClienteApp = {
     return Logic.avatarUrl(src);
   },
 
+  fotoFallback() {
+    return Logic.avatarUrl("assets/brand/icon-192.png");
+  },
+
+  imgAvatar(cls = "avatar", extra = "") {
+    const src = this.esc(this.foto(this.me()?.avatar));
+    const fb = this.esc(this.fotoFallback());
+    return `<img class="${cls}" src="${src}" onerror="this.onerror=null;this.src='${fb}'" ${extra}/>`;
+  },
+
   temFoto(src) {
     return Boolean(src && !/icon-192|brand\//i.test(src));
   },
@@ -339,7 +349,7 @@ const ClienteApp = {
       <div class="row">
         <button class="icon-btn" data-go="#/qr" title="Meu QR">${Icons.qr()}</button>
         <button class="icon-btn ${unread ? "dot-n" : ""}" data-go="#/notificacoes">${Icons.bell()}</button>
-        <img class="avatar" src="${this.foto(me.avatar)}" alt="${this.esc(me.primeiroNome)}" data-go="#/perfil"/>
+        ${this.imgAvatar("avatar", `alt="${this.esc(me.primeiroNome)}" data-go="#/perfil"`)}
       </div>
     </div>${extra}`;
   },
@@ -1036,7 +1046,7 @@ const ClienteApp = {
     return `${this.top()}
       <div class="stack" style="align-items:center;text-align:center;margin:8px 0 18px">
         <label class="avatar-edit">
-          <img class="avatar" src="${this.foto(me.avatar)}" style="width:86px;height:86px;border-radius:28px;object-fit:cover" alt=""/>
+          ${this.imgAvatar("avatar", `style="width:86px;height:86px;border-radius:28px;object-fit:cover"`)}
           <span class="tiny gold">Trocar foto</span>
           <input type="file" accept="image/*" hidden data-foto-cli/>
         </label>
@@ -1086,7 +1096,7 @@ const ClienteApp = {
     return `${this.back("Meus dados")}
       <p class="muted" style="margin-bottom:14px">Isso aparece para as casas quando você pede e quando elas baixam a sua Saideira.</p>
       <div class="stack" style="align-items:center;text-align:center;margin-bottom:16px">
-        <img class="avatar" src="${this.foto(me.avatar)}" style="width:96px;height:96px;border-radius:28px;object-fit:cover" alt=""/>
+        ${this.imgAvatar("avatar", `style="width:96px;height:96px;border-radius:28px;object-fit:cover"`)}
         <label class="btn btn-gold btn-sm" style="margin-top:10px">
           ${this.temFoto(me.avatar) ? "Trocar foto" : "Colocar minha foto"}
           <input type="file" accept="image/*" hidden data-foto-cli/>

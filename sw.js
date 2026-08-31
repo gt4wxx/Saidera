@@ -1,4 +1,4 @@
-const CACHE = "saidera-pwa-v11";
+const CACHE = "saidera-pwa-v12";
 const PRECACHE = [
   "./offline.html",
   "./index.php",
@@ -38,7 +38,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-  if (url.pathname.includes("/api.php") || url.pathname.includes("/api/")) return;
+  if (url.pathname.includes("/api.php") || url.pathname.includes("/api/") || url.pathname.includes("/uploads/")) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {

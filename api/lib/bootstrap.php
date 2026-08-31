@@ -24,7 +24,7 @@ function row_cliente(array $c): array
         'nascimento' => $c['nascimento'] ? date('d/m/Y', strtotime($c['nascimento'])) : '',
         'cidade' => $c['cidade'] ?: '',
         'bairro' => $c['bairro'] ?: '',
-        'avatar' => $c['avatar'] ?: 'assets/brand/icon-192.png',
+        'avatar' => caminho_upload_publico($c['avatar'] ?? '') ?: 'assets/brand/icon-192.png',
         'clienteDesde' => br_date($c['cliente_desde']),
         'ultimaVisita' => $c['ultima_visita'] ? br_date($c['ultima_visita']) : '',
         'ultimaVisitaIso' => iso($c['ultima_visita']),

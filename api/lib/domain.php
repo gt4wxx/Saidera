@@ -576,7 +576,7 @@ function salvar_avatar_cliente(int $cliId, string $dataUrl): string
         apagar_upload_local($old, 'clientes');
         return '';
     }
-    if (!preg_match('#^data:image/(jpeg|jpg|png|webp);base64,#i', $dataUrl, $m)) {
+    if (!preg_match('#^data:image/(jpeg|jpg|png|webp|pjpeg);base64,#i', $dataUrl, $m)) {
         fail('Envie uma foto JPG, PNG ou WebP.');
     }
     $raw = preg_replace('#^data:image/\w+;base64,#i', '', $dataUrl);
@@ -628,6 +628,45 @@ function salvar_midia_casa(int $eid, string $campo, string $dataUrl): string
     $path = 'uploads/casas/' . $name;
     db()->prepare("UPDATE estabelecimentos SET {$campo} = ? WHERE id = ?")->execute([$path, $eid]);
     return $path;
+}
+
+function caminho_upload_publico(?string $p): string
+{
+    $p = str_replace('\\', '/', trim((string) $p));
+    if ($p === '' || str_starts_with($p, 'data:image')) return '';
+    if (preg_match('#uploads/(clientes|casas)/([A-Za-z0-9._-]+)$#', $p, $m)) {
+        return 'uploads/' . $m[1] . '/' . $m[2];
+    }
+    return $p;
+}
+
+function servir_midia(string $f): void
+{
+    $f = str_replace('\\', '/', $f);
+    if (!preg_match('#^(clientes|casas)/[A-Za-z0-9._-]+$#', $f)) {
+        http_response_code(404);
+        exit;
+    }
+    $full = dirname(__DIR__, 2) . '/uploads/' . $f;
+    $real = realpath($full);
+    $root = realpath(dirname(__DIR__, 2) . '/uploads');
+    if (!$real || !$root || strncmp($real, $root, strlen($root)) !== 0 || !is_file($real)) {
+        http_response_code(404);
+        exit;
+    }
+    $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+    $mime = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+    ][$ext] ?? 'application/octet-stream';
+    header('Content-Type: ' . $mime);
+    header('Cache-Control: public, max-age=86400');
+    header('Content-Length: ' . (string) filesize($real));
+    readfile($real);
+    exit;
 }
 
 function cliente_por_codigo(string $q): ?array

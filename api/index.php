@@ -47,6 +47,10 @@ function rota(string $method, string $path): void
 {
     $in = $method === 'GET' ? $_GET : array_merge($_GET, json_in());
 
+    if ($path === 'midia' && $method === 'GET') {
+        servir_midia((string) ($_GET['f'] ?? ''));
+    }
+
     if ($path === 'auth/login' && $method === 'POST') {
         $u = auth_login($in['email'] ?? '', $in['senha'] ?? '');
         ok(session_payload($u));

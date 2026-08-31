@@ -523,10 +523,22 @@ const Logic = {
 
   midiaUrl(src) {
     if (!src) return src;
-    if (/^(https?:|data:)/i.test(src)) return src;
+    if (/^data:image\//i.test(src)) {
+      if (src.length < 200) {
+        const fb = /\/pages\//.test(location.pathname) ? "../assets/brand/icon-192.png" : "assets/brand/icon-192.png";
+        return window.Brand?.cache ? Brand.cache(fb) : fb;
+      }
+      return src;
+    }
+    if (/^(https?:|blob:)/i.test(src)) return src;
+    const clean = String(src).replace(/^\/+/, "").replace(/^(\.\.\/)+/, "");
+    const up = clean.match(/^uploads\/(clientes|casas)\/([^/?#]+)$/i);
+    if (up && window.API?.url) {
+      return API.url("midia", { f: `${up[1]}/${up[2]}` });
+    }
     let url = src;
     if (!/^(?:\/|\.\.\/)/i.test(src)) {
-      url = /\/pages\//.test(location.pathname) ? `../${src}` : src;
+      url = /\/pages\//.test(location.pathname) ? `../${clean}` : clean;
     }
     if (/assets\/brand\/|Saidera_Kit_Marca\//i.test(url) && window.Brand?.cache) {
       return Brand.cache(url);
@@ -574,7 +586,7 @@ const Logic = {
 
   lerAvatarArquivo(file) {
     return new Promise((resolve, reject) => {
-      if (!file || !file.type.startsWith("image/")) {
+      if (!file || !(file.type || "").startsWith("image/")) {
         reject(new Error("Escolha uma foto (JPG, PNG ou WEBP)."));
         return;
       }
