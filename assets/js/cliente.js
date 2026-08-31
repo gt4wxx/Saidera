@@ -4,6 +4,7 @@ const ClienteApp = {
   params: {},
   mapSel: null,
   mapBairro: null,
+  mapLivre: false,
   mapPage: 1,
   homePage: 1,
   homeQuery: "",
@@ -109,17 +110,22 @@ const ClienteApp = {
     this.geo = geo;
     this.geoLabel = label || null;
     this.homeBairro = null;
+    this.mapLivre = false;
+    this.mapBairro = Logic.acharBairro(label?.bairro, this.bairrosMapa()) || null;
+    this.mapPage = 1;
     this.homePage = 1;
+    this._mapEstado = null;
     this.guardarLugar();
     Logic.aplicarDistancias(this.geo);
     this.render();
     const onde = label?.label || "sua posição";
-    UI.toast("Lista pelo que está perto · " + onde);
+    UI.toast("Mostrando as casas dessa área · " + onde);
   },
 
   escolherBairro(nome) {
     this.homeBairro = nome || null;
     this.mapBairro = nome || null;
+    this.mapLivre = !nome;
     this.mapPage = 1;
     this.homePage = 1;
     this.guardarLugar();
@@ -569,14 +575,25 @@ const ClienteApp = {
       Store.all("estabelecimentos")
         .filter((e) => e.status === "ativo")
         .map((e) => e.bairro)
+        .filter(Boolean)
     );
     return order.filter((b) => set.has(b)).concat([...set].filter((b) => !order.includes(b)));
   },
 
+  areaDoMapa() {
+    if (this.mapLivre) return null;
+    if (this.mapBairro) return this.mapBairro;
+    const bruto = this.geoLabel?.bairro || "";
+    if (!bruto) return null;
+    const match = Logic.acharBairro(bruto, this.bairrosMapa());
+    if (match && this.estsDoBairro(match).length) return match;
+    return null;
+  },
+
   estsDoBairro(bairro) {
     return Store.all("estabelecimentos")
-      .filter((e) => e.status === "ativo" && (!bairro || e.bairro === bairro))
-      .sort((a, b) => a.distanciaKm - b.distanciaKm);
+      .filter((e) => e.status === "ativo" && (!bairro || Logic.mesmoBairro(e.bairro, bairro)))
+      .sort((a, b) => (a.distanciaKm || 0) - (b.distanciaKm || 0));
   },
 
   pinPos(est, i, total, zone) {
@@ -606,7 +623,7 @@ const ClienteApp = {
 
   mapa() {
     const bairros = this.bairrosMapa();
-    const bairro = this.mapBairro;
+    const bairro = this.areaDoMapa();
     const locais = this.estsDoBairro(bairro);
     const per = this.homePerPage;
     const pages = Math.max(1, Math.ceil(locais.length / per));
@@ -616,62 +633,55 @@ const ClienteApp = {
     const slice = locais.slice(start, start + per);
     const sel = this.mapSel && locais.some((e) => String(e.id) === String(this.mapSel)) ? this.mapSel : null;
     const escolhido = sel ? Logic.est(sel) : null;
-    const noMapa = locais.filter((e) => Logic.pontoEst(e)).length;
-    const dica = !this.geo && !bairro
-      ? "GPS desligado e nenhuma área escolhida: todas as casas aparecem de uma vez, cada uma com a logo da Saideira."
-      : this.geo && !bairro
-        ? "Sua localização e todas as casas cadastradas. Toque na logo para abrir."
-        : `Casas em ${bairro}. Toque na logo da Saideira.`;
+    const dica = bairro
+      ? `Casas cadastradas em ${bairro}. Toque na logo da Saideira.`
+      : "Todas as casas cadastradas no app. Toque na logo da Saideira.";
 
     return `${this.back("Mapa")}
       <p class="muted small" style="margin-bottom:10px">${this.geoLabel?.label ? `Você está em ${this.esc(this.geoLabel.label)}. ` : ""}${dica}</p>
-      <button type="button" class="btn btn-ghost btn-sm btn-block" style="margin-bottom:12px" data-onde>${this.geo ? "Atualizar minha localização" : "Usar minha localização"}</button>
+      <button type="button" class="btn btn-ghost btn-sm btn-block" style="margin-bottom:12px" data-onde>${this.geo ? "Atualizar minha área" : "Usar minha localização"}</button>
       <div class="pill-tabs" style="margin-bottom:12px">
         <button class="${!bairro ? "on" : ""}" data-map-bairro="">Todos</button>
         ${bairros.map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`).join("")}
       </div>
       <div class="map-google"><div id="saidera-mapa" class="saidera-mapa" role="application" aria-label="Mapa das casas"></div></div>
       ${this.htmlMapaCard(escolhido)}
-      <p class="tiny muted" style="margin-top:8px">${noMapa} ${noMapa === 1 ? "casa no mapa" : "casas no mapa"}${locais.length !== noMapa ? ` · ${locais.length - noMapa} sem endereço no mapa` : ""}</p>
+      <p class="tiny muted" style="margin-top:8px">${locais.length} ${locais.length === 1 ? "casa nesta área" : "casas nesta área"}</p>
       <div class="row between" style="margin:16px 0 10px" id="lista-mapa">
         <div>
           <h2>${bairro || "Aracaju"}</h2>
           <p class="tiny muted">${locais.length} estabelecimento${locais.length === 1 ? "" : "s"}</p>
         </div>
       </div>
-      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e, { pin: true, on: String(e.id) === String(sel) })).join("") : `<p class="muted">Nenhum estabelecimento neste bairro.</p>`}</div>
+      <div class="stack est-list">${slice.length ? slice.map((e) => this.estMini(e, { pin: true, on: String(e.id) === String(sel) })).join("") : `<p class="muted">Nenhum estabelecimento nesta área. Toque em Todos para ver as casas do app.</p>`}</div>
       ${this.pager(this.mapPage, pages)}`;
   },
 
   iconeMapa(on) {
     const Lref = window.L || window.leaflet;
+    const src = Brand.src("10_app_icon_amarelo.png");
     return Lref.divIcon({
-      className: `saidera-pin${on ? " on" : ""}`,
-      html: `<span class="saidera-pin-dot"><img src="${Brand.src("10_app_icon_amarelo.png")}" alt="Saideira"/></span>`,
-      iconSize: [40, 48],
-      iconAnchor: [20, 46],
-      popupAnchor: [0, -40],
+      className: `saidera-pin leaflet-div-icon${on ? " on" : ""}`,
+      html: `<span class="saidera-pin-dot"><img src="${src}" alt="" draggable="false"/></span>`,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -22],
     });
   },
 
   pintarMapa() {
     const el = document.getElementById("saidera-mapa");
     const Lref = window.L || window.leaflet;
-    if (!el || !Lref?.map) return;
+    if (!el || typeof Lref?.map !== "function") return;
     if (this._mapa) {
       this._mapa.remove();
       this._mapa = null;
     }
-    const bairro = this.mapBairro;
-    const pontos = this.estsDoBairro(bairro)
-      .map((e) => ({ e, p: Logic.pontoEst(e) }))
-      .filter((x) => x.p);
+    const bairro = this.areaDoMapa();
+    const locais = this.estsDoBairro(bairro);
+    const pontos = locais.map((e, i) => ({ e, p: Logic.pontoEst(e, i) })).filter((x) => x.p);
     const centro = Logic.centroCidade();
-    const map = Lref.map(el, {
-      zoomControl: true,
-      scrollWheelZoom: false,
-      tap: true,
-    });
+    const map = Lref.map(el, { zoomControl: true, scrollWheelZoom: false }).setView([centro.lat, centro.lng], centro.zoom);
     this._mapa = map;
     Lref.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
@@ -684,9 +694,11 @@ const ClienteApp = {
       const on = String(e.id) === String(this.mapSel);
       const m = Lref.marker([p.lat, p.lng], {
         icon: this.iconeMapa(on),
-        estId: e.id,
+        keyboard: true,
+        riseOnHover: true,
         title: e.nome,
       });
+      m._estId = e.id;
       m.bindPopup(`<strong>${this.esc(e.nome)}</strong><br/><span>${this.esc(e.bairro || Logic.tipoEst(e))}</span>`);
       m.on("click", () => this.selecionarNoMapa(e.id));
       m.addTo(map);
@@ -694,32 +706,19 @@ const ClienteApp = {
       bounds.push([p.lat, p.lng]);
     });
 
-    if (this.geo?.lat && this.geo?.lng) {
-      Lref.circleMarker([this.geo.lat, this.geo.lng], {
-        radius: 8,
-        color: "#F5B800",
-        weight: 3,
-        fillColor: "#FFF9E8",
-        fillOpacity: 1,
-      })
-        .addTo(map)
-        .bindPopup("Você está aqui");
-      bounds.push([this.geo.lat, this.geo.lng]);
-    }
-
     const aplicarVista = () => {
       map.invalidateSize();
       if (this._mapEstado) {
         map.setView(this._mapEstado.center, this._mapEstado.zoom);
         return;
       }
-      if (bounds.length > 1) map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
-      else if (bounds.length === 1) map.setView(bounds[0], 16);
+      if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      else if (bounds.length === 1) map.setView(bounds[0], 15);
       else map.setView([centro.lat, centro.lng], centro.zoom);
     };
     requestAnimationFrame(() => {
       aplicarVista();
-      setTimeout(aplicarVista, 180);
+      setTimeout(aplicarVista, 200);
     });
   },
 
@@ -737,7 +736,7 @@ const ClienteApp = {
       el.classList.toggle("on", el.getAttribute("data-pin") === String(id));
     });
     this._mapaMarkers?.forEach((m) => {
-      const on = String(m.options.estId) === String(id);
+      const on = String(m._estId) === String(id);
       const iconEl = m.getElement();
       if (iconEl) iconEl.classList.toggle("on", on);
       if (on && this._mapa) this._mapa.panTo(m.getLatLng(), { animate: true });

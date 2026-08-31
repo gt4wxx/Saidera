@@ -223,9 +223,15 @@ const Logic = {
   geoBairros() {
     return {
       Atalaia: [-10.9802, -37.0388],
+      Aruana: [-11.0024, -37.0876],
+      Mosqueiro: [-11.0764, -37.1492],
+      Aeroporto: [-10.9876, -37.0734],
+      Jabotiana: [-10.9486, -37.1034],
+      "São Conrado": [-10.9618, -37.0946],
       "Coroa do Meio": [-10.9751, -37.0456],
       Jardins: [-10.9448, -37.0689],
       "13 de Julho": [-10.9321, -37.0574],
+      "Treze de Julho": [-10.9321, -37.0574],
       Farolândia: [-10.9587, -37.0812],
       Centro: [-10.9095, -37.0717],
       "Siqueira Campos": [-10.9214, -37.0518],
@@ -234,22 +240,38 @@ const Logic = {
       Grageru: [-10.9365, -37.0734],
       "Inácio Barbosa": [-10.9512, -37.0921],
       "Ponto Novo": [-10.9154, -37.0798],
+      Industrial: [-10.9054, -37.0882],
+      "Getúlio Vargas": [-10.9128, -37.0628],
+      Cirurgia: [-10.9166, -37.0554],
+      Capucho: [-10.9288, -37.0942],
+      "Santa Maria": [-10.9924, -37.0988],
     };
   },
 
-  pontoEst(est) {
+  mesmoBairro(a, b) {
+    const na = this.normTexto(a);
+    const nb = this.normTexto(b);
+    if (!na || !nb) return false;
+    return na === nb || na.includes(nb) || nb.includes(na);
+  },
+
+  pontoEst(est, i = 0) {
     if (!est) return null;
-    const lat = Number(est.lat);
-    const lng = Number(est.lng);
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+    const lat = parseFloat(String(est.lat ?? "").replace(",", "."));
+    const lng = parseFloat(String(est.lng ?? "").replace(",", "."));
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) > 0.2 && Math.abs(lng) > 0.2) {
       return { lat, lng, exato: true };
     }
-    const base = this.geoBairros()[est.bairro];
-    if (!base) return null;
-    const n = Math.abs(Number(String(est.id).replace(/\D/g, "")) || 1);
+    const nomes = Object.keys(this.geoBairros());
+    const bairro = this.acharBairro(est.bairro, nomes);
+    const centro = this.centroCidade();
+    const base = (bairro && this.geoBairros()[bairro]) || [centro.lat, centro.lng];
+    const n = Math.abs(Number(String(est.id).replace(/\D/g, "")) || i + 1);
+    const ang = ((n % 12) / 12) * Math.PI * 2;
+    const r = 0.0012 + (n % 5) * 0.00045;
     return {
-      lat: base[0] + ((n % 7) - 3) * 0.00115,
-      lng: base[1] + ((n % 5) - 2) * 0.00115,
+      lat: base[0] + Math.cos(ang) * r,
+      lng: base[1] + Math.sin(ang) * r,
       exato: false,
     };
   },

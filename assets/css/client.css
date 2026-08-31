@@ -278,29 +278,36 @@
   background: #111;
   font-family: inherit;
 }
+.saidera-pin.leaflet-div-icon,
 .saidera-pin {
-  background: none !important;
+  background: transparent !important;
   border: none !important;
+  width: 44px !important;
+  height: 44px !important;
 }
 .saidera-pin-dot {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: #0e0e0e;
-  box-shadow: 0 0 0 2px var(--gold), 0 8px 16px rgba(0, 0, 0, 0.45);
+  border: 2px solid var(--gold);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
   overflow: hidden;
 }
 .saidera-pin-dot img {
-  width: 28px;
-  height: 28px;
+  width: 30px !important;
+  height: 30px !important;
+  max-width: none !important;
   object-fit: contain;
+  pointer-events: none;
 }
 .saidera-pin.on .saidera-pin-dot {
   transform: scale(1.12);
-  box-shadow: 0 0 0 3px var(--gold), 0 0 0 8px rgba(245, 184, 0, 0.28);
+  box-shadow: 0 0 0 4px rgba(245, 184, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.45);
 }
+.leaflet-marker-pane { z-index: 650 !important; }
 .est-card.on {
   outline: 2px solid var(--gold);
   outline-offset: 2px;

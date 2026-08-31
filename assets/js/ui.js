@@ -419,6 +419,7 @@ const UI = {
       if (mb && window.ClienteApp) {
         e.preventDefault();
         window.ClienteApp.mapBairro = mb.getAttribute("data-map-bairro") || null;
+        window.ClienteApp.mapLivre = !window.ClienteApp.mapBairro;
         window.ClienteApp.homeBairro = window.ClienteApp.mapBairro;
         window.ClienteApp.mapSel = null;
         window.ClienteApp.mapPage = 1;
