@@ -319,6 +319,23 @@ h3, .h3 { font-size: 1.02rem; font-weight: 700; }
   background: #222; color: #bdbdbd; font-weight: 700; font-size: 0.84rem;
 }
 .pill-tabs button.on { background: var(--gold); color: #171717; }
+.pill-tabs button.loc-sugere:not(.on) { box-shadow: inset 0 0 0 1px var(--gold); color: var(--gold); }
+
+.icon-btn.loc-on { box-shadow: 0 0 0 2px var(--gold); }
+
+.loc-sheet h3 { letter-spacing: -0.03em; }
+.loc-status {
+  min-height: 58px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  margin: 12px 0 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.loc-status.ok { border-color: rgba(245,184,0,0.35); background: rgba(245,184,0,0.08); }
+.loc-status.erro { border-color: rgba(200,80,80,0.4); }
+.loc-bairros { flex-wrap: wrap; overflow: visible; }
+.loc-sheet [data-usar-gps][disabled] { opacity: 0.55; }
 
 .scan-frame {
   width: 220px; height: 220px; position: relative;

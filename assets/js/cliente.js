@@ -15,6 +15,20 @@ const ClienteApp = {
       return null;
     }
   })(),
+  geoLabel: (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("saidera_geo_label") || "null");
+    } catch {
+      return null;
+    }
+  })(),
+  homeBairro: (() => {
+    try {
+      return sessionStorage.getItem("saidera_home_bairro") || null;
+    } catch {
+      return null;
+    }
+  })(),
 
   async boot() {
     this.root = document.getElementById("app");
@@ -88,20 +102,123 @@ const ClienteApp = {
     }
   },
 
+  guardarLugar() {
+    try {
+      if (this.geo) sessionStorage.setItem("saidera_geo", JSON.stringify(this.geo));
+      else sessionStorage.removeItem("saidera_geo");
+      if (this.geoLabel) sessionStorage.setItem("saidera_geo_label", JSON.stringify(this.geoLabel));
+      else sessionStorage.removeItem("saidera_geo_label");
+      if (this.homeBairro) sessionStorage.setItem("saidera_home_bairro", this.homeBairro);
+      else sessionStorage.removeItem("saidera_home_bairro");
+    } catch {
+      /* sessão sem storage */
+    }
+  },
+
+  aplicarGps(geo, label) {
+    this.geo = geo;
+    this.geoLabel = label || null;
+    this.homeBairro = null;
+    this.homePage = 1;
+    this.guardarLugar();
+    Logic.aplicarDistancias(this.geo);
+    this.render();
+    const onde = label?.label || "sua posição";
+    UI.toast("Lista pelo que está perto · " + onde);
+  },
+
+  escolherBairro(nome) {
+    this.homeBairro = nome || null;
+    this.mapBairro = nome || null;
+    this.mapPage = 1;
+    this.homePage = 1;
+    this.guardarLugar();
+    this.render();
+    UI.toast(nome ? "Mostrando casas em " + nome + "." : "Mostrando todas as casas.");
+  },
+
   pedirOndeEstou() {
+    this.abrirFolhaOnde();
+  },
+
+  htmlFolhaOnde({ status, geo, label, erro } = {}) {
+    const bairros = this.bairrosMapa();
+    const escolhido = this.homeBairro || "";
+    const sugerido = label?.bairro || "";
+    let statusHtml = `<p class="muted small">O aparelho vai pedir permissão. Aceite para a gente saber onde você está.</p>`;
+    if (status === "buscando") {
+      statusHtml = `<p class="muted small">Procurando você no GPS…</p>`;
+    } else if (status === "ok") {
+      statusHtml = `<p class="small" style="margin:0"><strong>Você está em</strong></p>
+        <p style="margin:4px 0 0;font-weight:800">${this.esc(label?.label || "posição encontrada")}</p>`;
+    } else if (status === "erro") {
+      statusHtml = `<p class="small" style="margin:0">Não deu para pegar o GPS.</p>
+        <p class="tiny muted" style="margin-top:4px">${this.esc(erro || "Escolha um bairro abaixo.")}</p>`;
+    }
+    const podeUsar = status === "ok" && geo;
+    return `<div class="loc-sheet">
+      <div class="row between" style="align-items:flex-start;gap:10px">
+        <div>
+          <h3 style="margin:0">Onde você está</h3>
+          <p class="tiny muted" style="margin-top:4px">Use o GPS ou escolha um bairro.</p>
+        </div>
+        <button type="button" class="icon-btn" data-close-modal aria-label="Fechar">${Icons.close ? Icons.close() : "×"}</button>
+      </div>
+      <div class="loc-status ${status === "ok" ? "ok" : status === "erro" ? "erro" : ""}">${statusHtml}</div>
+      <button type="button" class="btn btn-gold btn-block" data-usar-gps ${podeUsar ? "" : "disabled"}>
+        ${status === "buscando" ? "Procurando…" : "Usar onde eu estou"}
+      </button>
+      <p class="tiny muted" style="margin:16px 0 8px">Ou escolha um bairro</p>
+      <div class="pill-tabs loc-bairros">
+        <button type="button" class="${!escolhido ? "on" : ""}" data-escolher-bairro="">Todos</button>
+        ${bairros
+          .map(
+            (nome) =>
+              `<button type="button" class="${escolhido === nome ? "on" : ""} ${sugerido === nome ? "loc-sugere" : ""}" data-escolher-bairro="${this.esc(nome)}">${this.esc(nome)}</button>`
+          )
+          .join("")}
+      </div>
+      <button type="button" class="btn btn-ghost btn-block" style="margin-top:16px" data-folha-mapa>Ver no mapa</button>
+    </div>`;
+  },
+
+  abrirFolhaOnde() {
+    const m = UI.modal({ html: this.htmlFolhaOnde({ status: "buscando" }) });
+    this._geoTemp = null;
+    const ligar = () => {
+      m.el.querySelector("[data-usar-gps]")?.addEventListener("click", () => {
+        if (!this._geoTemp) return;
+        this.aplicarGps(this._geoTemp.geo, this._geoTemp.label);
+        m.close();
+      });
+      m.el.querySelectorAll("[data-escolher-bairro]").forEach((btn) =>
+        btn.addEventListener("click", () => {
+          this.escolherBairro(btn.getAttribute("data-escolher-bairro") || null);
+          m.close();
+        })
+      );
+      m.el.querySelector("[data-folha-mapa]")?.addEventListener("click", () => {
+        m.close();
+        this.go("#/mapa");
+      });
+    };
+    ligar();
     UI.pedirLocalizacao()
-      .then((geo) => {
-        this.geo = geo;
-        try {
-          sessionStorage.setItem("saidera_geo", JSON.stringify(this.geo));
-        } catch {
-          /* sessão sem storage */
-        }
-        Logic.aplicarDistancias(this.geo);
-        this.render();
-        UI.toast("Lista ordenada pelo que está perto de você.");
+      .then(async (geo) => {
+        if (!m.el.isConnected) return;
+        const label = await Logic.nomeDoPonto(geo.lat, geo.lng, this.bairrosMapa());
+        this._geoTemp = { geo, label };
+        m.el.querySelector(".modal").innerHTML = this.htmlFolhaOnde({ status: "ok", geo, label });
+        ligar();
       })
-      .catch((e) => UI.toast(e.message || "Não deu para ver onde você está."));
+      .catch((e) => {
+        if (!m.el.isConnected) return;
+        m.el.querySelector(".modal").innerHTML = this.htmlFolhaOnde({
+          status: "erro",
+          erro: e.message,
+        });
+        ligar();
+      });
   },
 
   cardRitmo(compacto = false) {
@@ -325,11 +442,16 @@ const ClienteApp = {
     return Store.all("estabelecimentos")
       .filter((e) => e.status === "ativo")
       .filter((e) => {
+        if (this.homeBairro && e.bairro !== this.homeBairro) return false;
         if (!q) return true;
         return [e.nome, e.bairro, e.endereco, e.promocao, Logic.tipoEst(e)].some((v) => this.norm(v).includes(q));
       })
       .sort((a, b) => {
-        if (a.temDistancia || b.temDistancia) return (a.distanciaKm || 99) - (b.distanciaKm || 99);
+        if (a.temDistancia || b.temDistancia) {
+          const da = a.temDistancia ? a.distanciaKm : 999;
+          const db = b.temDistancia ? b.distanciaKm : 999;
+          return da - db;
+        }
         const am = minhas.has(a.id) ? 0 : 1;
         const bm = minhas.has(b.id) ? 0 : 1;
         if (am !== bm) return am - bm;
@@ -372,13 +494,24 @@ const ClienteApp = {
     const slice = list.slice(start, start + per);
     const from = list.length ? start + 1 : 0;
     const to = start + slice.length;
-    const titulo = this.homeQuery.trim() ? "Resultados" : this.geo ? "Perto de você" : "Casas da rede";
+    const titulo = this.homeQuery.trim()
+      ? "Resultados"
+      : this.homeBairro
+        ? this.homeBairro
+        : this.geo
+          ? "Perto de você"
+          : "Casas da rede";
     const busca = this.homeQuery.trim()
       ? `<p class="tiny muted">${list.length} encontrado${list.length === 1 ? "" : "s"} para “${this.esc(this.homeQuery.trim())}”</p>`
       : `<p class="tiny muted">${from}–${to} de ${list.length}</p>`;
     const minhas = [...Logic.idsCasasDoCliente(me.id)].map((id) => Logic.est(id)).filter(Boolean).slice(0, 4);
-    const cidade = Store.data?.meta?.cidade || "Aracaju/SE";
+    const cidade = this.geoLabel?.label
+      ? this.geoLabel.label
+      : this.homeBairro
+        ? `${this.homeBairro}, ${Store.data?.meta?.cidade || "Aracaju/SE"}`
+        : Store.data?.meta?.cidade || "Aracaju/SE";
     const semTampas = !Store.all("tampas").some((t) => t.clienteId === me.id);
+    const locOn = Boolean(this.geo || this.homeBairro);
     return `${this.top()}
       <p class="muted small">${this.esc(cidade)}</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
@@ -390,10 +523,10 @@ const ClienteApp = {
       ${Brand.banner("secundario", "brand-banner")}
       <div class="row" style="margin:14px 0 8px">
         <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.esc(this.homeQuery)}"/></div>
-        <button class="icon-btn gold" data-go="#/mapa" title="Mapa">${Icons.pin()}</button>
+        <button class="icon-btn gold ${locOn ? "loc-on" : ""}" data-onde title="Onde você está">${Icons.pin()}</button>
       </div>
       <div class="row" style="gap:8px;margin-bottom:12px">
-        <button class="btn btn-ghost btn-sm grow" data-geo>${this.geo ? "Atualizar minha localização" : "Mostrar o que está perto"}</button>
+        <button class="btn btn-ghost btn-sm grow" data-onde>${this.geo ? "Atualizar minha localização" : "Onde eu estou"}</button>
       </div>
       ${semTampas ? this.vazio("Comece pela mesa", "Peça o cupom QR à casa e leia com o celular. As Tampas entram neste aparelho, no bar certo.", "Ler QR da casa", "#/ler") : ""}
       ${this.heroCard()}
@@ -468,10 +601,15 @@ const ClienteApp = {
     const slice = locais.slice(start, start + per);
     const sel = this.mapSel && locais.some((e) => e.id === this.mapSel) ? this.mapSel : locais[0]?.id;
     const escolhido = sel ? Logic.est(sel) : null;
-    const mapaAlvo = escolhido || { endereco: bairro ? `${bairro}, Aracaju - SE` : "Aracaju, SE" };
+    const mapaAlvo = escolhido
+      ? escolhido
+      : this.geo
+        ? { lat: this.geo.lat, lng: this.geo.lng }
+        : { endereco: bairro ? `${bairro}, Aracaju - SE` : "Aracaju, SE" };
 
     return `${this.back("Mapa")}
-      <p class="muted small" style="margin-bottom:10px">Endereço real no Google Maps. Toque numa casa da lista para ver o ponto.</p>
+      <p class="muted small" style="margin-bottom:10px">${this.geoLabel?.label ? `Você está em ${this.esc(this.geoLabel.label)}. ` : ""}Endereço real no Google Maps. Toque numa casa da lista para ver o ponto.</p>
+      <button type="button" class="btn btn-ghost btn-sm btn-block" style="margin-bottom:12px" data-onde>${this.geo ? "Atualizar minha localização" : "Usar minha localização"}</button>
       <div class="pill-tabs" style="margin-bottom:12px">
         <button class="${!bairro ? "on" : ""}" data-map-bairro="">Todos</button>
         ${bairros.map((nome) => `<button class="${bairro === nome ? "on" : ""}" data-map-bairro="${nome}">${nome}</button>`).join("")}
@@ -1093,7 +1231,7 @@ const ClienteApp = {
     this.root.querySelector("#tkt-manual")?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.aplicarTicket(e.target.value);
     });
-    this.root.querySelector("[data-geo]")?.addEventListener("click", () => this.pedirOndeEstou());
+    this.root.querySelector("[data-geo]")?.addEventListener("click", () => this.abrirFolhaOnde());
     this.root.querySelector("#abrir-camera")?.addEventListener("click", () => this.iniciarScanCliente());
     this.root.querySelectorAll("[data-copiar]").forEach((el) =>
       el.addEventListener("click", () => this.copiar(el.getAttribute("data-copiar"), "Código copiado."))

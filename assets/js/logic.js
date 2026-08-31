@@ -259,6 +259,83 @@ const Logic = {
     });
   },
 
+  normTexto(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  },
+
+  acharBairro(texto, lista) {
+    const n = this.normTexto(texto);
+    if (!n || !lista?.length) return "";
+    return (
+      lista.find((b) => this.normTexto(b) === n) ||
+      lista.find((b) => {
+        const bn = this.normTexto(b);
+        return bn && (n.includes(bn) || bn.includes(n));
+      }) ||
+      ""
+    );
+  },
+
+  casaMaisPerto(geo) {
+    if (!geo) return null;
+    let best = null;
+    let bestKm = Infinity;
+    Store.all("estabelecimentos").forEach((e) => {
+      if (e.status && e.status !== "ativo") return;
+      const km = this.haversine(geo.lat, geo.lng, e.lat, e.lng);
+      if (km != null && km < bestKm) {
+        bestKm = km;
+        best = e;
+      }
+    });
+    return best ? { est: best, km: Math.round(bestKm * 10) / 10 } : null;
+  },
+
+  async nomeDoPonto(lat, lng, bairros = []) {
+    const vazio = { bairro: "", cidade: "", uf: "", label: "" };
+    if (lat == null || lng == null) return vazio;
+    let raw = null;
+    try {
+      const u = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}&localityLanguage=pt`;
+      const r = await fetch(u);
+      if (r.ok) raw = await r.json();
+    } catch {
+      raw = null;
+    }
+    const info = [...(raw?.localityInfo?.administrative || []), ...(raw?.localityInfo?.informative || [])];
+    const itemBairro = info.find((x) => /bairro|neighbourhood|neighborhood|suburb|district/i.test(`${x.description || ""} ${x.name || ""}`));
+    const cidade = raw?.city || raw?.locality || "";
+    let bairro = itemBairro?.name || "";
+    if (!bairro && raw?.locality && this.normTexto(raw.locality) !== this.normTexto(cidade)) {
+      bairro = raw.locality;
+    }
+    const uf = String(raw?.principalSubdivisionCode || raw?.principalSubdivision || "")
+      .replace(/^BR-/, "")
+      .slice(0, 2)
+      .toUpperCase();
+    const conhecido = this.acharBairro([bairro, raw?.locality, cidade].filter(Boolean).join(" "), bairros);
+    if (conhecido) bairro = conhecido;
+    if (!bairro) {
+      const perto = this.casaMaisPerto({ lat, lng });
+      if (perto?.est?.bairro) bairro = perto.est.bairro;
+      if (!cidade && perto?.est?.cidade) {
+        return {
+          bairro: perto.est.bairro || "",
+          cidade: perto.est.cidade || "Aracaju",
+          uf: perto.est.uf || "SE",
+          label: [perto.est.bairro, perto.est.cidade || "Aracaju"].filter(Boolean).join(", "),
+        };
+      }
+    }
+    const label = [bairro, cidade || "Aracaju"].filter(Boolean).join(", ") + (uf ? `/${uf}` : "");
+    return { bairro: bairro || "", cidade: cidade || "Aracaju", uf: uf || "SE", label };
+  },
+
   idsCasasDoCliente(clienteId) {
     const ids = new Set();
     Store.all("tampas").filter((t) => t.clienteId === clienteId).forEach((t) => ids.add(t.estabelecimentoId));

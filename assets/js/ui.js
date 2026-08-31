@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "45");
+    return String(window.SAIDERA_V || "46");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -304,7 +304,7 @@ const UI = {
     if (this._bound) return;
     this._bound = true;
     document.addEventListener("click", (e) => {
-      const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-close-modal], [data-close-menu], [data-pwa-install], [data-camera-go], [data-action]");
+      const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-onde], [data-close-modal], [data-close-menu], [data-pwa-install], [data-camera-go], [data-action]");
       if (!el) return;
       if (el.closest("[data-close-modal]")) {
         e.preventDefault();
@@ -386,6 +386,12 @@ const UI = {
         location.hash = href.getAttribute("data-href");
         return;
       }
+      const onde = el.closest("[data-onde]");
+      if (onde && window.ClienteApp?.abrirFolhaOnde) {
+        e.preventDefault();
+        window.ClienteApp.abrirFolhaOnde();
+        return;
+      }
       const go = el.closest("[data-go]");
       if (go && window.ClienteApp?.go) {
         e.preventDefault();
@@ -410,8 +416,10 @@ const UI = {
       if (mb && window.ClienteApp) {
         e.preventDefault();
         window.ClienteApp.mapBairro = mb.getAttribute("data-map-bairro") || null;
+        window.ClienteApp.homeBairro = window.ClienteApp.mapBairro;
         window.ClienteApp.mapSel = null;
         window.ClienteApp.mapPage = 1;
+        window.ClienteApp.guardarLugar?.();
         window.ClienteApp.render();
       }
     });
@@ -465,25 +473,34 @@ const UI = {
         reject(new Error("Este aparelho não informa a localização."));
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => {
-          if (err?.code === 1) {
-            reject(new Error("A localização está bloqueada. " + this.ajudaPermissao("localizacao")));
-            return;
-          }
-          if (err?.code === 2) {
-            reject(new Error("Não achamos sua posição. Ligue o GPS e tente de novo."));
-            return;
-          }
-          if (err?.code === 3) {
-            reject(new Error("A localização demorou. Tente de novo em um lugar mais aberto."));
-            return;
-          }
-          reject(new Error("Não deu para ver onde você está. Busque pelo nome ou bairro."));
-        },
-        { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
-      );
+      const ler = (pos) => ({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        acc: pos.coords.accuracy,
+      });
+      const uma = (opts) =>
+        new Promise((ok, falhou) => {
+          navigator.geolocation.getCurrentPosition(ok, falhou, opts);
+        });
+      const falha = (err) => {
+        if (err?.code === 1) {
+          reject(new Error("A localização está bloqueada. " + this.ajudaPermissao("localizacao")));
+          return;
+        }
+        if (err?.code === 2) {
+          reject(new Error("Não achamos sua posição. Ligue o GPS e tente de novo."));
+          return;
+        }
+        if (err?.code === 3) {
+          reject(new Error("A localização demorou. Tente de novo em um lugar mais aberto."));
+          return;
+        }
+        reject(new Error("Não deu para ver onde você está. Escolha um bairro na lista."));
+      };
+      uma({ enableHighAccuracy: true, timeout: 18000, maximumAge: 12000 })
+        .catch(() => uma({ enableHighAccuracy: false, timeout: 22000, maximumAge: 180000 }))
+        .then((pos) => resolve(ler(pos)))
+        .catch(falha);
     });
   },
 
