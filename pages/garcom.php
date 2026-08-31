@@ -7,6 +7,7 @@ require __DIR__ . '/_cabecalho.php';
 $v = saidera_v();
 ?>
 <body class="client-page waiter-page">
+<?php require __DIR__ . '/_shell.php'; ?>
   <div id="app"></div>
   <script src="../assets/js/icons.js?v=<?= $v ?>"></script>
   <script src="../assets/js/api.js?v=<?= $v ?>"></script>

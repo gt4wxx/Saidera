@@ -550,3 +550,99 @@ select option {
 @media (min-width: 1024px) {
   .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 }
+
+body.saidera-booting { overflow: hidden; }
+.saidera-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  padding: calc(28px + var(--safe-t)) 24px calc(28px + var(--safe-b));
+  text-align: center;
+  transition: opacity .28s ease;
+}
+.saidera-boot[hidden] { display: none !important; }
+.saidera-boot.is-out { opacity: 0; pointer-events: none; }
+.saidera-boot-inner {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.saidera-boot-logo {
+  width: min(220px, 72vw);
+  height: auto;
+  margin: 0 auto 8px;
+}
+.saidera-boot-spin {
+  width: 36px;
+  height: 36px;
+  margin: 22px auto 16px;
+  border: 3px solid rgba(245, 184, 0, 0.18);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: saidera-spin .8s linear infinite;
+}
+.saidera-boot-msg {
+  color: #c4b8a4;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.saidera-boot-wifi {
+  width: 64px;
+  height: 64px;
+  color: var(--gold);
+  margin: 18px auto 14px;
+}
+.saidera-boot-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--cream);
+  margin: 0 0 10px;
+}
+.saidera-boot-text {
+  color: #c4b8a4;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 32ch;
+}
+.saidera-boot-btn {
+  margin-top: 22px;
+  max-width: 280px;
+}
+.saidera-boot-foot {
+  margin-top: 22px;
+  font-size: 0.72rem;
+  color: var(--gray-2);
+  max-width: 36ch;
+  line-height: 1.45;
+}
+.saidera-net {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: calc(8px + var(--safe-t)) 16px 8px;
+  background: #1a1408;
+  border-bottom: 1px solid rgba(245, 184, 0, 0.35);
+  color: var(--gold);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.saidera-net[hidden] { display: none !important; }
+body.saidera-net-on .toast-wrap {
+  top: calc(48px + var(--safe-t));
+}
+@keyframes saidera-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .saidera-boot-spin { animation: none; opacity: 0.85; }
+  .saidera-boot { transition: none; }
+}

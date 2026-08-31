@@ -93,7 +93,7 @@ $v = saidera_v();
   <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch.png?v=<?= h($v) ?>"/>
   <link rel="apple-touch-icon" sizes="192x192" href="assets/brand/icon-192.png?v=<?= h($v) ?>"/>
   <link rel="manifest" href="manifest.webmanifest"/>
-  <meta name="theme-color" content="#171717"/>
+  <meta name="theme-color" content="#0e0e0e"/>
   <meta name="description" content="Fidelização para a noite de Aracaju. Cliente, casa, garçom e parceiro no mesmo app."/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>

@@ -60,8 +60,8 @@ const API = {
     try {
       return await this.get("me");
     } catch (e) {
-      if (e.status && e.status !== 401) throw e;
-      return null;
+      if (e.status === 401) return null;
+      throw e;
     }
   },
   async sair() {

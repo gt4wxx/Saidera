@@ -1,14 +1,17 @@
-const CACHE = "saidera-pwa-v9";
+const CACHE = "saidera-pwa-v10";
 const PRECACHE = [
+  "./offline.html",
   "./index.php",
   "./entrar.php",
   "./manifest.webmanifest",
   "./assets/css/app.css",
   "./assets/css/client.css",
+  "./assets/js/shell.js",
   "./assets/brand/icon-192.png",
   "./assets/brand/icon-512.png",
   "./assets/brand/icon-maskable-512.png",
   "./assets/brand/apple-touch.png",
+  "./Saidera_Kit_Marca/03_logo_horizontal.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -47,9 +50,9 @@ self.addEventListener("fetch", (event) => {
         if (hit) return hit;
         if (event.request.mode === "navigate") {
           return (
-            (await caches.match("./index.php")) ||
+            (await caches.match("./offline.html")) ||
             new Response(
-              "<!DOCTYPE html><html lang='pt-BR'><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Saideira</title><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0e0e;color:#f5f0e6;font-family:sans-serif;text-align:center;padding:24px'><div><p>Sem conexão. Abra de novo com internet.</p></div></body></html>",
+              "<!DOCTYPE html><html lang='pt-BR'><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><meta name='theme-color' content='#0e0e0e'/><title>Saideira</title><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0e0e;color:#FFF9E8;font-family:sans-serif;text-align:center;padding:24px'><div><p style='font-weight:800;margin-bottom:8px'>Você está offline</p><p style='color:#c4b8a4'>A Saideira precisa de internet para marcar Tampas e baixar Saideira.</p></div></body></html>",
               { headers: { "Content-Type": "text/html; charset=utf-8" } }
             )
           );

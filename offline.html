@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0e0e0e"/>
+  <title>Saideira · Offline</title>
+  <style>
+    :root { --gold: #F5B800; --ink: #0e0e0e; --cream: #FFF9E8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      background: var(--ink);
+      color: var(--cream);
+      font-family: Manrope, system-ui, sans-serif;
+      text-align: center;
+      padding: 28px 24px calc(28px + env(safe-area-inset-bottom, 0px));
+    }
+    .logo { width: min(220px, 72vw); height: auto; margin: 0 auto 22px; }
+    .wifi { width: 64px; height: 64px; color: var(--gold); margin: 0 auto 18px; }
+    h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; }
+    p { color: #c4b8a4; font-size: 0.95rem; line-height: 1.5; max-width: 32ch; margin: 0 auto; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; width: min(280px, 100%); margin: 22px auto 0;
+      padding: 0 18px; border: 0; border-radius: 16px; cursor: pointer;
+      font: 700 1rem Manrope, system-ui, sans-serif; color: #171717;
+      background: linear-gradient(180deg, #ffd24a, var(--gold));
+      box-shadow: 0 10px 24px rgba(245,184,0,0.28);
+    }
+    .foot { margin-top: 22px; font-size: 0.72rem; color: #8A8A8A; max-width: 36ch; }
+  </style>
+</head>
+<body>
+  <div>
+    <img class="logo" src="Saidera_Kit_Marca/03_logo_horizontal.png" alt="Saideira"/>
+    <svg class="wifi" viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 26c12.4-12 31.6-12 44 0"/>
+        <path d="M18 34c8-8 20-8 28 0"/>
+        <path d="M25.5 42c3.8-3.8 9.2-3.8 13 0"/>
+        <circle cx="32" cy="50.5" r="2.6" fill="currentColor" stroke="none"/>
+        <path d="M16 14 L48 54"/>
+      </g>
+    </svg>
+    <h1>Você está offline</h1>
+    <p>A Saideira precisa de internet para marcar Tampas e baixar Saideira.</p>
+    <button type="button" class="btn" onclick="location.reload()">Tentar de novo</button>
+    <p class="foot">Códigos e QR já abertos neste aparelho podem continuar visíveis se você já entrou.</p>
+  </div>
+  <script>
+    window.addEventListener("online", function () { location.reload(); });
+  </script>
+</body>
+</html>

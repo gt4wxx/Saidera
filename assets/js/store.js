@@ -3,17 +3,20 @@ const Store = {
   session: null,
   listeners: [],
 
+  falhou(e, fallback) {
+    if (window.SaideraShell) {
+      if (!navigator.onLine || e?.status === 0) SaideraShell.offline();
+      else SaideraShell.fail(e?.message || fallback);
+    }
+    return false;
+  },
+
   async init({ papel } = {}) {
     let me;
     try {
       me = await API.me();
     } catch (e) {
-      document.body.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto">
-        <h1>Saideira</h1>
-        <p>${e.message || "Não foi possível abrir o painel."}</p>
-        <p><a href="${API.home()}" style="color:#F5B800">Voltar ao login</a></p>
-      </main>`;
-      return false;
+      return this.falhou(e, "Não foi possível abrir o painel.");
     }
     if (!me) {
       const cliente = papel === "cliente" || /cliente\.php/.test(location.pathname);
@@ -30,12 +33,7 @@ const Store = {
       const boot = await API.get("bootstrap");
       this.data = boot;
     } catch (e) {
-      document.body.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto">
-        <h1>Saideira</h1>
-        <p>${e.message || "Não foi possível carregar seus dados."}</p>
-        <p><a href="${API.home()}" style="color:#F5B800">Voltar ao login</a></p>
-      </main>`;
-      return false;
+      return this.falhou(e, "Não foi possível carregar seus dados.");
     }
     if (window.Logic?.hidratar) Logic.hidratar();
     return true;

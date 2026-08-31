@@ -36,6 +36,7 @@ const EstApp = {
     Store.startLive();
     window.addEventListener("hashchange", () => this.route());
     this.route();
+    if (window.SaideraShell) SaideraShell.ready();
   },
 
   est() {

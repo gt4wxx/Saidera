@@ -18,6 +18,7 @@ const ParceiroApp = {
     Store.on(() => this.render());
     window.addEventListener("hashchange", () => this.route());
     this.route();
+    if (window.SaideraShell) SaideraShell.ready();
   },
 
   par() {

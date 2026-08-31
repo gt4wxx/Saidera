@@ -21,7 +21,7 @@ $manifest = $manifest ?? '../manifest.webmanifest';
   <link rel="apple-touch-icon" sizes="180x180" href="../assets/brand/apple-touch.png?v=<?= $v ?>"/>
   <link rel="apple-touch-icon" sizes="192x192" href="../assets/brand/icon-192.png?v=<?= $v ?>"/>
   <link rel="manifest" href="<?= htmlspecialchars($manifest) ?>"/>
-  <meta name="theme-color" content="#171717"/>
+  <meta name="theme-color" content="#0e0e0e"/>
   <meta name="description" content="Fidelização para a noite de Aracaju. Cliente, casa, garçom e parceiro no mesmo app."/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -29,6 +29,7 @@ $manifest = $manifest ?? '../manifest.webmanifest';
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <script>window.SAIDERA_V = <?= json_encode($v) ?>;</script>
   <script src="../assets/js/pwa-captura.js?v=<?= $v ?>"></script>
+  <script src="../assets/js/shell.js?v=<?= $v ?>"></script>
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(function () {});

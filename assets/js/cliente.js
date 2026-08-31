@@ -32,10 +32,6 @@ const ClienteApp = {
 
   async boot() {
     this.root = document.getElementById("app");
-    const msg = document.getElementById("cli-boot-msg");
-    const aviso = setTimeout(() => {
-      if (msg) msg.textContent = "Ainda carregando. Confira a internet do celular.";
-    }, 4000);
     try {
       const ok = await Store.init({ papel: "cliente" });
       if (!ok) return;
@@ -49,15 +45,9 @@ const ClienteApp = {
       Store.startLive();
       window.addEventListener("hashchange", () => this.route());
       this.route();
+      if (window.SaideraShell) SaideraShell.ready();
     } catch (e) {
-      if (this.root) {
-        this.root.innerHTML = `<main class="landing" style="padding:32px 16px;max-width:480px;margin:0 auto;text-align:center">
-          <p class="muted">${this.esc(e.message || "Não foi possível abrir o painel.")}</p>
-          <button type="button" class="btn btn-gold btn-block" style="margin-top:16px" onclick="location.reload()">Tentar de novo</button>
-        </main>`;
-      }
-    } finally {
-      clearTimeout(aviso);
+      if (window.SaideraShell) SaideraShell.fail(e.message || "Não foi possível abrir o painel.");
     }
   },
 

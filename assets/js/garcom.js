@@ -37,6 +37,7 @@ const GarcomApp = {
     Store.on(() => this.render());
     Store.startLive();
     this.render();
+    if (window.SaideraShell) SaideraShell.ready();
   },
 
   fun() {
