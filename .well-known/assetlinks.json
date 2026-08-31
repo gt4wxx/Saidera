@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "site.devpremium.saideira.twa",
+      "sha256_cert_fingerprints": [
+        "CA:AD:C8:1F:DD:4F:E0:77:FA:35:0A:76:6E:4D:E0:3A:2C:A8:15:1F:06:2A:BC:59:7A:DE:61:7E:1D:3B:53:DC"
+      ]
+    }
+  }
+]
