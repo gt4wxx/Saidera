@@ -35,6 +35,7 @@ if ($eu && ($eu['papel'] ?? '') !== 'cliente') {
 
 $clienteLogado = $eu && ($eu['papel'] ?? '') === 'cliente';
 $casa = preg_replace('/[^a-z0-9\-]/i', '', (string) ($_GET['casa'] ?? ''));
+$mesa = preg_replace('/\D+/', '', (string) ($_GET['mesa'] ?? ''));
 $v = saidera_v();
 ?>
 <!DOCTYPE html>
@@ -72,6 +73,9 @@ $v = saidera_v();
       <div class="landing-brand" id="landing-brand"></div>
       <p class="lead" style="margin:0 auto 8px;text-align:center">A fidelidade que a noite merece.</p>
       <p class="tiny muted" style="margin:0 auto 16px;text-align:center;max-width:42ch">O cliente entra pelo app. Sem conta, cadastre e instale. Com o app, abra pelo ícone.</p>
+      <?php if ($mesa !== ''): ?>
+      <p class="badge badge-gold" style="display:table;margin:0 auto 16px">Mesa <?= h($mesa) ?></p>
+      <?php endif; ?>
     </header>
     <section class="card pad" id="entrar-card" style="max-width:440px;margin:0 auto 18px">
       <div id="entrar-status" hidden></div>

@@ -222,6 +222,14 @@ function casa_aberta(?string $horario): ?bool
     return $h >= $ini || $h < $fim;
 }
 
+function casa_aberta_agora(?string $horario, ?string $salao = 'auto'): bool
+{
+    $salao = $salao ?: 'auto';
+    if ($salao === 'aberto') return true;
+    if ($salao === 'fechado') return false;
+    return casa_aberta($horario) !== false;
+}
+
 function br_para_sql(?string $br): ?string
 {
     $br = trim((string) $br);

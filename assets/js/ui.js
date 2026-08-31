@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "47");
+    return String(window.SAIDERA_V || "48");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;
@@ -306,10 +306,16 @@ const UI = {
     document.addEventListener("click", (e) => {
       const el = e.target.closest("button, a, [data-act], [data-go], [data-href], [data-menu], [data-back], [data-pin], [data-map-bairro], [data-onde], [data-close-modal], [data-close-menu], [data-pwa-install], [data-camera-go], [data-action]");
       if (!el) return;
+      if (el.closest("[data-wa]")) return;
       if (el.closest("[data-close-modal]")) {
         e.preventDefault();
         QR?.stopScan();
+        const a = el.closest("a[href]");
         el.closest(".modal-bg")?.remove();
+        if (a) {
+          const dest = a.getAttribute("href");
+          if (dest && dest !== "#") location.hash = dest;
+        }
         return;
       }
       if (el.closest("[data-close-menu]")) {

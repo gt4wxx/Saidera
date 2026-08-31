@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS estabelecimentos (
   cartaz VARCHAR(500) DEFAULT NULL,
   status ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
   horario VARCHAR(80) DEFAULT NULL,
+  salao ENUM('auto','aberto','fechado') NOT NULL DEFAULT 'auto',
   meta_padrao INT UNSIGNED NOT NULL DEFAULT 10,
   promocao VARCHAR(200) DEFAULT NULL,
   plano_id BIGINT UNSIGNED DEFAULT NULL,

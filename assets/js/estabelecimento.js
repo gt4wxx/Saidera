@@ -8,6 +8,8 @@ const EstApp = {
   clienteSel: null,
   ticketQtys: null,
   ticketGeradoId: null,
+  ticketLoteIds: [],
+  tktLote: 1,
   campForm: { tipo: null, publico: "todos", mensagem: "", meta: 6, bebidaId: null, canal: "push" },
   volta: { qtd: 10, ids: [], mensagem: "" },
   cliPage: 1,
@@ -610,6 +612,7 @@ const EstApp = {
         const r = Logic.retratoCliente(c.id, this.estId) || {};
         const p = Store.all("tampas").find((t) => t.clienteId === c.id && t.estabelecimentoId === this.estId);
         const disp = r.saideras?.disp || 0;
+        const wa = Logic.whatsappHref(c.telefone);
         return `<tr data-href="#/cliente/${c.id}">
           <td><div class="person"><img src="${this.avatar(c.avatar)}" alt=""/><div><strong>${this.esc(c.nome)}</strong><p class="tiny muted">${this.esc(c.codigo)}</p></div></div></td>
           <td>${this.badgeFreq(r.frequencia)}</td>
@@ -619,6 +622,7 @@ const EstApp = {
           <td>${p ? p.atual + "/" + p.meta : "—"}</td>
           <td>${this.n(r.saideras?.total || 0)}${disp ? `<p class="tiny muted">${disp} pronta${disp === 1 ? "" : "s"}</p>` : ""}</td>
           <td>${this.esc(c.ultimaVisita || "—")}${r.diasSem != null ? `<p class="tiny muted">${r.diasSem} dia${r.diasSem === 1 ? "" : "s"}</p>` : ""}</td>
+          <td class="table-actions">${wa ? `<a class="btn btn-gold btn-sm" data-wa href="${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()">WhatsApp</a>` : `<span class="tiny muted">sem tel.</span>`}</td>
         </tr>`;
       })
       .join("");
@@ -629,8 +633,8 @@ const EstApp = {
       ${this.chips("cliFiltro", [["", "Todos"], ["alta", "Vem sempre"], ["media", "Regular"], ["baixa", "Pouca frequência"], ["fria", "Sumiu"], ["quase", "Quase Saideira"], ["saidera", "Com Saideira"], ["niver", "Aniversário"], ["inativo", "Inativos"]])}
       <p class="muted small" style="margin:12px 0">${busca}</p>
       <div class="table-wrap"><table class="data">
-        <thead><tr><th>Cliente</th><th>Frequência</th><th>Favorita</th><th>Pedidos</th><th>Tampas pedidas</th><th>Cartela</th><th>Saideiras</th><th>Última visita</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="8" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
+        <thead><tr><th>Cliente</th><th>Frequência</th><th>Favorita</th><th>Pedidos</th><th>Tampas pedidas</th><th>Cartela</th><th>Saideiras</th><th>Última visita</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="9" class="muted">${this.cliQuery.trim() ? "Nenhum cliente encontrado." : "Nenhum cliente nesta casa ainda."}</td></tr>`}</tbody>
       </table></div>
       ${this.pager(page, pages, "Páginas de clientes")}
     </section>`;
@@ -663,7 +667,7 @@ const EstApp = {
         <p>Bebida que mais pede: <strong>${this.esc(r?.favorita?.nome || "Ainda sem pedido nesta casa")}</strong>${r?.favorita ? ` <span class="tiny muted">(${this.n(r.favorita.qtd)} tampas · ${r.bebidas[0]?.pct || 0}%)</span>` : ""}</p>
         <p>Última visita: <strong>${this.esc(c.ultimaVisita || "—")}</strong>${r?.diasSem != null ? ` <span class="tiny muted">(${r.diasSem} dia${r.diasSem === 1 ? "" : "s"} sem voltar)</span>` : ""}</p>
         <p>Nascimento: <strong>${this.esc(c.nascimento || "—")}</strong></p>
-        <p>Telefone: <strong>${this.esc(c.telefone || "—")}</strong></p>
+        <p>Telefone: <strong>${this.esc(c.telefone || "—")}</strong>${Logic.whatsappHref(c.telefone) ? ` · <a class="gold" data-wa href="${Logic.whatsappHref(c.telefone)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</p>
         <p>E-mail: <strong>${this.esc(c.email || "—")}</strong></p>
         <div class="kpis" style="margin-top:16px">
           <div class="kpi"><b>${this.n(r?.visitas || 0)}</b><span>Visitas</span></div>
@@ -725,20 +729,39 @@ const EstApp = {
       .filter((i) => i.quantidade > 0);
   },
 
-  ticketSlip(t) {
+  ticketSlip(t, { mark } = {}) {
     const est = this.est();
     const payload = window.QR?.payloadTicket ? QR.payloadTicket(t.codigo) : t.codigo;
     const svg = window.QR?.svg ? QR.svg(payload, 200) : UI.qrSvg(t.codigo);
-    return `<article class="ticket-print" id="ticket-print">
+    return `<article class="ticket-print"${mark ? ` id="ticket-print"` : ""}>
       ${Brand.horizontal("brand-h")}
-      <p class="ticket-house">${est.nome}</p>
-      <p class="tiny">ID do estabelecimento: <strong>${est.id}</strong></p>
+      <p class="ticket-house">${this.esc(est.nome)}</p>
+      <p class="tiny">ID do estabelecimento: <strong>${this.esc(est.id)}</strong></p>
       <div class="ticket-qr">${svg}</div>
-      <h2>${t.codigo}</h2>
-      <ul class="ticket-itens">${t.itens.map((i) => `<li><strong>${i.quantidade}×</strong> ${i.nome}</li>`).join("")}</ul>
+      <h2>${this.esc(t.codigo)}</h2>
+      <ul class="ticket-itens">${(t.itens || []).map((i) => `<li><strong>${i.quantidade}×</strong> ${this.esc(i.nome)}</li>`).join("")}</ul>
       <p class="badge badge-gold">USO ÚNICO</p>
       <p class="tiny" style="margin-top:10px">O cliente lê este QR no app Saideira. Depois de usado, o cupom acaba.</p>
     </article>`;
+  },
+
+  ticketLoteHtml(ids) {
+    const list = (ids || []).map((id) => Store.find("tickets", id)).filter(Boolean);
+    if (!list.length) return "";
+    return `<div class="ticket-lote" id="ticket-print">${list.map((t) => this.ticketSlip(t)).join("")}</div>`;
+  },
+
+  aplicarModeloTicket(tipo) {
+    this.ensureTicketQtys();
+    const drinks = this.est()?.bebidas || [];
+    Object.keys(this.ticketQtys).forEach((k) => {
+      this.ticketQtys[k] = 0;
+    });
+    if (tipo === "uma" && drinks[0]) this.ticketQtys[drinks[0].id] = 1;
+    if (tipo === "rodada" && drinks[0]) this.ticketQtys[drinks[0].id] = 4;
+    if (tipo === "cada") drinks.slice(0, 8).forEach((d) => {
+      this.ticketQtys[d.id] = 1;
+    });
   },
 
   registrar() {
@@ -747,13 +770,21 @@ const EstApp = {
     const drinks = est.bebidas || [];
     const itens = this.ticketItens();
     const total = itens.reduce((a, i) => a + i.quantidade, 0);
+    const loteIds = (this.ticketLoteIds || []).filter((id) => Store.find("tickets", id));
     const gerado = this.ticketGeradoId ? Store.find("tickets", this.ticketGeradoId) : null;
     let tickets = Store.all("tickets").filter((t) => t.estabelecimentoId === this.estId);
     if (this.tktFiltro) tickets = tickets.filter((t) => Logic.ticketStatus(t) === this.tktFiltro);
     tickets = tickets.slice(0, 30);
+    const primeira = drinks[0]?.nome || "primeira bebida";
     return `<div class="grid-2 ticket-layout">
       <section class="panel ticket-composer no-print">
         <p class="notice" style="margin-bottom:14px">Monte o cupom, imprima e entregue ao cliente. A casa não precisa do ID dele — quem lê o QR é o celular do cliente.</p>
+        <p class="tiny muted" style="margin-bottom:8px">Modelos prontos</p>
+        <div class="chips" style="margin-bottom:14px">
+          <button type="button" class="chip" data-tkt-modelo="uma">1× ${this.esc(primeira)}</button>
+          <button type="button" class="chip" data-tkt-modelo="rodada">Rodada 4× ${this.esc(primeira)}</button>
+          <button type="button" class="chip" data-tkt-modelo="cada">1 de cada</button>
+        </div>
         <h3 style="margin-bottom:10px">Bebidas neste cupom</h3>
         ${!drinks.length ? `<p class="muted">Cadastre bebidas em <a href="#/bebidas">Bebidas</a> para montar o cupom.</p>` : ""}
         ${drinks
@@ -770,22 +801,28 @@ const EstApp = {
           })
           .join("")}
         <p class="small" style="margin:14px 0 10px">${total ? `${total} Tampa${total > 1 ? "s" : ""} · ${itens.map((i) => `${i.quantidade}× ${i.nome}`).join(", ")}` : "Escolha pelo menos uma bebida."}</p>
-        <button class="btn btn-gold btn-block" id="gerar-ticket" style="min-height:56px" ${total ? "" : "disabled"}>Gerar QR para imprimir</button>
+        <div class="field" style="margin-bottom:12px">
+          <span>Quantos iguais para imprimir</span>
+          <div class="chips" style="margin-top:8px">
+            ${[1, 5, 10, 20].map((n) => `<button type="button" class="chip ${this.tktLote === n ? "on" : ""}" data-tkt-lote="${n}">${n}</button>`).join("")}
+          </div>
+        </div>
+        <button class="btn btn-gold btn-block" id="gerar-ticket" style="min-height:56px" ${total ? "" : "disabled"}>Gerar ${this.tktLote > 1 ? this.tktLote + " QRs" : "QR"} para imprimir</button>
       </section>
       <div>
         ${
-          gerado && !gerado.usado
+          loteIds.length || (gerado && !gerado.usado)
             ? `<section class="panel" style="margin-bottom:14px">
-                <div class="row between no-print" style="margin-bottom:12px">
-                  <h3>Pronto para imprimir</h3>
+                <div class="row between no-print" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                  <h3>${loteIds.length > 1 ? loteIds.length + " cupons prontos" : "Pronto para imprimir"}</h3>
                   <div class="row" style="gap:8px">
                     <button class="btn btn-gold btn-sm" id="print-ticket">${Icons.printer()} Imprimir</button>
                     <button class="btn btn-ghost btn-sm" id="novo-ticket">Novo cupom</button>
                   </div>
                 </div>
-                ${this.ticketSlip(gerado)}
+                ${loteIds.length > 1 ? this.ticketLoteHtml(loteIds) : this.ticketSlip(gerado || Store.find("tickets", loteIds[0]), { mark: true })}
               </section>`
-              : `<section class="panel no-print" style="margin-bottom:14px"><p class="muted">O cupom impresso traz o nome das bebidas, a quantidade, o ID desta casa e um QR de uso único.</p></section>`
+              : `<section class="panel no-print" style="margin-bottom:14px"><p class="muted">O cupom impresso traz o nome das bebidas, a quantidade, o ID desta casa e um QR de uso único. Use um modelo ou monte na mão e, se quiser, imprima vários iguais.</p></section>`
         }
         <section class="panel ticket-list no-print">
           <h3 style="margin-bottom:10px">Cupons desta casa</h3>
@@ -819,46 +856,44 @@ const EstApp = {
     const est = this.est();
     const drinks = est.bebidas;
     const p = c ? Logic.garantirProgresso(c.id, this.estId, this.drinkId) : null;
-    return `<section class="panel" style="max-width:720px">
-      <p class="notice" style="margin-bottom:14px">Use quando o cliente mostrar o QR dele. O caminho principal continua sendo o cupom impresso em Gerar QR.</p>
-      <div class="search" style="margin-bottom:14px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-…" value="${c ? c.nome : ""}"/></div>
-      <div class="row wrap" style="margin-bottom:16px;gap:8px">
-        <button class="btn btn-navy btn-sm" id="scan-qr">${Icons.qr()} Escanear QR do cliente</button>
-      </div>
+    const falta = p ? Math.max(0, p.meta - p.atual) : 0;
+    const quase = p && falta > 0 && falta <= 2;
+    return `<section class="panel atender-salao" style="max-width:760px">
+      <p class="notice" style="margin-bottom:14px">Caminho rápido do salão: leia o QR do cliente, toque na bebida e registre. O cupom impresso continua em Gerar QR.</p>
+      <div class="search" style="margin-bottom:12px">${Icons.search()}<input id="busca-cli" placeholder="Buscar cliente ou ID · SDR-…" value="${c ? this.esc(c.nome) : ""}"/></div>
+      <button class="btn btn-navy btn-block" id="scan-qr" style="min-height:56px;margin-bottom:16px">${Icons.qr()} Ler QR do cliente</button>
       ${
         c
-          ? `<div class="person" style="margin-bottom:18px">
-              <img src="${this.avatar(c.avatar)}" alt=""/>
-              <div><strong>${this.esc(c.nome)}</strong><p class="small muted">${this.esc(c.codigo)} · <a href="#/cliente/${c.id}">ficha</a></p></div>
+          ? `<div class="person" style="margin-bottom:16px">
+              <img src="${this.avatar(c.avatar)}" alt="" style="width:56px;height:56px;border-radius:16px"/>
+              <div><strong style="font-size:1.15rem">${this.esc(c.nome)}</strong><p class="small muted">${this.esc(c.codigo)} · <a href="#/cliente/${c.id}">ficha</a></p></div>
             </div>
             ${(() => {
               const disp = Store.all("saideras").filter((s) => s.clienteId === c.id && s.estabelecimentoId === this.estId && s.status === "disponivel");
-              return disp.length ? `<p class="notice" style="margin-bottom:14px">${disp.length} Saideira(s) pronta(s). <a href="#/saideras" style="color:#F5B800">Baixar com o ID</a></p>` : "";
+              return disp.length ? `<p class="notice" style="margin-bottom:14px">${disp.length} Saideira(s) pronta(s). <a href="#/saideras" style="color:#F5B800">Baixar agora</a></p>` : "";
             })()}
-            <h3 style="margin-bottom:10px">Bebida</h3>
-            <div class="drink-pick" id="drinks">
+            <h3 style="margin-bottom:10px">Toque na bebida</h3>
+            <div class="drink-pick drink-pick-salao" id="drinks">
               ${drinks
                 .map((d) => {
                   const meta = Logic.metaDe(est, d.id, c.id);
                   const cam = Logic.patrocinioEm(this.estId, d.id);
-                  return `<button class="${this.drinkId === d.id ? "on" : ""}" data-drink="${d.id}"><strong>${d.nome}</strong><p class="tiny muted">${meta} Tampas${cam ? " · oferta" : ""}</p></button>`;
+                  return `<button type="button" class="${this.drinkId === d.id ? "on" : ""}" data-drink="${d.id}"><strong>${this.esc(d.nome)}</strong><p class="tiny muted">${meta} Tampas${cam ? " · oferta" : ""}</p></button>`;
                 })
                 .join("")}
             </div>
-            <div class="row between" style="margin:18px 0">
-              <div>
-                <p class="tiny muted">Progresso atual</p>
-                <strong>${Logic.bebida(this.drinkId)?.nome || "Bebida"} · ${p.atual}/${p.meta}</strong>
-                <div style="margin-top:8px">${UI.tampas(p.atual, p.meta)}</div>
-              </div>
-              <div class="qty">
-                <button id="qty-minus">−</button>
-                <strong id="qty-val" style="min-width:24px;text-align:center">${this.qty}</strong>
-                <button id="qty-plus">+</button>
-              </div>
+            <div class="atender-cartela ${quase ? "quase" : ""}">
+              <p class="tiny muted">Cartela agora</p>
+              <strong>${this.esc(Logic.bebida(this.drinkId)?.nome || "Bebida")} · ${p.atual}/${p.meta}</strong>
+              <div style="margin-top:8px">${UI.tampas(p.atual, p.meta)}</div>
+              ${quase ? `<p class="tiny gold" style="margin-top:8px">Falta${falta === 1 ? "" : "m"} ${falta} para a Saideira</p>` : ""}
             </div>
-            <button class="btn btn-gold btn-block" id="do-reg" style="min-height:56px;font-size:1.02rem">REGISTRAR ${this.qty} TAMPA${this.qty > 1 ? "S" : ""}</button>`
-          : `<p class="muted">Escaneie o QR pessoal do cliente ou busque pelo ID (SDR-…).</p>`
+            <p class="tiny muted" style="margin:14px 0 8px">Quantas tampas neste toque</p>
+            <div class="chips" style="margin-bottom:14px">
+              ${[1, 2, 3, 4].map((n) => `<button type="button" class="chip ${this.qty === n ? "on" : ""}" data-qty-n="${n}">${n}</button>`).join("")}
+            </div>
+            <button class="btn btn-gold btn-block" id="do-reg" style="min-height:64px;font-size:1.08rem">Registrar ${this.qty} tampa${this.qty > 1 ? "s" : ""}</button>`
+          : `<p class="muted">Leia o QR pessoal do cliente ou busque pelo ID (SDR-…).</p>`
       }
     </section>`;
   },
@@ -944,16 +979,37 @@ const EstApp = {
       });
     }
     const tot = Store.all("saideras").filter((s) => s.estabelecimentoId === this.estId);
+    const fila = tot.filter((s) => s.status === "disponivel").slice(0, 12);
     return `<div class="kpis">
       <div class="kpi"><span>Total</span><b>${this.n(tot.length)}</b></div>
       <div class="kpi"><span>Disponíveis</span><b>${this.n(tot.filter((s) => s.status === "disponivel").length)}</b></div>
       <div class="kpi"><span>Entregues</span><b>${this.n(tot.filter((s) => s.status === "utilizada").length)}</b></div>
     </div>
+    ${
+      fila.length
+        ? `<section class="panel" style="margin-bottom:14px">
+      <h3>Fila do salão · prontas agora</h3>
+      <p class="tiny muted" style="margin:6px 0 12px">Toque para conferir e entregar. Só confirme quando a bebida for para a mesa.</p>
+      <div class="sai-fila">${fila
+        .map((s) => {
+          const cli = Logic.cliente(s.clienteId);
+          const beb = Logic.bebida(s.bebidaId);
+          return `<button type="button" class="sai-fila-card" data-sai-fila="${s.id}">
+            <strong>${this.esc(cli?.nome || "Cliente")}</strong>
+            <p>${this.esc(beb?.nome || "Bebida")}</p>
+            <span>${this.esc(s.codigo)}</span>
+          </button>`;
+        })
+        .join("")}</div>
+    </section>`
+        : ""
+    }
     <section class="panel" style="margin-bottom:14px">
       <h3>Baixar Saideira</h3>
-      <p class="muted small" style="margin:6px 0 12px">Peça o ID da Saideira no app do cliente (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
+      <p class="muted small" style="margin:6px 0 12px">Leia o QR da Saideira no app do cliente ou digite o ID (SDR-…). Confira nome e bebida. Só confirme quando a bebida for para a mesa — depois o ID acaba.</p>
       <div class="row wrap" style="gap:8px">
         <div class="search grow">${Icons.search()}<input id="sai-codigo" placeholder="ID da Saideira · SDR-…" maxlength="24" autocomplete="off"/></div>
+        <button class="btn btn-navy" id="scan-sai">${Icons.qr()} Ler QR</button>
         <button class="btn btn-gold" id="entregar-sai">Revisar e entregar</button>
       </div>
       <div id="sai-preview" class="sai-preview"></div>
@@ -1341,6 +1397,13 @@ const EstApp = {
         <button type="button" class="btn btn-gold btn-sm" data-act="convite-copiar">Copiar link</button>
         <button type="button" class="btn btn-navy btn-sm" data-act="convite-imprimir">Imprimir QR</button>
       </div>
+      <h3 style="margin-top:22px">QR por mesa</h3>
+      <p class="tiny muted" style="margin:6px 0 12px">Imprime um QR para cada mesa. O cliente lê e cai no app desta casa.</p>
+      <div class="row wrap" style="gap:10px;align-items:flex-end">
+        <div class="field" style="min-width:90px"><span>Da mesa</span><input id="cfg-mesa-de" type="number" min="1" max="80" value="1"/></div>
+        <div class="field" style="min-width:90px"><span>Até a mesa</span><input id="cfg-mesa-ate" type="number" min="1" max="80" value="8"/></div>
+        <button type="button" class="btn btn-gold" id="imprimir-mesas">Imprimir mesas</button>
+      </div>
     </section>
     <section class="panel">
       <h3>Casa</h3>
@@ -1349,6 +1412,21 @@ const EstApp = {
         <select id="cfg-tipo"><option value="bar" ${est.tipo === "bar" ? "selected" : ""}>Bar</option><option value="restaurante" ${est.tipo === "restaurante" ? "selected" : ""}>Restaurante</option></select>
       </div>
       <div class="field" style="margin-top:10px"><span>Horário</span><input id="cfg-hora" placeholder="18h às 2h" value="${this.esc(est.horario || "")}"/></div>
+      <p class="tiny muted" style="margin:12px 0 8px">No app do cliente agora</p>
+      <input type="hidden" id="cfg-salao" value="${this.esc(est.salao || "auto")}"/>
+      <div class="chips salao-pick">
+        ${[
+          ["auto", "Pelo horário"],
+          ["aberto", "Aberto agora"],
+          ["fechado", "Fechado agora"],
+        ]
+          .map(
+            ([v, lab]) =>
+              `<button type="button" class="chip ${(est.salao || "auto") === v ? "on" : ""}" data-salao="${v}">${lab}</button>`
+          )
+          .join("")}
+      </div>
+      <p class="tiny muted" style="margin-top:8px">${est.aberto ? "O cliente vê: aberto." : "O cliente vê: fechado."}</p>
       <div class="field" style="margin-top:10px"><span>Saideira padrão (Tampas)</span><input id="cfg-meta" type="number" min="1" value="${est.metaPadrao}"/></div>
       <p class="tiny muted" style="margin:12px 0 8px">Endereço com CEP — o cliente abre no Google Maps.</p>
       <div class="form-grid">
@@ -1418,7 +1496,10 @@ const EstApp = {
             ? `${cliente.primeiroNome} usou a oferta neste bar. Próximo ciclo pela regra da casa (${res.metaBar} Tampas): ${res.depois}/${res.meta}.`
             : `${cliente.primeiroNome} conquistou ${res.ganhas} Saideira de ${bebida.nome}. Ciclo atual: ${res.depois}/${res.meta}.`
         )}
-          <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Continuar</button>`,
+          <div class="stack" style="margin-top:16px;gap:8px">
+            <a class="btn btn-gold btn-block" href="#/saideras" data-close-modal>Baixar Saideira</a>
+            <button class="btn btn-ghost btn-block" data-close-modal>Continuar</button>
+          </div>`,
       });
     } else {
       UI.modal({
@@ -1426,7 +1507,10 @@ const EstApp = {
         html: `<h2>${this.qty} Tampa${this.qty > 1 ? "s" : ""} adicionada${this.qty > 1 ? "s" : ""} 🍺</h2>
           <p class="muted" style="margin:10px 0 16px">${cliente.primeiroNome} agora possui ${res.depois}/${res.meta} Tampas de ${bebida.nome}.</p>
           ${UI.tampas(res.depois, res.meta)}
-          <button class="btn btn-gold btn-block" style="margin-top:16px" data-close-modal>Fechar</button>`,
+          <div class="stack" style="margin-top:16px;gap:8px">
+            <button class="btn btn-gold btn-block" data-close-modal>Fechar</button>
+            <a class="btn btn-ghost btn-block" href="#/registrar" data-close-modal>Gerar cupom da próxima</a>
+          </div>`,
       });
     }
   },
@@ -1530,6 +1614,59 @@ const EstApp = {
     w.onafterprint = () => w.close();
   },
 
+  async imprimirMesas() {
+    const de = Math.max(1, Number(this.root.querySelector("#cfg-mesa-de")?.value) || 1);
+    const ate = Math.min(80, Number(this.root.querySelector("#cfg-mesa-ate")?.value) || de);
+    if (ate < de) {
+      UI.toast("A mesa final precisa ser maior ou igual à inicial.");
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (!w) {
+      UI.toast("Permita a janela de impressão.");
+      return;
+    }
+    const casa = this.esc(this.est()?.nome || "");
+    const [brand, icon] = await Promise.all([
+      Brand.dataUrl("03_logo_horizontal.png", true),
+      Brand.dataUrl("10_app_icon_amarelo.png"),
+    ]);
+    const cards = [];
+    for (let n = de; n <= ate; n++) {
+      const url = Logic.urlEntrarCliente(this.estId, n);
+      const qr = QR.svg(url, 220, { logo: true, logoSrc: icon });
+      cards.push(`<article class="mesa">
+        <img class="logo" src="${brand}" alt="Saideira"/>
+        <p class="kicker">${casa}</p>
+        <div class="frame">${qr}</div>
+        <h1>Mesa ${n}</h1>
+        <p class="sub">Leia e entre na Saideira</p>
+      </article>`);
+    }
+    w.document.write(`<!DOCTYPE html><html><head><title>QR das mesas</title>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap" rel="stylesheet"/>
+      <style>
+        @page { size: A4 portrait; margin: 8mm; }
+        body { margin: 0; font-family: Manrope, Segoe UI, sans-serif; color: #171717; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+        .mesa {
+          border: 3px solid #F5B800; border-radius: 18px; padding: 10px 12px 14px;
+          text-align: center; break-inside: avoid; page-break-inside: avoid;
+        }
+        .logo { height: 28px; width: auto; margin: 0 auto 6px; display: block; }
+        .kicker { margin: 0 0 8px; font-size: 11px; font-weight: 800; color: #C49200; }
+        .frame { display: inline-grid; place-items: center; background: #FFF9E8; padding: 8px; border-radius: 14px; }
+        .frame svg { width: 58mm; height: 58mm; display: block; }
+        h1 { margin: 8px 0 2px; font-size: 22px; }
+        .sub { margin: 0; font-size: 11px; color: #5c5c5c; }
+      </style></head><body><div class="grid">${cards.join("")}</div></body></html>`);
+    w.document.close();
+    await new Promise((r) => setTimeout(r, 180));
+    w.focus();
+    w.print();
+    w.onafterprint = () => w.close();
+  },
+
   async onAct(act, id, el) {
     if (this.telaBloqueada()) return;
     if (act === "fun-toggle") {
@@ -1541,6 +1678,7 @@ const EstApp = {
       if (!confirm("Cancelar este cupom? Ele não poderá mais ser lido.")) return;
       await this.post("tickets/cancelar", { id }, "Cupom cancelado.");
       if (this.ticketGeradoId === id) this.ticketGeradoId = null;
+      this.ticketLoteIds = (this.ticketLoteIds || []).filter((x) => x !== id);
       return;
     }
     if (act === "cli-aviso") {
@@ -1700,7 +1838,7 @@ const EstApp = {
 
   onClick(e) {
     if (this.telaBloqueada() && e.target.closest("[data-plano-lock]")) return;
-    const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico], [data-dash-dia], [data-dash-faixa], [data-dash-wd], [data-dash-filtro]");
+    const t = e.target.closest("button, [data-page], [data-pick], [data-drink], [data-tkt-qty], [data-tkt-modelo], [data-tkt-lote], [data-ver-ticket], [data-solicitar], [data-volta-qtd], [data-camp-tipo], [data-camp-publico], [data-dash-dia], [data-dash-faixa], [data-dash-wd], [data-dash-filtro], [data-qty-n], [data-sai-fila], [data-salao]");
     if (!t || t.disabled) return;
     if (t.closest("[data-menu], [data-close-menu], [data-close-modal], [data-href], [data-act]")) return;
     const id = t.id;
@@ -1742,6 +1880,33 @@ const EstApp = {
       const atual = Number(this.ticketQtys[kid]) || 0;
       this.ticketQtys[kid] = Math.max(0, Math.min(20, atual + dir));
       this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-modelo")) {
+      this.aplicarModeloTicket(t.getAttribute("data-tkt-modelo"));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-tkt-lote")) {
+      this.tktLote = Math.max(1, Math.min(20, Number(t.getAttribute("data-tkt-lote")) || 1));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-qty-n")) {
+      this.qty = Math.max(1, Math.min(12, Number(t.getAttribute("data-qty-n")) || 1));
+      this.render();
+      return;
+    }
+    if (t.hasAttribute("data-sai-fila")) {
+      const s = Store.find("saideras", t.getAttribute("data-sai-fila"));
+      this.pedirConfirmacaoSaidera(s);
+      return;
+    }
+    if (t.hasAttribute("data-salao")) {
+      const v = t.getAttribute("data-salao") || "auto";
+      const hid = this.root.querySelector("#cfg-salao");
+      if (hid) hid.value = v;
+      this.root.querySelectorAll("[data-salao]").forEach((b) => b.classList.toggle("on", b.getAttribute("data-salao") === v));
       return;
     }
     if (t.hasAttribute("data-ver-ticket")) {
@@ -1799,10 +1964,13 @@ const EstApp = {
     if (id === "print-ticket") return void window.print();
     if (id === "novo-ticket") {
       this.ticketGeradoId = null;
+      this.ticketLoteIds = [];
       this.render();
       return;
     }
     if (id === "entregar-sai") return void this.entregarSai();
+    if (id === "scan-sai") return void this.abrirScanSai();
+    if (id === "imprimir-mesas") return void this.imprimirMesas();
     if (id === "qty-minus") {
       this.qty = Math.max(1, this.qty - 1);
       this.render();
@@ -1835,15 +2003,28 @@ const EstApp = {
       UI.toast("Escolha pelo menos uma bebida.");
       return;
     }
+    const n = Math.max(1, Math.min(20, Number(this.tktLote) || 1));
     try {
-      const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
-      if (!t) {
+      const ids = [];
+      let ultimo = null;
+      for (let i = 0; i < n; i++) {
+        const t = await Logic.criarTicket({ estabelecimentoId: this.estId, itens });
+        if (!t) break;
+        ids.push(t.id);
+        ultimo = t;
+      }
+      if (!ids.length) {
         UI.toast("Não foi possível gerar o QR.");
         return;
       }
-      this.ticketGeradoId = t.id;
+      this.ticketLoteIds = ids;
+      this.ticketGeradoId = ids[0];
       this.render();
-      UI.toast(`QR ${t.codigo} gerado. Imprima e entregue ao cliente.`);
+      UI.toast(
+        ids.length > 1
+          ? `${ids.length} cupons gerados. Imprima e entregue na mesa.`
+          : `QR ${ultimo.codigo} gerado. Imprima e entregue ao cliente.`
+      );
     } catch (e) {
       UI.toast(e.message);
     }
@@ -1960,6 +2141,55 @@ const EstApp = {
     });
   },
 
+  async abrirScanSai() {
+    try {
+      if (window.QR?.pedirStream) await QR.pedirStream();
+    } catch (e) {
+      UI.toast(e.message || "Permita a câmera para ler o QR.");
+    }
+    const m = UI.modal({
+      center: true,
+      onClose: () => QR.stopScan(),
+      html: `<h2>QR da Saideira</h2>
+        <div class="scan-stage" style="margin:16px 0">
+          <div class="scan-frame live" style="margin:0 auto">
+            <video id="scan-video-sai" playsinline muted autoplay></video>
+            <i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <p class="tiny muted" id="scan-hint-sai" style="text-align:center;margin-bottom:12px">Aponte para o QR da Saideira no app do cliente</p>
+        <button type="button" class="btn btn-ghost btn-sm btn-block" data-close-modal>Cancelar</button>`,
+    });
+    const video = m.el.querySelector("#scan-video-sai");
+    QR.startScan({
+      video,
+      onCode: (_codigo, raw) => {
+        const texto = raw || _codigo;
+        if (QR.decode(texto).tipo === "ticket") {
+          UI.toast("Este é o cupom da casa. Peça o QR da Saideira.");
+          return;
+        }
+        const s = Logic.saideraPorCodigo(texto, this.estId);
+        if (s) {
+          QR.stopScan();
+          m.close();
+          this.pedirConfirmacaoSaidera(s);
+          return;
+        }
+        const c = Logic.clientePorCodigo(QR.decode(texto).codigo);
+        UI.toast(
+          c
+            ? `Isso é o QR de ${c.primeiroNome}. Peça o código da Saideira no app dele.`
+            : "QR da Saideira não reconhecido nesta casa."
+        );
+      },
+      onError: (msg) => {
+        const h = m.el.querySelector("#scan-hint-sai");
+        if (h) h.textContent = msg;
+      },
+    });
+  },
+
   abrirScanNota() {
     const noCard = new Set((this.est()?.bebidas || []).map((b) => b.id));
     const rede = Store.all("bebidas").filter((b) => !noCard.has(b.id));
@@ -2055,6 +2285,7 @@ const EstApp = {
         nome: this.root.querySelector("#cfg-nome")?.value,
         tipo: this.root.querySelector("#cfg-tipo")?.value,
         horario: this.root.querySelector("#cfg-hora")?.value,
+        salao: this.root.querySelector("#cfg-salao")?.value || "auto",
         promocao: this.root.querySelector("#cfg-promo")?.value,
         cep: this.root.querySelector("#cfg-cep")?.value,
         logradouro: this.root.querySelector("#cfg-rua")?.value,

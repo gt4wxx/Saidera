@@ -386,12 +386,20 @@ const Logic = {
     return est?.tipo === "restaurante" ? "Restaurante" : "Bar";
   },
 
-  urlEntrarCliente(estId) {
+  urlEntrarCliente(estId, mesa) {
     const base = /\/pages\//.test(location.pathname)
       ? new URL("../entrar.php", location.href.split("#")[0])
       : new URL("entrar.php", location.href.split("#")[0]);
     if (estId) base.searchParams.set("casa", estId);
+    if (mesa) base.searchParams.set("mesa", String(mesa).replace(/\D/g, "").slice(0, 4));
     return base.href;
+  },
+
+  whatsappHref(tel) {
+    const n = String(tel || "").replace(/\D/g, "");
+    if (n.length < 10) return "";
+    const full = n.startsWith("55") ? n : "55" + n;
+    return `https://wa.me/${full}`;
   },
 
   menusCasaCatalogo() {

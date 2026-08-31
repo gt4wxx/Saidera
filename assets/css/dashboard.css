@@ -321,6 +321,33 @@ body.dash {
   border: 2px solid transparent; min-height: 88px;
 }
 .drink-pick button.on { border-color: var(--gold); background: var(--gold-dim); }
+.drink-pick-salao button { min-height: 104px; font-size: 1.02rem; }
+.atender-cartela {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+}
+.atender-cartela.quase { border-color: rgba(245,184,0,0.45); background: #1c1810; }
+.sai-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.sai-fila-card {
+  text-align: left;
+  background: #1a1a1a;
+  border: 1px solid rgba(245,184,0,0.28);
+  border-radius: 18px;
+  padding: 14px 12px;
+  color: inherit;
+  min-height: 110px;
+}
+.sai-fila-card strong { display: block; margin-bottom: 4px; }
+.sai-fila-card p { margin: 0 0 8px; color: #cfc6a8; font-size: 0.9rem; }
+.sai-fila-card span { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; color: #F5B800; }
+.sai-fila-card:hover { border-color: #F5B800; }
 
 .status-dot {
   width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block;
@@ -376,6 +403,7 @@ body.dash {
   .tipo-pick { grid-template-columns: 1fr; }
 }
 
+.ticket-lote { display: grid; gap: 18px; }
 .ticket-print {
   background: #FFF9E8;
   color: #171717;
@@ -611,11 +639,14 @@ body.dash select {
   .dash-main { padding: 0; margin: 0; }
   .grid-2.ticket-layout { display: block; }
   .panel { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
+  .ticket-lote { display: block; }
   .ticket-print {
     box-shadow: none;
     max-width: 80mm;
-    margin: 0;
+    margin: 0 auto 12mm;
     border-radius: 0;
+    page-break-after: always;
+    break-after: page;
   }
   body { background: #fff !important; color: #171717; }
 }

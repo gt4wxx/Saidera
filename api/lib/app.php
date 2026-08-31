@@ -2,7 +2,7 @@
 
 function saidera_v(): string
 {
-    return '47';
+    return '48';
 }
 
 function saidera_https(): bool
@@ -74,6 +74,9 @@ function saidera_migrar(): void
         $cols = db()->query('SHOW COLUMNS FROM estabelecimentos')->fetchAll(PDO::FETCH_COLUMN);
         if (!in_array('plano_id', $cols, true)) {
             db()->exec('ALTER TABLE estabelecimentos ADD COLUMN plano_id BIGINT UNSIGNED DEFAULT NULL');
+        }
+        if (!in_array('salao', $cols, true)) {
+            db()->exec("ALTER TABLE estabelecimentos ADD COLUMN salao ENUM('auto','aberto','fechado') NOT NULL DEFAULT 'auto'");
         }
         garantir_planos();
         garantir_plano_cobrancas();

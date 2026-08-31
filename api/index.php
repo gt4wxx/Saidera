@@ -307,6 +307,13 @@ function rota(string $method, string $path): void
                 $status,
                 $eid,
             ]);
+        if (array_key_exists('salao', $in) && in_array($in['salao'], ['auto', 'aberto', 'fechado'], true)) {
+            try {
+                db()->prepare('UPDATE estabelecimentos SET salao = ? WHERE id = ?')->execute([$in['salao'], $eid]);
+            } catch (Throwable $e) {
+                /* coluna salao só existe depois da migração */
+            }
+        }
         auditar('Estabelecimento atualizado', $in['nome'] ?? $row['nome']);
         ok(['store' => bootstrap_store($u)]);
     }
