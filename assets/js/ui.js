@@ -9,7 +9,7 @@ const Brand = {
     return this.pages() ? "../Saidera_Kit_Marca" : "Saidera_Kit_Marca";
   },
   v() {
-    return String(window.SAIDERA_V || "46");
+    return String(window.SAIDERA_V || "47");
   },
   cache(url) {
     if (!url || /[?&]v=/.test(url)) return url;

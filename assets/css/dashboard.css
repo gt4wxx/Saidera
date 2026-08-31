@@ -1,6 +1,7 @@
 body.dash {
   background: #0f0f0f;
   color: var(--cream);
+  overflow-x: hidden;
 }
 .dash-app {
   display: grid;
@@ -11,7 +12,7 @@ body.dash {
 .sidebar {
   background: #111;
   border-right: 1px solid #222;
-  padding: 18px 12px;
+  padding: calc(18px + var(--safe-t, 0px)) 12px calc(18px + var(--safe-b, 0px));
   display: flex; flex-direction: column; gap: 6px;
   position: sticky; top: 0; height: 100vh; height: 100dvh;
   overflow-y: auto;
@@ -122,12 +123,18 @@ body.dash {
 @media (max-width: 720px) {
   .form-grid { grid-template-columns: 1fr; }
   .dash-head { align-items: stretch; }
-  .dash-head > .row { flex-wrap: wrap; }
+  .dash-head > .row { flex-wrap: wrap; width: 100%; }
+  .dash-head .btn { flex: 1 1 auto; }
   .search.wide { max-width: none; width: 100%; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .drink-pick { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
   table.data { font-size: 0.8rem; }
   table.data th, table.data td { padding: 10px 8px; }
+  .dash-toolbar { flex-direction: column; align-items: stretch; }
+  .dash-dia-pick input[type="date"] { min-width: 0; width: 100%; }
+  .toolbar .search { max-width: none; min-width: 0; }
+  .beb-cat-item, .beb-card { align-items: stretch; }
+  .beb-cat-actions, .beb-card-actions { width: 100%; }
 }
 @media (max-width: 1024px) {
   .dash-app { grid-template-columns: 1fr; }
@@ -135,6 +142,7 @@ body.dash {
     position: fixed; z-index: 40; transform: translateX(-110%);
     width: min(300px, 88vw); height: 100dvh; transition: transform .25s ease;
     box-shadow: none;
+    padding-left: max(12px, var(--safe-l, 0px));
   }
   .sidebar.open { transform: none; box-shadow: 16px 0 40px rgba(0,0,0,0.4); }
   .sidebar-scrim {
@@ -152,8 +160,11 @@ body.dash {
   }
   .menu-btn { display: grid; }
   .kpis { grid-template-columns: 1fr 1fr; }
-  .dash-main { padding: 14px 14px 88px; }
+  .dash-main { padding: 14px 14px calc(88px + var(--safe-b, 0px)); }
   .dash-head h1 { font-size: 1.35rem; }
+}
+@media (max-width: 380px) {
+  .kpis { grid-template-columns: 1fr; }
 }
 @media (min-width: 700px) and (max-width: 1099px) {
   .kpis { grid-template-columns: repeat(3, 1fr); }

@@ -516,12 +516,12 @@ const ClienteApp = {
       <p class="muted small">${this.esc(cidade)}</p>
       <h1 style="margin:6px 0 4px">${Logic.saudacao(me.primeiroNome)}</h1>
       <p class="muted" style="margin-bottom:14px">Qual vai ser sua Saideira hoje?</p>
-      <div class="row" style="gap:8px;margin-bottom:14px">
-        <button class="btn btn-gold grow" data-camera-go="#/ler" style="min-height:52px">${Icons.qr()} Ler QR da casa</button>
-        <button class="btn btn-dark" data-go="#/qr" style="min-height:52px">Meu QR</button>
+      <div class="home-cta">
+        <button class="btn btn-gold" data-camera-go="#/ler">${Icons.qr()} Ler QR da casa</button>
+        <button class="btn btn-dark" data-go="#/qr">Meu QR</button>
       </div>
       ${Brand.banner("secundario", "brand-banner")}
-      <div class="row" style="margin:14px 0 8px">
+      <div class="home-search">
         <div class="search grow">${Icons.search()}<input placeholder="Buscar bar ou restaurante" data-search-home value="${this.esc(this.homeQuery)}"/></div>
         <button class="icon-btn gold ${locOn ? "loc-on" : ""}" data-onde title="Onde você está">${Icons.pin()}</button>
       </div>
@@ -532,7 +532,7 @@ const ClienteApp = {
       ${this.heroCard()}
       ${this.cardRitmo(true)}
       ${!this.homeQuery.trim() && minhas.length ? `<div style="margin:16px 0 10px"><h2>Onde você já vai</h2></div><div class="stack est-list" style="margin-bottom:16px">${minhas.map((e) => this.estMini(e)).join("")}</div>` : ""}
-      <div class="row between" style="margin-bottom:10px" id="lista-bares">
+      <div class="section-head" id="lista-bares">
         <div>
           <h2>${titulo}</h2>
           ${busca}
